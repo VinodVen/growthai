@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GrowthAI Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+<div class="container mt-5">
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3>🚀 {{ business_name }} Dashboard</h3>
+            <small class="text-muted">AI Marketing Control Center</small>
+        </div>
+
+        <div>
+            <a href="/logout" class="btn btn-outline-danger btn-sm">
+                Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="card shadow-sm text-center p-4 mb-4">
+        <h6>Total Campaigns</h6>
+        <h2 class="text-primary">{{ total_campaigns }}</h2>
+    </div>
+
+    <!-- GENERATE CAMPAIGN -->
+    <div class="card shadow-sm p-4 mb-4">
+        <h4 class="mb-3">➕ Generate Campaign</h4>
+
+        <form method="POST">
+            <input class="form-control mb-3" name="first_name" placeholder="Customer Name" required>
+            <input class="form-control mb-3" name="customer_email" placeholder="Customer Email" required>
+
+            <select class="form-select mb-3" name="campaign_type">
+                <option value="weekend">Weekend Offer</option>
+                <option value="birthday">Birthday Special</option>
+                <option value="loyalty">Loyalty Reward</option>
+            </select>
+
+            <button name="generate_campaign" class="btn btn-success w-100">
+                🤖 Generate AI Promotion
+            </button>
+        </form>
+    </div>
+
+    {% if promotion_message %}
+    <div class="card shadow p-4 mb-4">
+        <h5>🎯 AI Generated Promotion</h5>
+        <div class="alert alert-primary">
+            {{ promotion_message }}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- CAMPAIGN HISTORY -->
+    <div class="card shadow-sm p-4">
+        <h4 class="mb-3">📈 Recent Campaigns</h4>
+
+        {% if campaigns %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th>Email</th>
+                    <th>Type</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in campaigns %}
+                <tr>
+                    <td>{{ c.name }}</td>
+                    <td>{{ c.email }}</td>
+                    <td>{{ c.type }}</td>
+                    <td>{{ c.time }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">No campaigns yet.</p>
+        {% endif %}
+    </div>
+
+</div>
+
+</body>
+</html>
