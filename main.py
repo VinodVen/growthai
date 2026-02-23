@@ -125,8 +125,7 @@ def dashboard():
                     ]
                 )
 
-                promotion_message = response.choices[0].message.content
-
+promotion_message = response.choices[0].message.content.replace("###", "").replace("**", "")
                 campaign_history.append({
                     "name": first_name,
                     "email": customer_email,
