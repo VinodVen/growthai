@@ -15,8 +15,8 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 app = Flask(__name__)
 app.secret_key = "super_secret_demo_key"
 
-# Demo storage
-restaurants = {}
+# Demo storage (replace with DB later)
+businesses = {}
 campaign_history = []
 
 # ==========================
@@ -37,7 +37,7 @@ def register():
         email = request.form["email"]
         password = request.form["password"]
 
-        restaurants[email] = {
+        businesses[email] = {
             "business_name": business_name,
             "owner_name": owner_name,
             "password": password
@@ -60,7 +60,7 @@ def login():
         email = request.form["email"]
         password = request.form["password"]
 
-        if email in restaurants and restaurants[email]["password"] == password:
+        if email in businesses and businesses[email]["password"] == password:
             session["user"] = email
             return redirect("/dashboard")
         else:
@@ -97,7 +97,7 @@ def dashboard():
         return redirect("/login")
 
     user_email = session["user"]
-    business_name = restaurants[user_email]["business_name"]
+    business_name = businesses[user_email]["business_name"]
 
     promotion_message = None
 
@@ -120,12 +120,13 @@ def dashboard():
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "You are a restaurant marketing assistant."},
+                        {"role": "system", "content": "You are an AI marketing assistant for small businesses."},
                         {"role": "user", "content": prompt}
                     ]
                 )
 
-promotion_message = response.choices[0].message.content.replace("###", "").replace("**", "")
+                promotion_message = response.choices[0].message.content.replace("###", "").replace("**", "")
+
                 campaign_history.append({
                     "name": first_name,
                     "email": customer_email,
@@ -174,4 +175,3 @@ def logout():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
