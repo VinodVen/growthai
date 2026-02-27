@@ -1,5 +1,6 @@
 import os
 import bcrypt
+import stripe
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, session, url_for, flash
 from dotenv import load_dotenv
@@ -16,12 +17,15 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Secure Secret Key
+# Security
 app.secret_key = os.getenv("FLASK_SECRET_KEY")
-
-# Secure Session Cookies
 app.config["SESSION_COOKIE_SECURE"] = True
 app.config["SESSION_COOKIE_HTTPONLY"] = True
+
+# ==========================
+# Stripe Setup
+# ==========================
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 # ==========================
 # OpenAI
@@ -29,7 +33,7 @@ app.config["SESSION_COOKIE_HTTPONLY"] = True
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # ==========================
-# Database Config (Render Postgres)
+# Database Config
 # ==========================
 db_url = os.getenv("DATABASE_URL", "")
 
@@ -52,6 +56,9 @@ class Business(db.Model):
     owner_name = db.Column(db.String(200), nullable=False)
     email = db.Column(db.String(200), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
+
+    plan = db.Column(db.String(50), default="free")
+    stripe_customer_id = db.Column(db.String(200))
 
 class Customer(db.Model):
     __tablename__ = "customers"
@@ -82,7 +89,6 @@ class ContactMessage(db.Model):
     message = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-# Auto-create tables
 with app.app_context():
     db.create_all()
 
@@ -94,26 +100,6 @@ def current_business():
         return None
     return Business.query.get(session["user_id"])
 
-def send_email(to_email, subject, message):
-    sender_email = os.getenv("EMAIL_USER")
-    sender_password = os.getenv("EMAIL_PASS")
-
-    if not sender_email or not sender_password:
-        return "Missing EMAIL_USER or EMAIL_PASS."
-
-    msg = MIMEText(message)
-    msg["Subject"] = subject
-    msg["From"] = sender_email
-    msg["To"] = to_email
-
-    try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(sender_email, sender_password)
-            server.send_message(msg)
-        return True
-    except Exception as e:
-        return str(e)
-
 def clean_ai_text(text: str) -> str:
     return (text or "").replace("###", "").replace("**", "").strip()
 
@@ -123,26 +109,6 @@ def clean_ai_text(text: str) -> str:
 @app.route("/")
 def landing():
     return render_template("landing.html")
-
-@app.route("/contact", methods=["GET", "POST"])
-def contact():
-    if request.method == "POST":
-        name = request.form["name"]
-        email = request.form["email"]
-        message = request.form["message"]
-
-        contact = ContactMessage(
-            name=name,
-            email=email,
-            message=message
-        )
-        db.session.add(contact)
-        db.session.commit()
-
-        flash("✅ Thank you! We will contact you soon.", "success")
-        return redirect("/contact")
-
-    return render_template("contact.html")
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -190,10 +156,7 @@ def login():
 
         b = Business.query.filter_by(email=email).first()
 
-        if b and bcrypt.checkpw(
-            password.encode("utf-8"),
-            b.password.encode("utf-8")
-        ):
+        if b and bcrypt.checkpw(password.encode("utf-8"), b.password.encode("utf-8")):
             session["user_id"] = b.id
             return redirect("/dashboard")
 
@@ -201,99 +164,71 @@ def login():
 
     return render_template("login.html")
 
-@app.route("/dashboard", methods=["GET", "POST"])
+# ==========================
+# Stripe Upgrade
+# ==========================
+@app.route("/upgrade")
+def upgrade():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+
+    checkout_session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        mode="subscription",
+        line_items=[{
+            "price": os.getenv("STRIPE_PRICE_ID"),
+            "quantity": 1
+        }],
+        success_url=url_for("success", _external=True),
+        cancel_url=url_for("dashboard", _external=True),
+        customer_email=b.email
+    )
+
+    return redirect(checkout_session.url)
+
+@app.route("/success")
+def success():
+    b = current_business()
+    if b:
+        b.plan = "pro"
+        db.session.commit()
+    return "🎉 Upgrade Successful! You are now Pro."
+
+# ==========================
+# Dashboard
+# ==========================
+@app.route("/dashboard")
 def dashboard():
     b = current_business()
     if not b:
         return redirect("/login")
 
-    promotion_message = None
-
-    if request.method == "POST":
-
-        if "generate_campaign" in request.form:
-            first_name = request.form["first_name"]
-            last_name = request.form.get("last_name", "")
-            customer_email = request.form["customer_email"]
-            phone = request.form.get("phone", "")
-            dob = request.form.get("dob", "")
-            campaign_type = request.form["campaign_type"]
-
-            cust = Customer(
-                business_id=b.id,
-                first_name=first_name,
-                last_name=last_name,
-                email=customer_email,
-                phone=phone,
-                dob=dob
-            )
-            db.session.add(cust)
-            db.session.commit()
-
-            business_context = f"Business name: {b.business_name}."
-
-            if campaign_type == "birthday":
-                prompt = f"{business_context} Create a short birthday promotion for {first_name} with 30% off. Keep under 80 words."
-            elif campaign_type == "loyalty":
-                prompt = f"{business_context} Create a loyalty promotion for {first_name}. Keep under 80 words."
-            else:
-                prompt = f"{business_context} Create a weekend promotion for {first_name} with 20% off. Keep under 80 words."
-
-            try:
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "You are a small business marketing assistant."},
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-
-                promotion_message = clean_ai_text(response.choices[0].message.content)
-
-                camp = Campaign(
-                    business_id=b.id,
-                    customer_name=first_name,
-                    customer_email=customer_email,
-                    campaign_type=campaign_type,
-                    message=promotion_message
-                )
-
-                db.session.add(camp)
-                db.session.commit()
-
-            except Exception as e:
-                promotion_message = f"AI Error: {str(e)}"
-
-        elif "send_email" in request.form:
-            customer_email = request.form["customer_email"]
-            message = request.form["promotion_message"]
-
-            result = send_email(
-                customer_email,
-                f"Special Offer from {b.business_name}",
-                message
-            )
-
-            if result is True:
-                promotion_message = "✅ Email Sent Successfully!"
-            else:
-                promotion_message = f"Email Error: {result}"
-
-    campaigns = (
-        Campaign.query.filter_by(business_id=b.id)
-        .order_by(Campaign.created_at.desc())
-        .limit(5)
-        .all()
-    )
-
     total_campaigns = Campaign.query.filter_by(business_id=b.id).count()
 
     return render_template(
         "dashboard.html",
-        promotion_message=promotion_message,
-        total_campaigns=total_campaigns,
         business_name=b.business_name,
-        campaigns=campaigns
+        total_campaigns=total_campaigns,
+        plan=b.plan
+    )
+
+# ==========================
+# Admin Panel
+# ==========================
+@app.route("/admin")
+def admin():
+    # Only first registered user acts as admin
+    if session.get("user_id") != 1:
+        return "Unauthorized"
+
+    businesses = Business.query.all()
+    contacts = ContactMessage.query.order_by(ContactMessage.created_at.desc()).all()
+
+    return render_template(
+        "admin.html",
+        businesses=businesses,
+        contacts=contacts
     )
 
 @app.route("/logout")
