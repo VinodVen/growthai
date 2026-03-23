@@ -1,95 +1,229 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>GrowthAI Dashboard</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Restaurant AI</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .navbar { background: rgba(0,0,0,0.1); backdrop-filter: blur(10px); }
+        .card { border: none; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+        .container { max-width: 1200px; }
+        .header { color: white; margin-bottom: 30px; }
+    </style>
 </head>
 
-<body class="bg-light">
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-dark mb-4">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/">🍽️ GrowthAI</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link active" href="/dashboard">Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/customers">Customers</a></li>
+                <li class="nav-item"><a class="nav-link" href="/campaigns">Campaigns</a></li>
+                <li class="nav-item"><a class="nav-link" href="/upgrade">Upgrade</a></li>
+                <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
 
 <div class="container mt-5">
 
+    <!-- FLASH MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
     <!-- HEADER -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h3>🚀 {{ business_name }} Dashboard</h3>
-            <small class="text-muted">AI Marketing Control Center</small>
-        </div>
-
-        <div>
-            <a href="/logout" class="btn btn-outline-danger btn-sm">
-                Logout
-            </a>
+    <div class="header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="display-5 fw-bold mb-2">🚀 {{ business_name }}</h1>
+                <p class="lead">AI Marketing Control Center</p>
+            </div>
+            <div>
+                {% if plan == 'free' %}
+                    <a href="/upgrade" class="btn btn-warning btn-lg">⭐ Upgrade to Pro</a>
+                {% else %}
+                    <span class="badge bg-success fs-5">PRO PLAN</span>
+                {% endif %}
+            </div>
         </div>
     </div>
 
-    <!-- STATS -->
-    <div class="card shadow-sm text-center p-4 mb-4">
-        <h6>Total Campaigns</h6>
-        <h2 class="text-primary">{{ total_campaigns }}</h2>
+    <!-- STATS CARDS -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="stat-card card p-4 text-center">
+                <h6 class="opacity-75">Total Customers</h6>
+                <h2 class="display-4 fw-bold">{{ total_customers }}</h2>
+                <a href="/customers" class="btn btn-light btn-sm mt-3">View All →</a>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="stat-card card p-4 text-center">
+                <h6 class="opacity-75">Active Campaigns</h6>
+                <h2 class="display-4 fw-bold">{{ total_campaigns }}</h2>
+                <a href="/campaigns" class="btn btn-light btn-sm mt-3">View All →</a>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="stat-card card p-4 text-center">
+                <h6 class="opacity-75">Campaigns Sent</h6>
+                <h2 class="display-4 fw-bold">{{ sent_campaigns }}</h2>
+                <a href="/campaigns" class="btn btn-light btn-sm mt-3">View All →</a>
+            </div>
+        </div>
     </div>
 
-    <!-- GENERATE CAMPAIGN -->
-    <div class="card shadow-sm p-4 mb-4">
-        <h4 class="mb-3">➕ Generate Campaign</h4>
+    <!-- QUICK ACTIONS -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card p-4">
+                <h5 class="mb-3">➕ Quick Actions</h5>
+                <a href="/add-customer" class="btn btn-primary w-100 mb-2">👥 Add Customer</a>
+                <a href="/create-campaign" class="btn btn-success w-100">🚀 Create Campaign</a>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card p-4">
+                <h5 class="mb-3">📊 Account Info</h5>
+                <p><strong>Plan:</strong> <span class="badge bg-{{ 'success' if plan == 'pro' else 'secondary' }}">{{ plan.upper() }}</span></p>
+                <p><strong>Customers:</strong> {{ total_customers }}</p>
+                <p><strong>Total Campaigns:</strong> {{ total_campaigns }}</p>
+            </div>
+        </div>
+    </div>
 
-        <form method="POST">
-            <input class="form-control mb-3" name="first_name" placeholder="Customer Name" required>
-            <input class="form-control mb-3" name="customer_email" placeholder="Customer Email" required>
+    <!-- GENERATE CAMPAIGN FORM -->
+    <div class="card p-4 mb-4">
+        <h4 class="mb-4">🤖 Generate AI Campaign</h4>
 
-            <select class="form-select mb-3" name="campaign_type">
-                <option value="weekend">Weekend Offer</option>
-                <option value="birthday">Birthday Special</option>
-                <option value="loyalty">Loyalty Reward</option>
-            </select>
+        <form method="POST" action="/create-campaign">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Customer Name</label>
+                    <input type="text" class="form-control form-control-lg" name="customer_name" placeholder="E.g., John Doe" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Customer Email</label>
+                    <input type="email" class="form-control form-control-lg" name="customer_email" placeholder="john@example.com" required>
+                </div>
+            </div>
 
-            <button name="generate_campaign" class="btn btn-success w-100">
-                🤖 Generate AI Promotion
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Campaign Type</label>
+                    <select class="form-select form-select-lg" name="campaign_type">
+                        <option value="promotion">🎉 Promotion</option>
+                        <option value="birthday">🎂 Birthday Special</option>
+                        <option value="loyalty">💎 Loyalty Reward</option>
+                        <option value="reopening">🏪 Reopening</option>
+                        <option value="event">🎪 Event</option>
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Use AI?</label>
+                    <div class="form-check mt-2">
+                        <input class="form-check-input" type="checkbox" id="useAi" name="use_ai" checked>
+                        <label class="form-check-label" for="useAi">
+                            Generate message with AI
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Message (Optional if using AI)</label>
+                <textarea class="form-control" name="message" rows="4" placeholder="Enter custom message or leave blank for AI generation"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-success btn-lg w-100">
+                🚀 Create & Send Campaign
             </button>
         </form>
     </div>
 
-    {% if promotion_message %}
-    <div class="card shadow p-4 mb-4">
-        <h5>🎯 AI Generated Promotion</h5>
-        <div class="alert alert-primary">
-            {{ promotion_message }}
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- CAMPAIGN HISTORY -->
-    <div class="card shadow-sm p-4">
-        <h4 class="mb-3">📈 Recent Campaigns</h4>
+    <!-- RECENT CAMPAIGNS -->
+    <div class="card p-4 mb-4">
+        <h4 class="mb-4">📈 Recent Campaigns</h4>
 
         {% if campaigns %}
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Customer</th>
-                    <th>Email</th>
-                    <th>Type</th>
-                    <th>Time</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for c in campaigns %}
-                <tr>
-                    <td>{{ c.name }}</td>
-                    <td>{{ c.email }}</td>
-                    <td>{{ c.type }}</td>
-                    <td>{{ c.time }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>Customer</th>
+                        <th>Email</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for campaign in campaigns[:5] %}
+                    <tr>
+                        <td><strong>{{ campaign.customer_name }}</strong></td>
+                        <td>{{ campaign.customer_email }}</td>
+                        <td><span class="badge bg-info">{{ campaign.campaign_type }}</span></td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if campaign.status == 'sent' else 'warning' }}">
+                                {{ campaign.status.upper() }}
+                            </span>
+                        </td>
+                        <td>{{ campaign.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <a href="/campaign/{{ campaign.id }}" class="btn btn-sm btn-outline-primary">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <a href="/campaigns" class="btn btn-outline-primary mt-3">View All Campaigns →</a>
         {% else %}
-        <p class="text-muted">No campaigns yet.</p>
+        <div class="alert alert-info">
+            📭 No campaigns yet. <a href="/create-campaign">Create your first campaign</a>
+        </div>
         {% endif %}
     </div>
 
+    <!-- FOOTER -->
+    <footer class="text-center text-white py-4 mt-5">
+        <p>&copy; 2026 Restaurant AI. Powered by OpenAI & Stripe.</p>
+    </footer>
+
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Auto-dismiss alerts after 5 seconds
+    document.querySelectorAll('.alert').forEach(alert => {
+        setTimeout(() => {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 5000);
+    });
+</script>
 
 </body>
 </html>

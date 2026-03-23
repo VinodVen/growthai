@@ -1,0 +1,91 @@
+ddy/restaurant-ai-app/templates/campaigns.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaigns - GrowthAI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+        }
+        .btn-custom {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        }
+        .btn-custom:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            color: white;
+        }
+        .badge-draft {
+            background-color: #e2e3e5;
+            color: #383d41;
+        }
+        .badge-sent {
+            background-color: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container d-flex justify-content-between align-items-center">
+            <h1 style="margin: 0;">📧 Campaigns</h1>
+            <a href="/logout" class="btn btn-light">Logout</a>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="mb-4">
+            <a href="/create-campaign" class="btn btn-custom">✉️ New Campaign</a>
+            <a href="/dashboard" class="btn btn-outline-secondary">← Back to Dashboard</a>
+        </div>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% if campaigns %}
+        <div class="row">
+            {% for campaign in campaigns %}
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ campaign.customer_name }}</h5>
+                        <p class="card-text text-muted">{{ campaign.customer_email }}</p>
+                        <p class="card-text"><small>Type: <strong>{{ campaign.campaign_type }}</strong></small></p>
+                        <p class="card-text"><small class="text-truncate">{{ campaign.message[:100] }}...</small></p>
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <span class="badge badge-{{ campaign.status }}">{{ campaign.status.upper() }}</span>
+                            <a href="/campaign/{{ campaign.id }}" class="btn btn-sm btn-outline-primary">View</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            No campaigns yet. <a href="/create-campaign">Create your first campaign</a>
+        </div>
+        {% endif %}
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
