@@ -14,38 +14,71 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Production/Development setup
 ENV = os.getenv("FLASK_ENV", "development")
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 IS_PRODUCTION = ENV == "production"
 
 app.config["ENV"] = ENV
 app.config["DEBUG"] = DEBUG
-
-# Security settings
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-12345")
 app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["PERMANENT_SESSION_LIFETIME"] = 3600
 
-# Stripe Setup
+# Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_fake")
+STRIPE_PRICE_STARTER = os.getenv("STRIPE_PRICE_ID_STARTER") or os.getenv("STRIPE_PRICE_ID")
+STRIPE_PRICE_PRO = os.getenv("STRIPE_PRICE_ID_PRO") or os.getenv("STRIPE_PRICE_ID")
 
 # OpenAI
 try:
     from openai import OpenAI
     api_key = os.getenv("OPENAI_API_KEY")
-    if api_key and api_key != "sk-fake" and api_key:
+    if api_key:
         client = OpenAI(api_key=api_key)
     else:
         client = None
-        print("⚠️  Warning: OPENAI_API_KEY not set.")
+        print("Warning: OPENAI_API_KEY not set.")
 except Exception as e:
     client = None
-    print(f"⚠️  Warning: OpenAI initialization failed: {e}")
+    print(f"Warning: OpenAI initialization failed: {e}")
 
-# Database Config
+# Twilio SMS
+try:
+    from twilio.rest import Client as TwilioClient
+    twilio_sid = os.getenv("TWILIO_ACCOUNT_SID")
+    twilio_token = os.getenv("TWILIO_AUTH_TOKEN")
+    twilio_phone = os.getenv("TWILIO_PHONE_NUMBER")
+    if twilio_sid and twilio_token:
+        twilio_client = TwilioClient(twilio_sid, twilio_token)
+    else:
+        twilio_client = None
+except Exception as e:
+    twilio_client = None
+    twilio_phone = None
+    print(f"Warning: Twilio not configured: {e}")
+
+# Plan limits
+PLAN_LIMITS = {
+    "free":    {"customers": 50,  "campaigns_month": 10},
+    "starter": {"customers": 500, "campaigns_month": None},
+    "pro":     {"customers": None,"campaigns_month": None},
+}
+
+CAMPAIGN_TYPES = {
+    "come_back":  "Come Back Offer",
+    "weekend":    "Weekend Special",
+    "lunch":      "Lunch Deal",
+    "dinner":     "Dinner Special",
+    "birthday":   "Birthday Special",
+    "loyalty":    "Loyalty Reward",
+    "happy_hour": "Happy Hour",
+    "new_item":   "New Item Launch",
+    "promotion":  "General Promotion",
+}
+
+# Database
 db_url = os.getenv("DATABASE_URL", "sqlite:///restaurant.db")
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
@@ -93,6 +126,7 @@ class Campaign(db.Model):
     business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=False)
     customer_name = db.Column(db.String(200), nullable=False)
     customer_email = db.Column(db.String(200), nullable=False)
+    customer_phone = db.Column(db.String(50))
     campaign_type = db.Column(db.String(50), nullable=False)
     message = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(50), default="draft")
@@ -110,7 +144,7 @@ with app.app_context():
     db.create_all()
 
 # ============================================
-# HELPER FUNCTIONS
+# HELPERS
 # ============================================
 
 def current_business():
@@ -118,10 +152,33 @@ def current_business():
         return None
     return Business.query.get(session["user_id"])
 
-def clean_ai_text(text: str) -> str:
+def get_plan_limit(plan, limit_type):
+    return PLAN_LIMITS.get(plan, PLAN_LIMITS["free"]).get(limit_type)
+
+def clean_ai_text(text):
     return (text or "").replace("###", "").replace("**", "").strip()
 
-def send_email(to_email: str, subject: str, body: str) -> bool:
+def build_html_email(business_name, customer_name, message, campaign_type):
+    return f"""
+    <html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#f5f5f5;">
+    <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;border-radius:12px;text-align:center;margin-bottom:20px;">
+        <h1 style="color:white;margin:0;font-size:26px;">{business_name}</h1>
+        <p style="color:rgba(255,255,255,0.9);margin:8px 0 0 0;">Special Offer Just For You</p>
+    </div>
+    <div style="background:white;padding:30px;border-radius:12px;margin-bottom:20px;">
+        <p style="font-size:16px;color:#333;">Hi <strong>{customer_name}</strong>,</p>
+        <p style="font-size:16px;color:#555;line-height:1.7;">{message}</p>
+        <div style="text-align:center;margin-top:25px;">
+            <p style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:14px 30px;border-radius:8px;display:inline-block;font-size:16px;font-weight:bold;">
+                Visit Us Today!
+            </p>
+        </div>
+    </div>
+    <p style="text-align:center;color:#999;font-size:12px;">You received this because you're a valued customer of {business_name}.</p>
+    </body></html>
+    """
+
+def send_email(to_email, subject, body, customer_name="", business_name="", campaign_type="promotion"):
     try:
         smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
         smtp_port = int(os.getenv("SMTP_PORT", 587))
@@ -129,14 +186,16 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
         sender_password = os.getenv("SENDER_PASSWORD")
 
         if not all([sender_email, sender_password]):
-            print("⚠️ Email not configured")
+            print("Email not configured")
             return False
 
-        msg = MIMEMultipart()
+        msg = MIMEMultipart("alternative")
         msg["From"] = sender_email
         msg["To"] = to_email
         msg["Subject"] = subject
-        msg.attach(MIMEText(body, "html"))
+        msg.attach(MIMEText(body, "plain"))
+        html_body = build_html_email(business_name or "GrowthAI", customer_name or "Valued Customer", body, campaign_type)
+        msg.attach(MIMEText(html_body, "html"))
 
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
@@ -144,35 +203,50 @@ def send_email(to_email: str, subject: str, body: str) -> bool:
             server.send_message(msg)
         return True
     except Exception as e:
-        print(f"❌ Email error: {e}")
+        print(f"Email error: {e}")
         return False
 
-def generate_ai_message(customer_name: str, restaurant_name: str, campaign_type: str) -> str:
-    if not client:
-        # Fallback messages if no AI
-        fallback_messages = {
-            "birthday": f"Happy Birthday {customer_name}! 🎂 Enjoy 20% off your next visit to {restaurant_name}. Use code: BIRTHDAY20",
-            "loyalty": f"Thank you for being a loyal customer, {customer_name}! 💳 Claim your exclusive reward at {restaurant_name}.",
-            "weekend": f"Hi {customer_name}! 🎉 Special weekend offer at {restaurant_name}. Don't miss out!",
-            "promotion": f"Hi {customer_name}! Check out our amazing promotions at {restaurant_name}. Visit us soon!"
-        }
-        return fallback_messages.get(campaign_type, fallback_messages["promotion"])
-    
+def send_sms(to_phone, message):
+    if not twilio_client or not twilio_phone:
+        return False
     try:
-        prompt = f"""Create a personalized, friendly restaurant marketing email message.
-        Customer: {customer_name}
-        Restaurant: {restaurant_name}
-        Campaign Type: {campaign_type}
-        
-        Requirements:
-        - Keep it brief (2-3 sentences)
-        - Professional and engaging
-        - Include emojis
-        - Include a call to action
-        - Do NOT include markdown formatting
-        
-        Just write the message, nothing else."""
+        twilio_client.messages.create(body=message, from_=twilio_phone, to=to_phone)
+        return True
+    except Exception as e:
+        print(f"SMS error: {e}")
+        return False
 
+def generate_ai_message(customer_name, business_name, campaign_type):
+    fallbacks = {
+        "come_back":  f"We miss you, {customer_name}! Come back to {business_name} and enjoy 15% off your next visit. We'd love to see you again!",
+        "weekend":    f"Hi {customer_name}! Weekend special at {business_name} — amazing food and great deals this weekend only!",
+        "lunch":      f"Hi {customer_name}! Join us for lunch at {business_name} today. Fresh food, great prices, and a warm welcome!",
+        "dinner":     f"Hi {customer_name}! Special dinner offer tonight at {business_name}. Reserve your table and enjoy an unforgettable evening!",
+        "birthday":   f"Happy Birthday {customer_name}! Enjoy 20% off your next visit to {business_name}. Use code: BIRTHDAY20",
+        "loyalty":    f"Thank you for being a loyal customer, {customer_name}! Your exclusive reward is waiting at {business_name}.",
+        "happy_hour": f"Hi {customer_name}! Happy Hour at {business_name} — amazing drinks and bites at special prices. Come join us!",
+        "new_item":   f"Hi {customer_name}! We just launched something exciting at {business_name}. Come be the first to try it!",
+        "promotion":  f"Hi {customer_name}! Special promotion at {business_name} just for you. Don't miss out — visit us soon!",
+    }
+
+    if not client:
+        return fallbacks.get(campaign_type, fallbacks["promotion"])
+
+    prompts = {
+        "come_back":  f"Write a warm 'we miss you, come back' offer for {customer_name} from {business_name}. Include a discount to return.",
+        "weekend":    f"Write a weekend special promotion for {customer_name} from {business_name}. Make it exciting.",
+        "lunch":      f"Write a lunch deal promotion for {customer_name} from {business_name}. Make it appetizing.",
+        "dinner":     f"Write a dinner special for {customer_name} from {business_name}. Make it feel exclusive and special.",
+        "birthday":   f"Write a birthday offer for {customer_name} from {business_name}. Include a discount.",
+        "loyalty":    f"Write a loyalty reward message for {customer_name} from {business_name}. Thank them warmly.",
+        "happy_hour": f"Write a happy hour promotion for {customer_name} from {business_name}. Make it fun.",
+        "new_item":   f"Write a new menu item announcement for {customer_name} from {business_name}. Make it exciting.",
+        "promotion":  f"Write a general promotion for {customer_name} from {business_name}. Make it compelling.",
+    }
+
+    prompt = prompts.get(campaign_type, prompts["promotion"]) + " Keep it under 3 sentences. No markdown. Include emojis."
+
+    try:
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
@@ -181,15 +255,8 @@ def generate_ai_message(customer_name: str, restaurant_name: str, campaign_type:
         )
         return clean_ai_text(response.choices[0].message.content)
     except Exception as e:
-        print(f"❌ AI error: {e}")
-        # Return fallback
-        fallback_messages = {
-            "birthday": f"Happy Birthday {customer_name}! 🎂 Enjoy 20% off your next visit to {restaurant_name}.",
-            "loyalty": f"Thank you for being loyal, {customer_name}! 💳 Special reward waiting at {restaurant_name}.",
-            "weekend": f"Hi {customer_name}! 🎉 Special weekend offer at {restaurant_name}!",
-            "promotion": f"Hi {customer_name}! Check out promotions at {restaurant_name}. Visit us!"
-        }
-        return fallback_messages.get(campaign_type, fallback_messages["promotion"])
+        print(f"AI error: {e}")
+        return fallbacks.get(campaign_type, fallbacks["promotion"])
 
 # ============================================
 # ROUTES
@@ -197,14 +264,13 @@ def generate_ai_message(customer_name: str, restaurant_name: str, campaign_type:
 
 @app.route("/test")
 def test():
-    return f"<h1>✅ Flask is working!</h1><p>Environment: {ENV}</p><p>Debug: {DEBUG}</p>"
+    return f"<h1>Flask is working!</h1><p>Environment: {ENV}</p>"
 
 @app.route("/", methods=["GET"])
 def landing():
     try:
         return render_template("landing.html")
     except Exception as e:
-        print(f"❌ Error rendering landing.html: {e}")
         return f"<h1>Error: {e}</h1>", 500
 
 @app.route("/contact", methods=["GET", "POST"])
@@ -213,94 +279,66 @@ def contact():
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip()
         message = request.form.get("message", "").strip()
-
         if not all([name, email, message]):
             flash("All fields required.", "error")
             return redirect("/contact")
-
-        contact_msg = ContactMessage(name=name, email=email, message=message)
         try:
-            db.session.add(contact_msg)
+            db.session.add(ContactMessage(name=name, email=email, message=message))
             db.session.commit()
-            flash("✅ Message sent!", "success")
+            flash("Message sent!", "success")
             return redirect("/")
-        except Exception as e:
+        except:
             db.session.rollback()
             flash("Error saving message.", "error")
-            return redirect("/contact")
-
     return render_template("contact.html")
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if "user_id" in session:
         return redirect("/dashboard")
-
     if request.method == "POST":
         business_name = request.form.get("business_name", "").strip()
         owner_name = request.form.get("owner_name", "").strip()
         email = request.form.get("email", "").strip()
         raw_password = request.form.get("password", "")
-
         if not all([business_name, owner_name, email, raw_password]):
             flash("All fields required.", "error")
             return redirect("/register")
-
         if len(raw_password) < 6:
             flash("Password must be at least 6 characters.", "error")
             return redirect("/register")
-
-        existing = Business.query.filter_by(email=email).first()
-        if existing:
+        if Business.query.filter_by(email=email).first():
             flash("Email already registered.", "error")
             return redirect("/login")
-
-        hashed_password = bcrypt.hashpw(
-            raw_password.encode("utf-8"),
-            bcrypt.gensalt()
-        ).decode("utf-8")
-
-        b = Business(
-            business_name=business_name,
-            owner_name=owner_name,
-            email=email,
-            password=hashed_password
-        )
-
+        hashed = bcrypt.hashpw(raw_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        b = Business(business_name=business_name, owner_name=owner_name, email=email, password=hashed)
         try:
             db.session.add(b)
             db.session.commit()
             session["user_id"] = b.id
             session.permanent = True
-            flash(f"✅ Welcome {owner_name}!", "success")
+            flash(f"Welcome {owner_name}!", "success")
             return redirect("/dashboard")
-        except Exception as e:
+        except:
             db.session.rollback()
             flash("Error creating account.", "error")
-            return redirect("/register")
-
     return render_template("index.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if "user_id" in session:
         return redirect("/dashboard")
-
     if request.method == "POST":
         email = request.form.get("email", "").strip()
         password = request.form.get("password", "")
-
         b = Business.query.filter_by(email=email).first()
-
         if b and bcrypt.checkpw(password.encode("utf-8"), b.password.encode("utf-8")):
             session["user_id"] = b.id
             session.permanent = True
-            flash(f"✅ Welcome back, {b.owner_name}!", "success")
+            flash(f"Welcome back, {b.owner_name}!", "success")
             return redirect("/dashboard")
-
-        flash("❌ Invalid email or password.", "error")
+        flash("Invalid email or password.", "error")
         return redirect("/login")
-
     return render_template("login.html")
 
 @app.route("/logout")
@@ -314,12 +352,11 @@ def dashboard():
     b = current_business()
     if not b:
         return redirect("/login")
-
     total_customers = Customer.query.filter_by(business_id=b.id).count()
     total_campaigns = Campaign.query.filter_by(business_id=b.id).count()
     sent_campaigns = Campaign.query.filter_by(business_id=b.id, status="sent").count()
     campaigns = Campaign.query.filter_by(business_id=b.id).order_by(Campaign.created_at.desc()).all()
-
+    customer_limit = get_plan_limit(b.plan, "customers")
     return render_template(
         "dashboard.html",
         business_name=b.business_name,
@@ -327,7 +364,9 @@ def dashboard():
         total_campaigns=total_campaigns,
         sent_campaigns=sent_campaigns,
         plan=b.plan,
-        campaigns=campaigns
+        campaigns=campaigns,
+        customer_limit=customer_limit,
+        campaign_types=CAMPAIGN_TYPES,
     )
 
 @app.route("/customers")
@@ -335,24 +374,26 @@ def customers():
     b = current_business()
     if not b:
         return redirect("/login")
-
     customers_list = Customer.query.filter_by(business_id=b.id).order_by(Customer.created_at.desc()).all()
-    return render_template("customers.html", customers=customers_list)
+    return render_template("customers.html", customers=customers_list, plan=b.plan)
 
 @app.route("/add-customer", methods=["GET", "POST"])
 def add_customer():
     b = current_business()
     if not b:
         return redirect("/login")
-
     if request.method == "POST":
+        customer_limit = get_plan_limit(b.plan, "customers")
+        if customer_limit:
+            count = Customer.query.filter_by(business_id=b.id).count()
+            if count >= customer_limit:
+                flash(f"Customer limit reached ({customer_limit}). Upgrade your plan.", "error")
+                return redirect("/upgrade")
         first_name = request.form.get("first_name", "").strip()
         email = request.form.get("email", "").strip()
-
         if not first_name or not email:
             flash("First name and email required.", "error")
             return redirect("/add-customer")
-
         customer = Customer(
             business_id=b.id,
             first_name=first_name,
@@ -361,17 +402,14 @@ def add_customer():
             phone=request.form.get("phone", "").strip(),
             dob=request.form.get("dob", "").strip()
         )
-
         try:
             db.session.add(customer)
             db.session.commit()
-            flash(f"✅ Customer {first_name} added!", "success")
+            flash(f"Customer {first_name} added!", "success")
             return redirect("/customers")
-        except Exception as e:
+        except:
             db.session.rollback()
             flash("Error adding customer.", "error")
-            return redirect("/add-customer")
-
     return render_template("add_customer.html")
 
 @app.route("/delete-customer/<int:customer_id>", methods=["POST"])
@@ -379,19 +417,15 @@ def delete_customer(customer_id):
     b = current_business()
     if not b:
         return redirect("/login")
-
     customer = Customer.query.get(customer_id)
     if customer and customer.business_id == b.id:
         try:
             db.session.delete(customer)
             db.session.commit()
-            flash("✅ Customer deleted.", "success")
-        except Exception as e:
+            flash("Customer deleted.", "success")
+        except:
             db.session.rollback()
             flash("Error deleting customer.", "error")
-    else:
-        flash("❌ Unauthorized.", "error")
-
     return redirect("/customers")
 
 @app.route("/campaigns")
@@ -399,148 +433,236 @@ def campaigns():
     b = current_business()
     if not b:
         return redirect("/login")
-
     campaigns_list = Campaign.query.filter_by(business_id=b.id).order_by(Campaign.created_at.desc()).all()
-    return render_template("campaigns.html", campaigns=campaigns_list)
+    return render_template("campaigns.html", campaigns=campaigns_list, campaign_types=CAMPAIGN_TYPES)
 
 @app.route("/create-campaign", methods=["GET", "POST"])
 def create_campaign():
     b = current_business()
     if not b:
         return redirect("/login")
-
     if request.method == "POST":
         customer_name = request.form.get("customer_name", "").strip()
         customer_email = request.form.get("customer_email", "").strip()
+        customer_phone = request.form.get("customer_phone", "").strip()
         campaign_type = request.form.get("campaign_type", "promotion").strip()
         use_ai = request.form.get("use_ai") == "on"
         message = request.form.get("message", "").strip()
-
         if not customer_name or not customer_email:
             flash("Name and email required.", "error")
             return redirect("/create-campaign")
-
         if use_ai and not message:
             message = generate_ai_message(customer_name, b.business_name, campaign_type)
         elif not message:
             flash("Provide message or use AI.", "error")
             return redirect("/create-campaign")
-
         campaign = Campaign(
             business_id=b.id,
             customer_name=customer_name,
             customer_email=customer_email,
+            customer_phone=customer_phone,
             campaign_type=campaign_type,
             message=message,
             status="draft"
         )
-
         try:
             db.session.add(campaign)
             db.session.commit()
-            flash("✅ Campaign created!", "success")
+            flash("Campaign created!", "success")
             return redirect(f"/campaign/{campaign.id}")
-        except Exception as e:
+        except:
             db.session.rollback()
             flash("Error creating campaign.", "error")
-            print(f"❌ Error: {e}")
-            return redirect("/create-campaign")
-
-    return render_template("create_campaign.html")
+    customers_list = Customer.query.filter_by(business_id=b.id).all()
+    return render_template("create_campaign.html", campaign_types=CAMPAIGN_TYPES, customers=customers_list)
 
 @app.route("/campaign/<int:campaign_id>")
 def view_campaign(campaign_id):
     b = current_business()
     if not b:
         return redirect("/login")
-
     campaign = Campaign.query.get(campaign_id)
     if not campaign or campaign.business_id != b.id:
         flash("Campaign not found.", "error")
         return redirect("/campaigns")
-
-    return render_template("view_campaign.html", campaign=campaign)
+    return render_template("view_campaign.html", campaign=campaign, plan=b.plan, campaign_types=CAMPAIGN_TYPES)
 
 @app.route("/send-campaign/<int:campaign_id>", methods=["POST"])
 def send_campaign(campaign_id):
     b = current_business()
     if not b:
         return redirect("/login")
-
     campaign = Campaign.query.get(campaign_id)
     if not campaign or campaign.business_id != b.id:
         flash("Campaign not found.", "error")
         return redirect("/campaigns")
-
-    subject = f"🍽️ Special Offer from {b.business_name}"
-    success = send_email(campaign.customer_email, subject, campaign.message)
-
+    subject = f"Special Offer from {b.business_name}"
+    success = send_email(
+        campaign.customer_email, subject, campaign.message,
+        customer_name=campaign.customer_name,
+        business_name=b.business_name,
+        campaign_type=campaign.campaign_type
+    )
     if success:
         campaign.status = "sent"
         try:
             db.session.commit()
-            flash("✅ Campaign sent!", "success")
-        except Exception as e:
+            flash("Campaign sent successfully!", "success")
+        except:
             db.session.rollback()
             flash("Error updating campaign.", "error")
     else:
-        flash("⚠️ Email not sent. Check configuration.", "error")
-
+        flash("Email not sent. Check email configuration.", "error")
     return redirect(f"/campaign/{campaign.id}")
+
+@app.route("/send-sms/<int:campaign_id>", methods=["POST"])
+def send_sms_campaign(campaign_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    if b.plan == "free":
+        flash("SMS requires Starter or Pro plan.", "error")
+        return redirect("/upgrade")
+    campaign = Campaign.query.get(campaign_id)
+    if not campaign or campaign.business_id != b.id:
+        flash("Campaign not found.", "error")
+        return redirect("/campaigns")
+    if not campaign.customer_phone:
+        flash("No phone number for this customer.", "error")
+        return redirect(f"/campaign/{campaign.id}")
+    success = send_sms(campaign.customer_phone, campaign.message)
+    if success:
+        flash("SMS sent!", "success")
+    else:
+        flash("SMS not sent. Check Twilio configuration in Render environment.", "error")
+    return redirect(f"/campaign/{campaign.id}")
+
+@app.route("/bulk-send", methods=["GET", "POST"])
+def bulk_send():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    if request.method == "POST":
+        campaign_type = request.form.get("campaign_type", "promotion")
+        use_ai = request.form.get("use_ai") == "on"
+        custom_message = request.form.get("message", "").strip()
+        customers_list = Customer.query.filter_by(business_id=b.id).all()
+        if not customers_list:
+            flash("No customers to send to. Add customers first.", "error")
+            return redirect("/customers")
+        if not custom_message and not use_ai:
+            flash("Enter a message or enable AI generation.", "error")
+            return redirect("/bulk-send")
+        sent_count = 0
+        for customer in customers_list:
+            msg = generate_ai_message(customer.first_name, b.business_name, campaign_type) if (use_ai and not custom_message) else custom_message
+            campaign = Campaign(
+                business_id=b.id,
+                customer_name=customer.first_name,
+                customer_email=customer.email,
+                customer_phone=customer.phone,
+                campaign_type=campaign_type,
+                message=msg,
+                status="draft"
+            )
+            db.session.add(campaign)
+            db.session.flush()
+            subject = f"Special Offer from {b.business_name}"
+            if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type):
+                campaign.status = "sent"
+                sent_count += 1
+        db.session.commit()
+        flash(f"Bulk send complete! Sent to {sent_count}/{len(customers_list)} customers.", "success")
+        return redirect("/campaigns")
+    customers_count = Customer.query.filter_by(business_id=b.id).count()
+    return render_template("bulk_send.html", campaign_types=CAMPAIGN_TYPES, customers_count=customers_count)
 
 @app.route("/delete-campaign/<int:campaign_id>", methods=["POST"])
 def delete_campaign(campaign_id):
     b = current_business()
     if not b:
         return redirect("/login")
-
     campaign = Campaign.query.get(campaign_id)
     if campaign and campaign.business_id == b.id:
         try:
             db.session.delete(campaign)
             db.session.commit()
-            flash("✅ Campaign deleted.", "success")
-        except Exception as e:
+            flash("Campaign deleted.", "success")
+        except:
             db.session.rollback()
             flash("Error deleting campaign.", "error")
-    else:
-        flash("❌ Unauthorized.", "error")
-
     return redirect("/campaigns")
-
-# ============================================
-# NEW: AI MESSAGE GENERATION API
-# ============================================
 
 @app.route("/generate-message", methods=["POST"])
 def generate_message():
-    """API endpoint for real-time AI message generation"""
     b = current_business()
     if not b:
         return jsonify({"success": False, "error": "Not authenticated"}), 401
-
     try:
         data = request.get_json()
         customer_name = data.get("customer_name", "").strip()
         campaign_type = data.get("campaign_type", "promotion").strip()
-
         if not customer_name:
             return jsonify({"success": False, "error": "Customer name required"})
-
-        # Generate message
         message = generate_ai_message(customer_name, b.business_name, campaign_type)
-
-        return jsonify({
-            "success": True,
-            "message": message
-        })
+        return jsonify({"success": True, "message": message})
     except Exception as e:
-        print(f"❌ Error in generate_message: {e}")
         return jsonify({"success": False, "error": str(e)})
 
-# ============================================
-# ERROR HANDLERS
-# ============================================
+@app.route("/upgrade")
+def upgrade():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    return render_template("upgrade.html", plan=b.plan, business_name=b.business_name)
+
+@app.route("/upgrade/starter", methods=["POST"])
+def upgrade_starter():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="subscription",
+            line_items=[{"price": STRIPE_PRICE_STARTER, "quantity": 1}],
+            success_url=url_for("upgrade_success", plan="starter", _external=True),
+            cancel_url=url_for("upgrade", _external=True),
+            customer_email=b.email
+        )
+        return redirect(checkout_session.url)
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+        return redirect("/upgrade")
+
+@app.route("/upgrade/pro", methods=["POST"])
+def upgrade_pro():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="subscription",
+            line_items=[{"price": STRIPE_PRICE_PRO, "quantity": 1}],
+            success_url=url_for("upgrade_success", plan="pro", _external=True),
+            cancel_url=url_for("upgrade", _external=True),
+            customer_email=b.email
+        )
+        return redirect(checkout_session.url)
+    except Exception as e:
+        flash(f"Error: {e}", "error")
+        return redirect("/upgrade")
+
+@app.route("/upgrade/success")
+def upgrade_success():
+    b = current_business()
+    plan = request.args.get("plan", "pro")
+    if b:
+        b.plan = plan
+        db.session.commit()
+    flash(f"You're now on the {plan.title()} plan!", "success")
+    return redirect("/dashboard")
 
 @app.errorhandler(403)
 def forbidden(e):
@@ -554,28 +676,9 @@ def not_found(e):
 def server_error(e):
     return render_template("500.html"), 500
 
-@app.route("/upgrade")
-def upgrade():
-    b = current_business()
-    if not b:
-        return redirect("/login")
-    return render_template("upgrade.html", plan=b.plan, business_name=b.business_name)
-
-# ============================================
-# APP START
-# ============================================
-
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    
     port = int(os.environ.get("PORT", 5000))
     debug_mode = os.getenv("DEBUG", "False").lower() == "true"
-    
-    print(f"\n🚀 Starting GrowthAI")
-    print(f"📍 Environment: {ENV}")
-    print(f"🐛 Debug Mode: {debug_mode}")
-    print(f"🌐 Running on http://127.0.0.1:{port}")
-    print(f"Press CTRL+C to stop\n")
-    
     app.run(host="127.0.0.1", port=port, debug=debug_mode, use_reloader=False)

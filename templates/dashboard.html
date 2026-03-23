@@ -3,26 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Restaurant AI</title>
+    <title>Dashboard - GrowthAI</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
-        .navbar { background: rgba(0,0,0,0.1); backdrop-filter: blur(10px); }
+        .navbar { background: rgba(0,0,0,0.15); backdrop-filter: blur(10px); }
         .card { border: none; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
-        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 15px; }
-        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none; }
+        .stat-card { background: rgba(255,255,255,0.15); color: white; border-radius: 15px; backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.2); }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); border: none; }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+        .btn-bulk { background: linear-gradient(135deg, #f6d365, #fda085); border: none; color: white; }
+        .btn-bulk:hover { color: white; transform: translateY(-2px); }
         .container { max-width: 1200px; }
         .header { color: white; margin-bottom: 30px; }
+        .plan-free { background: #6c757d; }
+        .plan-starter { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .plan-pro { background: linear-gradient(135deg, #f6d365, #fda085); }
     </style>
 </head>
-
 <body>
 
-<!-- NAVBAR -->
 <nav class="navbar navbar-expand-lg navbar-dark mb-4">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="/">🍽️ GrowthAI</a>
+        <a class="navbar-brand fw-bold fs-4" href="/">GrowthAI</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -31,6 +34,7 @@
                 <li class="nav-item"><a class="nav-link active" href="/dashboard">Dashboard</a></li>
                 <li class="nav-item"><a class="nav-link" href="/customers">Customers</a></li>
                 <li class="nav-item"><a class="nav-link" href="/campaigns">Campaigns</a></li>
+                <li class="nav-item"><a class="nav-link" href="/bulk-send">Bulk Send</a></li>
                 <li class="nav-item"><a class="nav-link" href="/upgrade">Upgrade</a></li>
                 <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
             </ul>
@@ -38,13 +42,12 @@
     </div>
 </nav>
 
-<div class="container mt-5">
+<div class="container mt-2">
 
-    <!-- FLASH MESSAGES -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
-                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
@@ -54,176 +57,135 @@
 
     <!-- HEADER -->
     <div class="header">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
-                <h1 class="display-5 fw-bold mb-2">🚀 {{ business_name }}</h1>
-                <p class="lead">AI Marketing Control Center</p>
+                <h1 class="display-5 fw-bold mb-1">{{ business_name }}</h1>
+                <p class="lead mb-0 opacity-75">Small Business Marketing Dashboard</p>
             </div>
-            <div>
+            <div class="d-flex gap-2 align-items-center">
+                <span class="badge plan-{{ plan }} fs-6 px-3 py-2">{{ plan.upper() }} PLAN</span>
                 {% if plan == 'free' %}
-                    <a href="/upgrade" class="btn btn-warning btn-lg">⭐ Upgrade to Pro</a>
-                {% else %}
-                    <span class="badge bg-success fs-5">PRO PLAN</span>
+                    <a href="/upgrade" class="btn btn-warning btn-lg fw-bold">Upgrade Now</a>
                 {% endif %}
             </div>
         </div>
     </div>
 
-    <!-- STATS CARDS -->
+    <!-- STATS -->
     <div class="row mb-4">
         <div class="col-md-4 mb-3">
             <div class="stat-card card p-4 text-center">
-                <h6 class="opacity-75">Total Customers</h6>
-                <h2 class="display-4 fw-bold">{{ total_customers }}</h2>
-                <a href="/customers" class="btn btn-light btn-sm mt-3">View All →</a>
+                <p class="mb-1 opacity-75">Total Customers</p>
+                <h2 class="display-4 fw-bold mb-1">{{ total_customers }}</h2>
+                {% if customer_limit %}
+                    <small class="opacity-75">of {{ customer_limit }} max</small>
+                    <div class="progress mt-2" style="height: 6px;">
+                        <div class="progress-bar bg-white" style="width: {{ [(total_customers / customer_limit * 100)|int, 100]|min }}%"></div>
+                    </div>
+                {% endif %}
+                <a href="/customers" class="btn btn-light btn-sm mt-3">View Customers</a>
             </div>
         </div>
         <div class="col-md-4 mb-3">
             <div class="stat-card card p-4 text-center">
-                <h6 class="opacity-75">Active Campaigns</h6>
-                <h2 class="display-4 fw-bold">{{ total_campaigns }}</h2>
-                <a href="/campaigns" class="btn btn-light btn-sm mt-3">View All →</a>
+                <p class="mb-1 opacity-75">Total Campaigns</p>
+                <h2 class="display-4 fw-bold mb-1">{{ total_campaigns }}</h2>
+                <small class="opacity-75">all time</small>
+                <br>
+                <a href="/campaigns" class="btn btn-light btn-sm mt-3">View Campaigns</a>
             </div>
         </div>
         <div class="col-md-4 mb-3">
             <div class="stat-card card p-4 text-center">
-                <h6 class="opacity-75">Campaigns Sent</h6>
-                <h2 class="display-4 fw-bold">{{ sent_campaigns }}</h2>
-                <a href="/campaigns" class="btn btn-light btn-sm mt-3">View All →</a>
+                <p class="mb-1 opacity-75">Emails Sent</p>
+                <h2 class="display-4 fw-bold mb-1">{{ sent_campaigns }}</h2>
+                <small class="opacity-75">campaigns delivered</small>
+                <br>
+                <a href="/bulk-send" class="btn btn-light btn-sm mt-3">Bulk Send</a>
             </div>
         </div>
     </div>
 
     <!-- QUICK ACTIONS -->
     <div class="row mb-4">
-        <div class="col-md-6">
+        <div class="col-md-6 mb-3">
             <div class="card p-4">
-                <h5 class="mb-3">➕ Quick Actions</h5>
-                <a href="/add-customer" class="btn btn-primary w-100 mb-2">👥 Add Customer</a>
-                <a href="/create-campaign" class="btn btn-success w-100">🚀 Create Campaign</a>
+                <h5 class="mb-3 fw-bold">Quick Actions</h5>
+                <a href="/add-customer" class="btn btn-primary w-100 mb-2 btn-lg">Add Customer</a>
+                <a href="/create-campaign" class="btn btn-success w-100 mb-2 btn-lg">Create Campaign</a>
+                <a href="/bulk-send" class="btn btn-bulk w-100 btn-lg">Send to All Customers</a>
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-6 mb-3">
             <div class="card p-4">
-                <h5 class="mb-3">📊 Account Info</h5>
-                <p><strong>Plan:</strong> <span class="badge bg-{{ 'success' if plan == 'pro' else 'secondary' }}">{{ plan.upper() }}</span></p>
-                <p><strong>Customers:</strong> {{ total_customers }}</p>
-                <p><strong>Total Campaigns:</strong> {{ total_campaigns }}</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- GENERATE CAMPAIGN FORM -->
-    <div class="card p-4 mb-4">
-        <h4 class="mb-4">🤖 Generate AI Campaign</h4>
-
-        <form method="POST" action="/create-campaign">
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Customer Name</label>
-                    <input type="text" class="form-control form-control-lg" name="customer_name" placeholder="E.g., John Doe" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Customer Email</label>
-                    <input type="email" class="form-control form-control-lg" name="customer_email" placeholder="john@example.com" required>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Campaign Type</label>
-                    <select class="form-select form-select-lg" name="campaign_type">
-                        <option value="promotion">🎉 Promotion</option>
-                        <option value="birthday">🎂 Birthday Special</option>
-                        <option value="loyalty">💎 Loyalty Reward</option>
-                        <option value="reopening">🏪 Reopening</option>
-                        <option value="event">🎪 Event</option>
-                    </select>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Use AI?</label>
-                    <div class="form-check mt-2">
-                        <input class="form-check-input" type="checkbox" id="useAi" name="use_ai" checked>
-                        <label class="form-check-label" for="useAi">
-                            Generate message with AI
-                        </label>
+                <h5 class="mb-3 fw-bold">Campaign Types</h5>
+                <div class="row g-2">
+                    {% for key, label in campaign_types.items() %}
+                    <div class="col-6">
+                        <a href="/create-campaign" class="btn btn-outline-secondary w-100 btn-sm">{{ label }}</a>
                     </div>
+                    {% endfor %}
                 </div>
             </div>
-
-            <div class="mb-3">
-                <label class="form-label">Message (Optional if using AI)</label>
-                <textarea class="form-control" name="message" rows="4" placeholder="Enter custom message or leave blank for AI generation"></textarea>
-            </div>
-
-            <button type="submit" class="btn btn-success btn-lg w-100">
-                🚀 Create & Send Campaign
-            </button>
-        </form>
+        </div>
     </div>
 
     <!-- RECENT CAMPAIGNS -->
     <div class="card p-4 mb-4">
-        <h4 class="mb-4">📈 Recent Campaigns</h4>
-
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0 fw-bold">Recent Campaigns</h5>
+            <a href="/campaigns" class="btn btn-outline-primary btn-sm">View All</a>
+        </div>
         {% if campaigns %}
         <div class="table-responsive">
-            <table class="table table-hover">
+            <table class="table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
                         <th>Customer</th>
-                        <th>Email</th>
                         <th>Type</th>
                         <th>Status</th>
-                        <th>Created</th>
+                        <th>Date</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for campaign in campaigns[:5] %}
+                    {% for campaign in campaigns[:8] %}
                     <tr>
-                        <td><strong>{{ campaign.customer_name }}</strong></td>
-                        <td>{{ campaign.customer_email }}</td>
-                        <td><span class="badge bg-info">{{ campaign.campaign_type }}</span></td>
                         <td>
-                            <span class="badge bg-{{ 'success' if campaign.status == 'sent' else 'warning' }}">
+                            <strong>{{ campaign.customer_name }}</strong><br>
+                            <small class="text-muted">{{ campaign.customer_email }}</small>
+                        </td>
+                        <td><span class="badge bg-info text-dark">{{ campaign_types.get(campaign.campaign_type, campaign.campaign_type) }}</span></td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if campaign.status == 'sent' else 'warning text-dark' }}">
                                 {{ campaign.status.upper() }}
                             </span>
                         </td>
-                        <td>{{ campaign.created_at.strftime('%Y-%m-%d') }}</td>
-                        <td>
-                            <a href="/campaign/{{ campaign.id }}" class="btn btn-sm btn-outline-primary">View</a>
-                        </td>
+                        <td><small>{{ campaign.created_at.strftime('%b %d') }}</small></td>
+                        <td><a href="/campaign/{{ campaign.id }}" class="btn btn-sm btn-outline-primary">View</a></td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        <a href="/campaigns" class="btn btn-outline-primary mt-3">View All Campaigns →</a>
         {% else %}
-        <div class="alert alert-info">
-            📭 No campaigns yet. <a href="/create-campaign">Create your first campaign</a>
+        <div class="alert alert-info mb-0">
+            No campaigns yet. <a href="/create-campaign">Create your first campaign</a> or <a href="/add-customer">add customers</a> first.
         </div>
         {% endif %}
     </div>
 
-    <!-- FOOTER -->
-    <footer class="text-center text-white py-4 mt-5">
-        <p>&copy; 2026 Restaurant AI. Powered by OpenAI & Stripe.</p>
+    <footer class="text-center text-white py-4 opacity-75">
+        <p class="mb-0">GrowthAI — AI-Powered Marketing for Small Businesses</p>
     </footer>
 
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Auto-dismiss alerts after 5 seconds
     document.querySelectorAll('.alert').forEach(alert => {
-        setTimeout(() => {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-        }, 5000);
+        setTimeout(() => new bootstrap.Alert(alert).close(), 5000);
     });
 </script>
-
 </body>
 </html>

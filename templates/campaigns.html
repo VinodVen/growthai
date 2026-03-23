@@ -1,4 +1,3 @@
-ddy/restaurant-ai-app/templates/campaigns.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,48 +6,34 @@ ddy/restaurant-ai-app/templates/campaigns.html
     <title>Campaigns - GrowthAI</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body {
-            background-color: #f8f9fa;
-        }
-        header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1.5rem 0;
-            margin-bottom: 2rem;
-        }
-        .btn-custom {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-        }
-        .btn-custom:hover {
-            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-            color: white;
-        }
-        .badge-draft {
-            background-color: #e2e3e5;
-            color: #383d41;
-        }
-        .badge-sent {
-            background-color: #d4edda;
-            color: #155724;
-        }
+        body { background: #f8f9fa; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem 0; margin-bottom: 2rem; }
+        .btn-bulk { background: linear-gradient(135deg, #f6d365, #fda085); color: white; border: none; }
+        .btn-bulk:hover { color: white; opacity: 0.9; }
+        .campaign-card { border: none; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); transition: transform 0.2s; }
+        .campaign-card:hover { transform: translateY(-2px); }
+        .status-sent { background: #d4edda; color: #155724; }
+        .status-draft { background: #fff3cd; color: #856404; }
     </style>
 </head>
 <body>
     <header>
         <div class="container d-flex justify-content-between align-items-center">
-            <h1 style="margin: 0;">📧 Campaigns</h1>
+            <div>
+                <h1 class="mb-0 fw-bold">Campaigns</h1>
+                <small class="opacity-75">{{ campaigns|length }} total campaigns</small>
+            </div>
             <a href="/logout" class="btn btn-light">Logout</a>
         </div>
     </header>
-    
+
     <div class="container">
-        <div class="mb-4">
-            <a href="/create-campaign" class="btn btn-custom">✉️ New Campaign</a>
-            <a href="/dashboard" class="btn btn-outline-secondary">← Back to Dashboard</a>
+        <div class="d-flex gap-2 mb-4 flex-wrap">
+            <a href="/create-campaign" class="btn btn-primary btn-lg">New Campaign</a>
+            <a href="/bulk-send" class="btn btn-bulk btn-lg">Send to All Customers</a>
+            <a href="/dashboard" class="btn btn-outline-secondary">← Dashboard</a>
         </div>
-        
+
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -59,20 +44,26 @@ ddy/restaurant-ai-app/templates/campaigns.html
                 {% endfor %}
             {% endif %}
         {% endwith %}
-        
+
         {% if campaigns %}
         <div class="row">
             {% for campaign in campaigns %}
             <div class="col-md-6 mb-4">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <h5 class="card-title">{{ campaign.customer_name }}</h5>
-                        <p class="card-text text-muted">{{ campaign.customer_email }}</p>
-                        <p class="card-text"><small>Type: <strong>{{ campaign.campaign_type }}</strong></small></p>
-                        <p class="card-text"><small class="text-truncate">{{ campaign.message[:100] }}...</small></p>
+                <div class="card campaign-card h-100">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h5 class="card-title mb-0 fw-bold">{{ campaign.customer_name }}</h5>
+                            <span class="badge status-{{ campaign.status }}">{{ campaign.status.upper() }}</span>
+                        </div>
+                        <p class="text-muted mb-1">{{ campaign.customer_email }}</p>
+                        {% if campaign.customer_phone %}
+                        <p class="text-muted mb-1"><small>{{ campaign.customer_phone }}</small></p>
+                        {% endif %}
+                        <span class="badge bg-light text-dark mb-2">{{ campaign_types.get(campaign.campaign_type, campaign.campaign_type) }}</span>
+                        <p class="card-text text-muted small">{{ campaign.message[:100] }}{% if campaign.message|length > 100 %}...{% endif %}</p>
                         <div class="d-flex justify-content-between align-items-center mt-3">
-                            <span class="badge badge-{{ campaign.status }}">{{ campaign.status.upper() }}</span>
-                            <a href="/campaign/{{ campaign.id }}" class="btn btn-sm btn-outline-primary">View</a>
+                            <small class="text-muted">{{ campaign.created_at.strftime('%b %d, %Y') }}</small>
+                            <a href="/campaign/{{ campaign.id }}" class="btn btn-sm btn-outline-primary">View & Send</a>
                         </div>
                     </div>
                 </div>
@@ -81,11 +72,11 @@ ddy/restaurant-ai-app/templates/campaigns.html
         </div>
         {% else %}
         <div class="alert alert-info">
-            No campaigns yet. <a href="/create-campaign">Create your first campaign</a>
+            No campaigns yet. <a href="/create-campaign">Create your first campaign</a> or <a href="/bulk-send">send to all customers at once</a>.
         </div>
         {% endif %}
     </div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

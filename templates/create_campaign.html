@@ -1,191 +1,148 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Create Campaign - GrowthAI</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body { 
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-      min-height: 100vh; 
-      display: flex; 
-      align-items: center; 
-      padding: 2rem 0; 
-    }
-    .card { 
-      border: none; 
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
-      max-width: 600px; 
-      margin: auto; 
-    }
-    .spinner { 
-      display: none; 
-    }
-    .spinner.active { 
-      display: inline-block; 
-    }
-    .ai-suggestion { 
-      background: #e7f3ff; 
-      border-left: 4px solid #667eea; 
-      padding: 1rem; 
-      margin-top: 1rem; 
-      border-radius: 4px; 
-    }
-    .ai-badge { 
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-      color: white; 
-      padding: 0.25rem 0.75rem; 
-      border-radius: 20px; 
-      font-size: 0.85rem; 
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Campaign - GrowthAI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 2rem 0; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 650px; margin: auto; }
+        .ai-badge { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }
+        .btn-generate { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; }
+        .btn-generate:hover { color: white; opacity: 0.9; }
+    </style>
 </head>
 <body>
-  <div class="container">
+<div class="container">
     <div class="card">
-      <div class="card-body p-4">
-        <h2 class="card-title mb-4">✉️ Create Campaign</h2>
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="card-title mb-0">Create Campaign</h2>
+                <a href="/dashboard" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
+            </div>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-              </div>
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
 
-        <form method="POST" id="campaignForm">
-          <div class="mb-3">
-            <label class="form-label">Customer Name *</label>
-            <input type="text" class="form-control" id="customerName" name="customer_name" placeholder="e.g., John Doe" required>
-          </div>
+            <form method="POST" id="campaignForm">
 
-          <div class="mb-3">
-            <label class="form-label">Customer Email *</label>
-            <input type="email" class="form-control" id="customerEmail" name="customer_email" placeholder="e.g., john@example.com" required>
-          </div>
+                <!-- Customer selector from existing -->
+                {% if customers %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Select Existing Customer</label>
+                    <select class="form-select" id="customerSelect" onchange="fillCustomer(this)">
+                        <option value="">— or fill manually below —</option>
+                        {% for c in customers %}
+                        <option value="{{ c.first_name }} {{ c.last_name }}" data-email="{{ c.email }}" data-phone="{{ c.phone or '' }}">
+                            {{ c.first_name }} {{ c.last_name }} — {{ c.email }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <hr>
+                {% endif %}
 
-          <div class="mb-3">
-            <label class="form-label">Campaign Type *</label>
-            <select class="form-control" id="campaignType" name="campaign_type" required>
-              <option value="birthday">🎂 Birthday Offer</option>
-              <option value="loyalty">💳 Loyalty Reward</option>
-              <option value="weekend">🎉 Weekend Special</option>
-              <option value="promotion">🎯 General Promotion</option>
-            </select>
-          </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Customer Name *</label>
+                        <input type="text" class="form-control" id="customerName" name="customer_name" placeholder="e.g., John Doe" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Customer Email *</label>
+                        <input type="email" class="form-control" id="customerEmail" name="customer_email" placeholder="john@example.com" required>
+                    </div>
+                </div>
 
-          <div class="mb-3">
-            <label class="form-label">
-              <input type="checkbox" id="useAi" name="use_ai"> 
-              <span class="ai-badge">✨ Use AI to Generate</span>
-            </label>
-          </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Phone Number</label>
+                    <input type="tel" class="form-control" id="customerPhone" name="customer_phone" placeholder="+1 555 123 4567">
+                    <small class="text-muted">Required for SMS sending (Starter/Pro plan)</small>
+                </div>
 
-          <div class="mb-3">
-            <label class="form-label">Message *</label>
-            <textarea class="form-control" id="messageField" name="message" rows="6" placeholder="Enter your message or click 'Generate with AI'..."></textarea>
-            <small class="text-muted">Leave empty and check "Use AI" to auto-generate</small>
-          </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Campaign Type *</label>
+                    <select class="form-select" id="campaignType" name="campaign_type" required>
+                        {% for key, label in campaign_types.items() %}
+                        <option value="{{ key }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-          <button type="button" class="btn btn-info w-100 mb-2" id="generateBtn">
-            ✨ Generate with AI
-            <span class="spinner spinner-border spinner-border-sm ms-2"></span>
-          </button>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Message</label>
+                    <textarea class="form-control" id="messageField" name="message" rows="5" placeholder="Enter your message or generate with AI below..."></textarea>
+                </div>
 
-          <button type="submit" class="btn btn-success w-100 mb-2">✅ Create Campaign</button>
-          <a href="/campaigns" class="btn btn-outline-secondary w-100">← Back</a>
-        </form>
+                <button type="button" class="btn btn-generate w-100 mb-3" id="generateBtn">
+                    Generate with AI
+                    <span class="spinner-border spinner-border-sm ms-2 d-none" id="spinner"></span>
+                </button>
 
-        <div id="aiSuggestion" class="ai-suggestion" style="display: none;">
-          <strong>🤖 AI Suggestion:</strong>
-          <p id="suggestionText" style="margin-top: 0.5rem; margin-bottom: 0;"></p>
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="useAi" name="use_ai">
+                    <label class="form-check-label" for="useAi">
+                        <span class="ai-badge">Use AI</span> Auto-generate message on submit
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-success w-100 btn-lg mb-2">Create Campaign</button>
+                <a href="/campaigns" class="btn btn-outline-secondary w-100">← Back to Campaigns</a>
+            </form>
         </div>
-      </div>
     </div>
-  </div>
+</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  
-  <script>
-    const generateBtn = document.getElementById('generateBtn');
-    const spinner = generateBtn.querySelector('.spinner');
-    const messageField = document.getElementById('messageField');
-    const customerName = document.getElementById('customerName');
-    const useAi = document.getElementById('useAi');
-    const aiSuggestion = document.getElementById('aiSuggestion');
-    const suggestionText = document.getElementById('suggestionText');
-    const campaignType = document.getElementById('campaignType');
-
-    generateBtn.addEventListener('click', async function(e) {
-      e.preventDefault();
-
-      const name = customerName.value.trim();
-      const type = campaignType.value;
-
-      if (!name) {
-        alert('Please enter customer name first');
-        return;
-      }
-
-      // Show spinner
-      spinner.classList.add('active');
-      generateBtn.disabled = true;
-      generateBtn.textContent = 'Generating...';
-
-      try {
-        // Send request to backend
-        const response = await fetch('/generate-message', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            customer_name: name,
-            campaign_type: type
-          })
-        });
-
-        const data = await response.json();
-
-        if (data.success) {
-          const message = data.message;
-          messageField.value = message;
-          useAi.checked = true;
-          
-          // Show suggestion
-          suggestionText.textContent = message;
-          aiSuggestion.style.display = 'block';
-          
-          // Scroll to message
-          messageField.scrollIntoView({ behavior: 'smooth' });
-        } else {
-          alert('Error: ' + data.error);
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function fillCustomer(select) {
+        const opt = select.options[select.selectedIndex];
+        if (opt.value) {
+            document.getElementById('customerName').value = opt.value;
+            document.getElementById('customerEmail').value = opt.dataset.email;
+            document.getElementById('customerPhone').value = opt.dataset.phone;
         }
-      } catch (error) {
-        alert('Failed to generate message: ' + error.message);
-      } finally {
-        spinner.classList.remove('active');
-        generateBtn.disabled = false;
-        generateBtn.innerHTML = '✨ Generate with AI <span class="spinner spinner-border spinner-border-sm ms-2"></span>';
-      }
-    });
+    }
 
-    // Auto-generate when using AI checkbox
-    useAi.addEventListener('change', function() {
-      if (this.checked) {
-        generateBtn.click();
-      }
-    });
+    document.getElementById('generateBtn').addEventListener('click', async function() {
+        const name = document.getElementById('customerName').value.trim();
+        const type = document.getElementById('campaignType').value;
+        if (!name) { alert('Enter customer name first'); return; }
 
-    // If message is manually entered, hide suggestion
-    messageField.addEventListener('input', function() {
-      if (this.value.trim() && !useAi.checked) {
-        aiSuggestion.style.display = 'none';
-      }
+        const btn = this;
+        const spinner = document.getElementById('spinner');
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+        btn.childNodes[0].textContent = 'Generating... ';
+
+        try {
+            const res = await fetch('/generate-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ customer_name: name, campaign_type: type })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('messageField').value = data.message;
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (e) {
+            alert('Failed: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+            btn.childNodes[0].textContent = 'Generate with AI ';
+        }
     });
-  </script>
+</script>
 </body>
 </html>

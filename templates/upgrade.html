@@ -8,13 +8,20 @@
     <style>
         body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 2rem 0; }
         .card { border: none; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
-        .btn-custom { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; }
-        .btn-custom:hover { color: white; transform: translateY(-2px); }
-        .plan-badge { background: linear-gradient(135deg, #f6d365 0%, #fda085 100%); }
+        .plan-card { transition: transform 0.2s; }
+        .plan-card:hover { transform: translateY(-5px); }
+        .popular { border: 3px solid #fda085 !important; }
+        .popular-badge { background: linear-gradient(135deg, #f6d365, #fda085); color: white; padding: 4px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+        .btn-starter { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; }
+        .btn-starter:hover { color: white; opacity: 0.9; }
+        .btn-pro { background: linear-gradient(135deg, #f6d365, #fda085); color: white; border: none; }
+        .btn-pro:hover { color: white; opacity: 0.9; }
+        .check { color: #28a745; font-weight: bold; }
+        .cross { color: #dc3545; }
     </style>
 </head>
 <body>
-    <div class="container" style="max-width: 700px;">
+    <div class="container" style="max-width: 900px;">
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
@@ -27,49 +34,98 @@
             {% endif %}
         {% endwith %}
 
-        <div class="text-center text-white mb-4 mt-3">
-            <h1 class="fw-bold">⭐ Upgrade {{ business_name }}</h1>
-            <p class="lead">Unlock unlimited campaigns and priority support</p>
-            {% if plan == 'pro' %}
-                <span class="badge bg-success fs-5 px-4 py-2">You're on PRO — enjoy all features!</span>
+        <div class="text-center text-white mb-5 mt-4">
+            <h1 class="fw-bold display-5">Choose Your Plan</h1>
+            <p class="lead opacity-75">Grow your small business with the right tools</p>
+            {% if plan != 'free' %}
+                <span class="badge bg-success fs-6 px-4 py-2">Current Plan: {{ plan.title() }}</span>
             {% endif %}
         </div>
 
-        <div class="row justify-content-center">
-            <div class="col-md-6 mb-4">
-                <div class="card p-4 text-center">
-                    <h4>Starter</h4>
-                    <h2 class="fw-bold">$29<span class="fs-6 fw-normal">/month</span></h2>
+        <div class="row justify-content-center g-4">
+
+            <!-- FREE PLAN -->
+            <div class="col-md-4">
+                <div class="card p-4 text-center plan-card h-100">
+                    <h5 class="text-muted mb-1">Free</h5>
+                    <h2 class="fw-bold display-5 mb-0">$0</h2>
+                    <p class="text-muted mb-4">Forever free</p>
                     <hr>
-                    <p>✅ Up to 500 campaigns/month</p>
-                    <p>✅ Email marketing</p>
-                    <p>✅ AI message generation</p>
-                    <p>❌ Priority support</p>
+                    <ul class="list-unstyled text-start mb-4">
+                        <li class="mb-2"><span class="check">✓</span> Up to 50 customers</li>
+                        <li class="mb-2"><span class="check">✓</span> 10 campaigns/month</li>
+                        <li class="mb-2"><span class="check">✓</span> AI message generation</li>
+                        <li class="mb-2"><span class="check">✓</span> Email marketing</li>
+                        <li class="mb-2"><span class="cross">✗</span> Bulk send</li>
+                        <li class="mb-2"><span class="cross">✗</span> SMS marketing</li>
+                        <li class="mb-2"><span class="cross">✗</span> Unlimited campaigns</li>
+                    </ul>
                     {% if plan == 'free' %}
-                        <span class="badge bg-secondary w-100 py-2">Current Plan</span>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="col-md-6 mb-4">
-                <div class="card p-4 text-center border border-warning">
-                    <h4>Pro ⭐</h4>
-                    <h2 class="fw-bold">$59<span class="fs-6 fw-normal">/month</span></h2>
-                    <hr>
-                    <p>✅ Unlimited campaigns</p>
-                    <p>✅ Email marketing</p>
-                    <p>✅ AI message generation</p>
-                    <p>✅ Priority support</p>
-                    {% if plan == 'pro' %}
-                        <span class="badge bg-success w-100 py-2">Current Plan</span>
+                        <span class="badge bg-secondary w-100 py-2 fs-6">Current Plan</span>
                     {% else %}
-                        <a href="mailto:support@growthai.com?subject=Upgrade to Pro" class="btn btn-custom w-100">Upgrade to Pro →</a>
+                        <span class="badge bg-light text-dark w-100 py-2">Downgrade</span>
                     {% endif %}
                 </div>
             </div>
+
+            <!-- STARTER PLAN -->
+            <div class="col-md-4">
+                <div class="card p-4 text-center plan-card h-100">
+                    <div class="mb-2"><span class="popular-badge">POPULAR</span></div>
+                    <h5 class="text-muted mb-1">Starter</h5>
+                    <h2 class="fw-bold display-5 mb-0">$19</h2>
+                    <p class="text-muted mb-4">per month</p>
+                    <hr>
+                    <ul class="list-unstyled text-start mb-4">
+                        <li class="mb-2"><span class="check">✓</span> Up to 500 customers</li>
+                        <li class="mb-2"><span class="check">✓</span> Unlimited campaigns</li>
+                        <li class="mb-2"><span class="check">✓</span> AI message generation</li>
+                        <li class="mb-2"><span class="check">✓</span> Email marketing</li>
+                        <li class="mb-2"><span class="check">✓</span> Bulk send to all customers</li>
+                        <li class="mb-2"><span class="check">✓</span> SMS marketing</li>
+                        <li class="mb-2"><span class="cross">✗</span> Priority support</li>
+                    </ul>
+                    {% if plan == 'starter' %}
+                        <span class="badge bg-success w-100 py-2 fs-6">Current Plan</span>
+                    {% else %}
+                        <form method="POST" action="/upgrade/starter">
+                            <button type="submit" class="btn btn-starter w-100 btn-lg">Upgrade to Starter →</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- PRO PLAN -->
+            <div class="col-md-4">
+                <div class="card p-4 text-center plan-card h-100 popular">
+                    <div class="mb-2"><span class="popular-badge">BEST VALUE</span></div>
+                    <h5 class="text-muted mb-1">Pro</h5>
+                    <h2 class="fw-bold display-5 mb-0">$50</h2>
+                    <p class="text-muted mb-4">per month</p>
+                    <hr>
+                    <ul class="list-unstyled text-start mb-4">
+                        <li class="mb-2"><span class="check">✓</span> Unlimited customers</li>
+                        <li class="mb-2"><span class="check">✓</span> Unlimited campaigns</li>
+                        <li class="mb-2"><span class="check">✓</span> AI message generation</li>
+                        <li class="mb-2"><span class="check">✓</span> Email marketing</li>
+                        <li class="mb-2"><span class="check">✓</span> Bulk send to all customers</li>
+                        <li class="mb-2"><span class="check">✓</span> SMS marketing</li>
+                        <li class="mb-2"><span class="check">✓</span> Priority support</li>
+                    </ul>
+                    {% if plan == 'pro' %}
+                        <span class="badge bg-success w-100 py-2 fs-6">Current Plan</span>
+                    {% else %}
+                        <form method="POST" action="/upgrade/pro">
+                            <button type="submit" class="btn btn-pro w-100 btn-lg">Upgrade to Pro →</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+
         </div>
 
-        <div class="text-center mt-2">
-            <a href="/dashboard" class="btn btn-outline-light">← Back to Dashboard</a>
+        <div class="text-center mt-4">
+            <a href="/dashboard" class="btn btn-outline-light btn-lg">← Back to Dashboard</a>
         </div>
     </div>
 
