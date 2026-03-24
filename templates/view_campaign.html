@@ -64,6 +64,22 @@
                     <div class="message-box mt-1">{{ campaign.message }}</div>
                 </div>
 
+                <!-- Open Tracking -->
+                {% if campaign.status == 'sent' %}
+                <div class="mb-4 p-3 rounded" style="background:#f0fff4; border:1px solid #b2dfdb;">
+                    <small class="text-muted fw-bold d-block mb-1">EMAIL OPENS</small>
+                    {% if campaign.open_count and campaign.open_count > 0 %}
+                        <span style="font-size:1.5rem; font-weight:bold; color:#2e7d32;">{{ campaign.open_count }}</span>
+                        <span class="text-muted ms-1">open{{ 's' if campaign.open_count != 1 else '' }}</span>
+                        {% if campaign.opened_at %}
+                        <span class="text-muted ms-2">· First opened {{ campaign.opened_at.strftime('%b %d at %I:%M %p') }}</span>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">Not opened yet</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+
                 <!-- Date -->
                 <p class="text-muted small mb-1">Created: {{ campaign.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
                 {% if campaign.scheduled_at %}

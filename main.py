@@ -140,6 +140,8 @@ class Campaign(db.Model):
     message = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(50), default="draft")
     scheduled_at = db.Column(db.DateTime, nullable=True)
+    open_count = db.Column(db.Integer, default=0)
+    opened_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class ContactMessage(db.Model):
@@ -160,6 +162,8 @@ with app.app_context():
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS website VARCHAR(200)",
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS unsubscribed BOOLEAN DEFAULT FALSE",
         "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMP",
+        "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS open_count INTEGER DEFAULT 0",
+        "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS opened_at TIMESTAMP",
     ]
     for sql in migrations:
         try:
@@ -232,7 +236,7 @@ def process_scheduled_campaigns():
     except Exception as e:
         print(f"Scheduler error: {e}")
 
-def build_html_email(business_name, customer_name, message, campaign_type, unsubscribe_url="", business_address="", business_phone="", business_website=""):
+def build_html_email(business_name, customer_name, message, campaign_type, unsubscribe_url="", business_address="", business_phone="", business_website="", tracking_pixel_url=""):
     unsub_html = ""
     if unsubscribe_url:
         unsub_html = f' · <a href="{unsubscribe_url}" style="color:#aaa;font-size:11px;">Unsubscribe</a>'
@@ -287,10 +291,11 @@ def build_html_email(business_name, customer_name, message, campaign_type, unsub
         You received this because you're a valued customer of {business_name}.<br>
         {business_name} · {contact_line}{unsub_html}
     </p>
+    {f'<img src="{tracking_pixel_url}" width="1" height="1" style="display:none;" alt="">' if tracking_pixel_url else ''}
     </body></html>
     """
 
-def send_email(to_email, subject, body, customer_name="", business_name="", campaign_type="promotion", unsubscribe_url="", business_address="", business_phone="", business_website=""):
+def send_email(to_email, subject, body, customer_name="", business_name="", campaign_type="promotion", unsubscribe_url="", business_address="", business_phone="", business_website="", tracking_pixel_url=""):
     try:
         smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
         smtp_port = int(os.getenv("SMTP_PORT", 587))
@@ -308,7 +313,7 @@ def send_email(to_email, subject, body, customer_name="", business_name="", camp
         if unsubscribe_url:
             msg["List-Unsubscribe"] = f"<{unsubscribe_url}>"
         msg.attach(MIMEText(body, "plain"))
-        html_body = build_html_email(business_name or "Revvio", customer_name or "Valued Customer", body, campaign_type, unsubscribe_url, business_address, business_phone, business_website)
+        html_body = build_html_email(business_name or "Revvio", customer_name or "Valued Customer", body, campaign_type, unsubscribe_url, business_address, business_phone, business_website, tracking_pixel_url)
         msg.attach(MIMEText(html_body, "html"))
 
         with smtplib.SMTP(smtp_server, smtp_port) as server:
@@ -657,6 +662,22 @@ def unsubscribe(token):
         db.session.commit()
     return render_template("unsubscribed.html")
 
+@app.route("/track/open/<int:campaign_id>")
+def track_open(campaign_id):
+    campaign = Campaign.query.get(campaign_id)
+    if campaign:
+        campaign.open_count = (campaign.open_count or 0) + 1
+        if not campaign.opened_at:
+            campaign.opened_at = datetime.utcnow()
+        try:
+            db.session.commit()
+        except:
+            db.session.rollback()
+    # Return a 1x1 transparent GIF
+    pixel = b'\x47\x49\x46\x38\x39\x61\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00\x21\xf9\x04\x00\x00\x00\x00\x00\x2c\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02\x44\x01\x00\x3b'
+    from flask import Response
+    return Response(pixel, mimetype="image/gif", headers={"Cache-Control": "no-store, no-cache, must-revalidate"})
+
 @app.route("/send-campaign/<int:campaign_id>", methods=["POST"])
 def send_campaign(campaign_id):
     b = current_business()
@@ -676,6 +697,7 @@ def send_campaign(campaign_id):
         return redirect(f"/campaign/{campaign.id}")
     token = get_unsubscribe_token(campaign.id)
     unsub_url = url_for("unsubscribe", token=token, _external=True)
+    pixel_url = url_for("track_open", campaign_id=campaign.id, _external=True)
     subject = f"Special Offer from {b.business_name}"
     success = send_email(
         campaign.customer_email, subject, campaign.message,
@@ -684,8 +706,9 @@ def send_campaign(campaign_id):
         campaign_type=campaign.campaign_type,
         unsubscribe_url=unsub_url,
         business_address=b.address or "",
-                business_phone=b.phone or "",
-                business_website=b.website or ""
+        business_phone=b.phone or "",
+        business_website=b.website or "",
+        tracking_pixel_url=pixel_url
     )
     if success:
         campaign.status = "sent"
@@ -773,8 +796,9 @@ def bulk_send():
                 db.session.flush()
                 token = get_unsubscribe_token(campaign.id)
                 unsub_url = url_for("unsubscribe", token=token, _external=True)
+                pixel_url = url_for("track_open", campaign_id=campaign.id, _external=True)
                 subject = f"Special Offer from {b.business_name}"
-                if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type, unsubscribe_url=unsub_url, business_address=b.address or "", business_phone=b.phone or "", business_website=b.website or ""):
+                if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type, unsubscribe_url=unsub_url, business_address=b.address or "", business_phone=b.phone or "", business_website=b.website or "", tracking_pixel_url=pixel_url):
                     campaign.status = "sent"
                     sent_count += 1
         db.session.commit()

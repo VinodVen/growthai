@@ -62,7 +62,14 @@
                         <span class="badge bg-light text-dark mb-2">{{ campaign_types.get(campaign.campaign_type, campaign.campaign_type) }}</span>
                         <p class="card-text text-muted small">{{ campaign.message[:100] }}{% if campaign.message|length > 100 %}...{% endif %}</p>
                         <div class="d-flex justify-content-between align-items-center mt-3">
-                            <small class="text-muted">{{ campaign.created_at.strftime('%b %d, %Y') }}</small>
+                            <div>
+                                <small class="text-muted">{{ campaign.created_at.strftime('%b %d, %Y') }}</small>
+                                {% if campaign.status == 'sent' %}
+                                <small class="ms-2 {% if campaign.open_count and campaign.open_count > 0 %}text-success fw-bold{% else %}text-muted{% endif %}">
+                                    👁 {{ campaign.open_count or 0 }} open{{ 's' if (campaign.open_count or 0) != 1 else '' }}
+                                </small>
+                                {% endif %}
+                            </div>
                             <a href="/campaign/{{ campaign.id }}" class="btn btn-sm btn-outline-primary">View & Send</a>
                         </div>
                     </div>

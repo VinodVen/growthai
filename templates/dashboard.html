@@ -203,12 +203,16 @@
                         <td>
                             <strong>{{ campaign.customer_name }}</strong><br>
                             <small class="text-muted">{{ campaign.customer_email }}</small>
+                            {% if campaign.customer_phone %}<br><small class="text-muted">{{ campaign.customer_phone }}</small>{% endif %}
                         </td>
                         <td><span class="badge bg-info text-dark">{{ campaign_types.get(campaign.campaign_type, campaign.campaign_type) }}</span></td>
                         <td>
                             <span class="badge bg-{{ 'success' if campaign.status == 'sent' else 'warning text-dark' }}">
                                 {{ campaign.status.upper() }}
                             </span>
+                            {% if campaign.status == 'sent' and campaign.open_count and campaign.open_count > 0 %}
+                            <br><small class="text-success">👁 {{ campaign.open_count }}</small>
+                            {% endif %}
                         </td>
                         <td><small>{{ campaign.created_at.strftime('%b %d') }}</small></td>
                         <td><a href="/campaign/{{ campaign.id }}" class="btn btn-sm btn-outline-primary">View</a></td>
