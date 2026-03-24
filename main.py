@@ -593,6 +593,89 @@ def delete_campaign(campaign_id):
             flash("Error deleting campaign.", "error")
     return redirect("/campaigns")
 
+@app.route("/upload-customers", methods=["GET", "POST"])
+def upload_customers():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+
+    if request.method == "POST":
+        file = request.files.get("file")
+        if not file or file.filename == "":
+            flash("Please select a file.", "error")
+            return redirect("/upload-customers")
+
+        filename = file.filename.lower()
+        rows = []
+
+        try:
+            if filename.endswith(".csv"):
+                import csv, io
+                content = file.read().decode("utf-8-sig")
+                reader = csv.DictReader(io.StringIO(content))
+                rows = list(reader)
+            elif filename.endswith((".xlsx", ".xls")):
+                import openpyxl, io
+                wb = openpyxl.load_workbook(io.BytesIO(file.read()))
+                ws = wb.active
+                headers = [str(cell.value).strip().lower() if cell.value else "" for cell in ws[1]]
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    rows.append({headers[i]: (str(v).strip() if v else "") for i, v in enumerate(row)})
+            else:
+                flash("Only CSV or Excel (.xlsx) files supported.", "error")
+                return redirect("/upload-customers")
+        except Exception as e:
+            flash(f"Error reading file: {e}", "error")
+            return redirect("/upload-customers")
+
+        # Auto-detect columns
+        def find_col(row, keywords):
+            for key in row.keys():
+                if any(kw in key.lower() for kw in keywords):
+                    return row.get(key, "").strip()
+            return ""
+
+        added = 0
+        skipped = 0
+        for row in rows:
+            email = find_col(row, ["email", "e-mail", "mail"])
+            phone = find_col(row, ["phone", "mobile", "cell", "tel", "number"])
+            first_name = find_col(row, ["first", "fname", "name"]) or "Customer"
+            last_name = find_col(row, ["last", "lname", "surname"])
+
+            if not email and not phone:
+                skipped += 1
+                continue
+
+            # Check plan limits
+            customer_limit = get_plan_limit(b.plan, "customers")
+            if customer_limit:
+                count = Customer.query.filter_by(business_id=b.id).count()
+                if count >= customer_limit:
+                    flash(f"Customer limit reached ({customer_limit}). Upgrade to import more.", "error")
+                    break
+
+            customer = Customer(
+                business_id=b.id,
+                first_name=first_name,
+                last_name=last_name,
+                email=email or f"noemail_{added}@placeholder.com",
+                phone=phone,
+            )
+            db.session.add(customer)
+            added += 1
+
+        try:
+            db.session.commit()
+            flash(f"Imported {added} customers! ({skipped} rows skipped — no email or phone found)", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error saving customers: {e}", "error")
+
+        return redirect("/customers")
+
+    return render_template("upload_customers.html")
+
 @app.route("/generate-message", methods=["POST"])
 def generate_message():
     b = current_business()

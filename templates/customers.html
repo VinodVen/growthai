@@ -35,9 +35,10 @@
     </header>
     
     <div class="container">
-        <div class="mb-4">
-            <a href="/add-customer" class="btn btn-custom">➕ Add Customer</a>
-            <a href="/dashboard" class="btn btn-outline-secondary">← Back to Dashboard</a>
+        <div class="mb-4 d-flex gap-2 flex-wrap">
+            <a href="/add-customer" class="btn btn-custom">Add Customer</a>
+            <a href="/upload-customers" class="btn btn-success">Upload from CSV/Excel</a>
+            <a href="/dashboard" class="btn btn-outline-secondary">← Dashboard</a>
         </div>
         
         {% with messages = get_flashed_messages(with_categories=true) %}
