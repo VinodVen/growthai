@@ -419,9 +419,6 @@ def login():
             session["user_id"] = b.id
             session.permanent = True
             flash(f"Welcome back, {b.owner_name}!", "success")
-            # If no customers yet, send to import page first
-            if Customer.query.filter_by(business_id=b.id).count() == 0:
-                return redirect("/upload-customers")
             return redirect("/dashboard")
         flash("Invalid email or password.", "error")
         return redirect("/login")
