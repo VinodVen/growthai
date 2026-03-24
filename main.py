@@ -142,6 +142,8 @@ class Campaign(db.Model):
     scheduled_at = db.Column(db.DateTime, nullable=True)
     open_count = db.Column(db.Integer, default=0)
     opened_at = db.Column(db.DateTime, nullable=True)
+    click_count = db.Column(db.Integer, default=0)
+    clicked_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class ContactMessage(db.Model):
@@ -164,6 +166,8 @@ with app.app_context():
         "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMP",
         "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS open_count INTEGER DEFAULT 0",
         "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS opened_at TIMESTAMP",
+        "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS click_count INTEGER DEFAULT 0",
+        "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS clicked_at TIMESTAMP",
     ]
     for sql in migrations:
         try:
@@ -219,6 +223,8 @@ def process_scheduled_campaigns():
                 continue
             token = get_unsubscribe_token(campaign.id)
             unsub_url = url_for("unsubscribe", token=token, _external=True)
+            pixel_url = url_for("track_open", campaign_id=campaign.id, _external=True)
+            click_url = url_for("track_click", campaign_id=campaign.id, _external=True)
             subject = f"Special Offer from {b.business_name}"
             success = send_email(
                 campaign.customer_email, subject, campaign.message,
@@ -228,7 +234,9 @@ def process_scheduled_campaigns():
                 unsubscribe_url=unsub_url,
                 business_address=b.address or "",
                 business_phone=b.phone or "",
-                business_website=b.website or ""
+                business_website=b.website or "",
+                tracking_pixel_url=pixel_url,
+                click_tracking_url=click_url
             )
             campaign.status = "sent" if success else "failed"
         if pending:
@@ -236,7 +244,7 @@ def process_scheduled_campaigns():
     except Exception as e:
         print(f"Scheduler error: {e}")
 
-def build_html_email(business_name, customer_name, message, campaign_type, unsubscribe_url="", business_address="", business_phone="", business_website="", tracking_pixel_url=""):
+def build_html_email(business_name, customer_name, message, campaign_type, unsubscribe_url="", business_address="", business_phone="", business_website="", tracking_pixel_url="", click_tracking_url=""):
     unsub_html = ""
     if unsubscribe_url:
         unsub_html = f' · <a href="{unsubscribe_url}" style="color:#aaa;font-size:11px;">Unsubscribe</a>'
@@ -282,9 +290,7 @@ def build_html_email(business_name, customer_name, message, campaign_type, unsub
         <p style="font-size:16px;color:#333;">Hi <strong>{customer_name}</strong>,</p>
         <p style="font-size:16px;color:#555;line-height:1.7;">{message}</p>
         <div style="text-align:center;margin-top:25px;">
-            <p style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:14px 30px;border-radius:8px;display:inline-block;font-size:16px;font-weight:bold;">
-                {cta_text}
-            </p>
+            {'<a href="' + click_tracking_url + '" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:14px 30px;border-radius:8px;display:inline-block;font-size:16px;font-weight:bold;text-decoration:none;">' + cta_text + '</a>' if click_tracking_url else '<p style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:14px 30px;border-radius:8px;display:inline-block;font-size:16px;font-weight:bold;">' + cta_text + '</p>'}
         </div>
     </div>
     <p style="text-align:center;color:#999;font-size:12px;">
@@ -295,7 +301,7 @@ def build_html_email(business_name, customer_name, message, campaign_type, unsub
     </body></html>
     """
 
-def send_email(to_email, subject, body, customer_name="", business_name="", campaign_type="promotion", unsubscribe_url="", business_address="", business_phone="", business_website="", tracking_pixel_url=""):
+def send_email(to_email, subject, body, customer_name="", business_name="", campaign_type="promotion", unsubscribe_url="", business_address="", business_phone="", business_website="", tracking_pixel_url="", click_tracking_url=""):
     try:
         smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
         smtp_port = int(os.getenv("SMTP_PORT", 587))
@@ -313,7 +319,7 @@ def send_email(to_email, subject, body, customer_name="", business_name="", camp
         if unsubscribe_url:
             msg["List-Unsubscribe"] = f"<{unsubscribe_url}>"
         msg.attach(MIMEText(body, "plain"))
-        html_body = build_html_email(business_name or "Revvio", customer_name or "Valued Customer", body, campaign_type, unsubscribe_url, business_address, business_phone, business_website, tracking_pixel_url)
+        html_body = build_html_email(business_name or "Revvio", customer_name or "Valued Customer", body, campaign_type, unsubscribe_url, business_address, business_phone, business_website, tracking_pixel_url, click_tracking_url)
         msg.attach(MIMEText(html_body, "html"))
 
         with smtplib.SMTP(smtp_server, smtp_port) as server:
@@ -678,6 +684,23 @@ def track_open(campaign_id):
     from flask import Response
     return Response(pixel, mimetype="image/gif", headers={"Cache-Control": "no-store, no-cache, must-revalidate"})
 
+@app.route("/track/click/<int:campaign_id>")
+def track_click(campaign_id):
+    campaign = Campaign.query.get(campaign_id)
+    destination = "/"
+    if campaign:
+        campaign.click_count = (campaign.click_count or 0) + 1
+        if not campaign.clicked_at:
+            campaign.clicked_at = datetime.utcnow()
+        try:
+            db.session.commit()
+        except:
+            db.session.rollback()
+        b = Business.query.get(campaign.business_id)
+        if b and b.website:
+            destination = b.website if b.website.startswith("http") else f"https://{b.website}"
+    return redirect(destination)
+
 @app.route("/send-campaign/<int:campaign_id>", methods=["POST"])
 def send_campaign(campaign_id):
     b = current_business()
@@ -698,6 +721,7 @@ def send_campaign(campaign_id):
     token = get_unsubscribe_token(campaign.id)
     unsub_url = url_for("unsubscribe", token=token, _external=True)
     pixel_url = url_for("track_open", campaign_id=campaign.id, _external=True)
+    click_url = url_for("track_click", campaign_id=campaign.id, _external=True)
     subject = f"Special Offer from {b.business_name}"
     success = send_email(
         campaign.customer_email, subject, campaign.message,
@@ -708,7 +732,8 @@ def send_campaign(campaign_id):
         business_address=b.address or "",
         business_phone=b.phone or "",
         business_website=b.website or "",
-        tracking_pixel_url=pixel_url
+        tracking_pixel_url=pixel_url,
+        click_tracking_url=click_url
     )
     if success:
         campaign.status = "sent"
@@ -797,8 +822,9 @@ def bulk_send():
                 token = get_unsubscribe_token(campaign.id)
                 unsub_url = url_for("unsubscribe", token=token, _external=True)
                 pixel_url = url_for("track_open", campaign_id=campaign.id, _external=True)
+                click_url = url_for("track_click", campaign_id=campaign.id, _external=True)
                 subject = f"Special Offer from {b.business_name}"
-                if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type, unsubscribe_url=unsub_url, business_address=b.address or "", business_phone=b.phone or "", business_website=b.website or "", tracking_pixel_url=pixel_url):
+                if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type, unsubscribe_url=unsub_url, business_address=b.address or "", business_phone=b.phone or "", business_website=b.website or "", tracking_pixel_url=pixel_url, click_tracking_url=click_url):
                     campaign.status = "sent"
                     sent_count += 1
         db.session.commit()
@@ -1259,6 +1285,75 @@ def demo_login():
     session.permanent = True
     return redirect("/dashboard")
 
+
+@app.route("/analytics")
+def analytics():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+
+    from datetime import timedelta
+
+    all_campaigns = Campaign.query.filter_by(business_id=b.id).all()
+    sent = [c for c in all_campaigns if c.status == "sent"]
+
+    total_sent = len(sent)
+    total_opens = sum(c.open_count or 0 for c in sent)
+    total_clicks = sum(c.click_count or 0 for c in sent)
+    open_rate = round((total_opens / total_sent * 100), 1) if total_sent else 0
+    click_rate = round((total_clicks / total_sent * 100), 1) if total_sent else 0
+
+    # Per campaign type breakdown
+    type_stats = {}
+    for c in sent:
+        t = c.campaign_type
+        if t not in type_stats:
+            type_stats[t] = {"sent": 0, "opens": 0, "clicks": 0}
+        type_stats[t]["sent"] += 1
+        type_stats[t]["opens"] += c.open_count or 0
+        type_stats[t]["clicks"] += c.click_count or 0
+    for t in type_stats:
+        s = type_stats[t]["sent"]
+        type_stats[t]["open_rate"] = round(type_stats[t]["opens"] / s * 100, 1) if s else 0
+        type_stats[t]["click_rate"] = round(type_stats[t]["clicks"] / s * 100, 1) if s else 0
+        type_stats[t]["label"] = CAMPAIGN_TYPES.get(t, t)
+
+    # Last 30 days daily sends
+    today = datetime.utcnow().date()
+    days_30 = [(today - timedelta(days=i)) for i in range(29, -1, -1)]
+    daily_map = {}
+    for c in sent:
+        d = c.created_at.date()
+        daily_map[d] = daily_map.get(d, 0) + 1
+    daily_labels = [d.strftime("%b %d") for d in days_30]
+    daily_data = [daily_map.get(d, 0) for d in days_30]
+
+    # Top 5 customers by opens + clicks
+    customer_engagement = {}
+    for c in sent:
+        key = (c.customer_name, c.customer_email)
+        if key not in customer_engagement:
+            customer_engagement[key] = {"opens": 0, "clicks": 0, "campaigns": 0}
+        customer_engagement[key]["opens"] += c.open_count or 0
+        customer_engagement[key]["clicks"] += c.click_count or 0
+        customer_engagement[key]["campaigns"] += 1
+    top_customers = sorted(
+        [{"name": k[0], "email": k[1], **v} for k, v in customer_engagement.items()],
+        key=lambda x: x["opens"] + x["clicks"], reverse=True
+    )[:5]
+
+    return render_template("analytics.html",
+        total_sent=total_sent,
+        total_opens=total_opens,
+        total_clicks=total_clicks,
+        open_rate=open_rate,
+        click_rate=click_rate,
+        type_stats=type_stats,
+        daily_labels=daily_labels,
+        daily_data=daily_data,
+        top_customers=top_customers,
+        campaign_types=CAMPAIGN_TYPES,
+    )
 
 @app.route("/settings", methods=["GET", "POST"])
 def settings():

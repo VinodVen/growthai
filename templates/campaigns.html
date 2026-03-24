@@ -66,7 +66,10 @@
                                 <small class="text-muted">{{ campaign.created_at.strftime('%b %d, %Y') }}</small>
                                 {% if campaign.status == 'sent' %}
                                 <small class="ms-2 {% if campaign.open_count and campaign.open_count > 0 %}text-success fw-bold{% else %}text-muted{% endif %}">
-                                    👁 {{ campaign.open_count or 0 }} open{{ 's' if (campaign.open_count or 0) != 1 else '' }}
+                                    👁 {{ campaign.open_count or 0 }}
+                                </small>
+                                <small class="ms-1 {% if campaign.click_count and campaign.click_count > 0 %}text-primary fw-bold{% else %}text-muted{% endif %}">
+                                    🖱 {{ campaign.click_count or 0 }}
                                 </small>
                                 {% endif %}
                             </div>
