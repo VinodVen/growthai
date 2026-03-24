@@ -58,13 +58,37 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Business Address</label>
+                    <label class="form-label fw-bold">Business Address <span class="text-danger">*</span></label>
                     <input type="text" class="form-control form-control-lg" name="address"
                         value="{{ business.address or '' }}"
-                        placeholder="e.g. 123 Main St, Dallas, TX 75001">
-                    <div class="address-tip mt-2">
-                        <strong>Why this matters:</strong> Your address appears in the footer of every promotional email you send.
-                        US law (CAN-SPAM Act) requires a physical postal address in all commercial emails.
+                        placeholder="e.g. 123 Main St, Dallas, TX 75001"
+                        id="addr">
+                    <small class="text-muted">Required by CAN-SPAM — appears in every email footer.</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Business Phone <span class="text-muted fw-normal">(optional)</span></label>
+                    <input type="text" class="form-control form-control-lg" name="phone"
+                        value="{{ business.phone or '' }}"
+                        placeholder="e.g. (214) 555-1234"
+                        id="phone">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Website <span class="text-muted fw-normal">(optional)</span></label>
+                    <input type="text" class="form-control form-control-lg" name="website"
+                        value="{{ business.website or '' }}"
+                        placeholder="e.g. www.yourbusiness.com"
+                        id="website">
+                </div>
+
+                <!-- Email Footer Preview -->
+                <div class="mb-4 p-3" style="background:#f8f9fa; border-radius:10px; border:1px solid #e0e0e0;">
+                    <small class="text-muted fw-bold d-block mb-2">EMAIL FOOTER PREVIEW</small>
+                    <div style="text-align:center; color:#999; font-size:12px; font-family:Arial,sans-serif;">
+                        You received this because you're a valued customer of <strong id="prev-name">{{ business.business_name }}</strong>.<br>
+                        <span id="prev-footer">{{ business.business_name }}{% if business.address %} · {{ business.address }}{% endif %}{% if business.phone %} · {{ business.phone }}{% endif %}{% if business.website %} · {{ business.website }}{% endif %}</span>
+                        · <span style="color:#aaa;">Unsubscribe</span>
                     </div>
                 </div>
 
