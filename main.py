@@ -326,8 +326,6 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    if "user_id" in session:
-        return redirect("/dashboard")
     if request.method == "POST":
         email = request.form.get("email", "").strip()
         password = request.form.get("password", "")
