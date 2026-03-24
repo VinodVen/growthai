@@ -1347,6 +1347,68 @@ def not_found(e):
 def server_error(e):
     return render_template("500.html"), 500
 
+# ============================================
+# ADMIN PORTAL
+# ============================================
+
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+
+def admin_required():
+    return session.get("is_admin") is True
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    if admin_required():
+        return redirect("/admin/dashboard")
+    if request.method == "POST":
+        pw = request.form.get("password", "")
+        if ADMIN_PASSWORD and pw == ADMIN_PASSWORD:
+            session["is_admin"] = True
+            return redirect("/admin/dashboard")
+        flash("Invalid admin password.", "error")
+    return render_template("admin_login.html")
+
+@app.route("/admin/logout")
+def admin_logout():
+    session.pop("is_admin", None)
+    return redirect("/admin/login")
+
+@app.route("/admin/dashboard")
+def admin_dashboard():
+    if not admin_required():
+        return redirect("/admin/login")
+    businesses = Business.query.order_by(Business.created_at.desc()).all()
+    stats = []
+    for b in businesses:
+        customer_count = Customer.query.filter_by(business_id=b.id).count()
+        campaign_count = Campaign.query.filter_by(business_id=b.id).count()
+        sent_count = Campaign.query.filter_by(business_id=b.id, status="sent").count()
+        total_opens = db.session.query(db.func.sum(Campaign.open_count)).filter_by(business_id=b.id).scalar() or 0
+        stats.append({
+            "business": b,
+            "customers": customer_count,
+            "campaigns": campaign_count,
+            "sent": sent_count,
+            "opens": total_opens,
+        })
+    total_businesses = len(businesses)
+    total_customers = Customer.query.count()
+    total_sent = Campaign.query.filter_by(status="sent").count()
+    total_opens = db.session.query(db.func.sum(Campaign.open_count)).scalar() or 0
+    plan_counts = {
+        "free": sum(1 for b in businesses if b.plan == "free"),
+        "starter": sum(1 for b in businesses if b.plan == "starter"),
+        "pro": sum(1 for b in businesses if b.plan == "pro"),
+    }
+    return render_template("admin_dashboard.html",
+        stats=stats,
+        total_businesses=total_businesses,
+        total_customers=total_customers,
+        total_sent=total_sent,
+        total_opens=total_opens,
+        plan_counts=plan_counts,
+    )
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
