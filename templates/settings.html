@@ -75,6 +75,14 @@
             <div class="text-center">
                 <small class="text-muted">Plan: <strong>{{ business.plan.title() }}</strong> &nbsp;·&nbsp; <a href="/upgrade">Upgrade Plan</a></small>
             </div>
+
+            <hr class="mt-3">
+            <div class="text-center">
+                <p class="text-muted small mb-2">Recording a demo? Load sample customers and campaigns.</p>
+                <form method="POST" action="/load-demo">
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">Load Demo Data</button>
+                </form>
+            </div>
         </div>
     </div>
 </div>

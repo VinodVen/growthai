@@ -981,6 +981,102 @@ def generate_message():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+@app.route("/load-demo", methods=["POST"])
+def load_demo():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+
+    DEMO_CUSTOMERS = [
+        {"first": "James",    "last": "Martinez",  "email": "james.martinez@demo.com",   "phone": "+12145550101"},
+        {"first": "Priya",    "last": "Sharma",    "email": "priya.sharma@demo.com",     "phone": "+12145550102"},
+        {"first": "Carlos",   "last": "Reyes",     "email": "carlos.reyes@demo.com",     "phone": "+12145550103"},
+        {"first": "Ashley",   "last": "Thompson",  "email": "ashley.t@demo.com",         "phone": "+12145550104"},
+        {"first": "Michael",  "last": "Chen",      "email": "michael.chen@demo.com",     "phone": "+12145550105"},
+        {"first": "Fatima",   "last": "Al-Hassan", "email": "fatima.h@demo.com",         "phone": "+12145550106"},
+        {"first": "David",    "last": "Williams",  "email": "david.w@demo.com",          "phone": "+12145550107"},
+        {"first": "Sofia",    "last": "Nguyen",    "email": "sofia.nguyen@demo.com",     "phone": "+12145550108"},
+        {"first": "Kevin",    "last": "Johnson",   "email": "kevin.j@demo.com",          "phone": "+12145550109"},
+        {"first": "Maria",    "last": "Garcia",    "email": "maria.garcia@demo.com",     "phone": "+12145550110"},
+        {"first": "Tyler",    "last": "Brooks",    "email": "tyler.brooks@demo.com",     "phone": "+12145550111"},
+        {"first": "Aisha",    "last": "Patel",     "email": "aisha.patel@demo.com",      "phone": "+12145550112"},
+        {"first": "Ryan",     "last": "Kim",       "email": "ryan.kim@demo.com",         "phone": "+12145550113"},
+        {"first": "Jessica",  "last": "Davis",     "email": "jessica.d@demo.com",        "phone": "+12145550114"},
+        {"first": "Brandon",  "last": "Lee",       "email": "brandon.lee@demo.com",      "phone": "+12145550115"},
+        {"first": "Natalie",  "last": "Robinson",  "email": "natalie.r@demo.com",        "phone": "+12145550116"},
+        {"first": "Omar",     "last": "Hassan",    "email": "omar.hassan@demo.com",      "phone": "+12145550117"},
+        {"first": "Lauren",   "last": "Mitchell",  "email": "lauren.m@demo.com",         "phone": "+12145550118"},
+        {"first": "Ethan",    "last": "Cooper",    "email": "ethan.c@demo.com",          "phone": "+12145550119"},
+        {"first": "Rachel",   "last": "Torres",    "email": "rachel.t@demo.com",         "phone": "+12145550120"},
+    ]
+
+    DEMO_CAMPAIGNS = [
+        {"name": "James Martinez",   "email": "james.martinez@demo.com",  "phone": "+12145550101", "type": "come_back",  "status": "sent",
+         "msg": "Hey James! We miss you at {}! Come back this week and enjoy 15% off your next visit. Use code: COMEBACK15 — we'd love to see you again!"},
+        {"name": "Priya Sharma",     "email": "priya.sharma@demo.com",    "phone": "+12145550102", "type": "birthday",   "status": "sent",
+         "msg": "Happy Birthday Priya! From all of us at {}, we hope your day is amazing! Enjoy 20% off your next visit — our gift to you. Use code: BDAY20"},
+        {"name": "Carlos Reyes",     "email": "carlos.reyes@demo.com",    "phone": "+12145550103", "type": "weekend",    "status": "sent",
+         "msg": "Carlos, this weekend only — {} is running an exclusive special just for our regulars! Come in Saturday or Sunday for amazing deals. See you soon!"},
+        {"name": "Ashley Thompson",  "email": "ashley.t@demo.com",        "phone": "+12145550104", "type": "loyalty",    "status": "sent",
+         "msg": "Ashley, you are one of our most valued customers at {}! As a thank-you for your loyalty, here's a special reward waiting for you — ask us when you visit!"},
+        {"name": "Michael Chen",     "email": "michael.chen@demo.com",    "phone": "+12145550105", "type": "lunch",      "status": "sent",
+         "msg": "Michael, join us for lunch at {}! This week we have incredible daily specials, fresh ingredients, and your favorite dishes ready to go. Come see us!"},
+        {"name": "Fatima Al-Hassan", "email": "fatima.h@demo.com",        "phone": "+12145550106", "type": "new_item",   "status": "sent",
+         "msg": "Fatima, exciting news! {} just launched something new and we think you're going to love it. Come in and be one of the first to try it!"},
+        {"name": "David Williams",   "email": "david.w@demo.com",         "phone": "+12145550107", "type": "happy_hour", "status": "sent",
+         "msg": "David! Happy Hour at {} is happening this week — amazing drinks, great bites, and unbeatable prices. Bring a friend and make it a night!"},
+        {"name": "Sofia Nguyen",     "email": "sofia.nguyen@demo.com",    "phone": "+12145550108", "type": "dinner",     "status": "sent",
+         "msg": "Sofia, treat yourself tonight! {} has a special dinner offer just for you — a memorable evening with exceptional food. Reserve your spot today!"},
+        {"name": "Kevin Johnson",    "email": "kevin.j@demo.com",         "phone": "+12145550109", "type": "promotion",  "status": "sent",
+         "msg": "Kevin, {} has an exclusive promotion running this week just for our VIP customers! Don't miss out — visit us and mention this message at the door."},
+        {"name": "Maria Garcia",     "email": "maria.garcia@demo.com",    "phone": "+12145550110", "type": "come_back",  "status": "draft",
+         "msg": "Maria, it's been a while and we miss you! Come back to {} this week and we'll make sure you feel like a VIP. See you soon!"},
+        {"name": "Tyler Brooks",     "email": "tyler.brooks@demo.com",    "phone": "+12145550111", "type": "weekend",    "status": "draft",
+         "msg": "Tyler! Big weekend coming up at {}. We have something special planned and want YOU there. Saturday and Sunday only — come check it out!"},
+    ]
+
+    # Clear existing demo data first (customers with @demo.com emails)
+    existing_emails = [c["email"] for c in DEMO_CUSTOMERS]
+    Customer.query.filter(
+        Customer.business_id == b.id,
+        Customer.email.in_(existing_emails)
+    ).delete(synchronize_session=False)
+    Campaign.query.filter(
+        Campaign.business_id == b.id,
+        Campaign.customer_email.in_(existing_emails)
+    ).delete(synchronize_session=False)
+
+    # Add demo customers
+    for c in DEMO_CUSTOMERS:
+        db.session.add(Customer(
+            business_id=b.id,
+            first_name=c["first"],
+            last_name=c["last"],
+            email=c["email"],
+            phone=c["phone"],
+        ))
+
+    # Add demo campaigns
+    for c in DEMO_CAMPAIGNS:
+        db.session.add(Campaign(
+            business_id=b.id,
+            customer_name=c["name"],
+            customer_email=c["email"],
+            customer_phone=c["phone"],
+            campaign_type=c["type"],
+            message=c["msg"].format(b.business_name),
+            status=c["status"],
+        ))
+
+    try:
+        db.session.commit()
+        flash(f"Demo data loaded! 20 customers and {len(DEMO_CAMPAIGNS)} campaigns added. You're ready to record.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error loading demo data: {e}", "error")
+
+    return redirect("/dashboard")
+
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
     b = current_business()
