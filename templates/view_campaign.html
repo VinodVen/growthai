@@ -13,6 +13,8 @@
         .btn-sms:hover { color: white; opacity: 0.9; }
         .status-sent { background: #d4edda; color: #155724; padding: 4px 12px; border-radius: 20px; }
         .status-draft { background: #fff3cd; color: #856404; padding: 4px 12px; border-radius: 20px; }
+        .status-scheduled { background: #cfe2ff; color: #084298; padding: 4px 12px; border-radius: 20px; }
+        .status-failed { background: #f8d7da; color: #842029; padding: 4px 12px; border-radius: 20px; }
         .message-box { background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid #667eea; line-height: 1.7; }
     </style>
 </head>
@@ -61,11 +63,16 @@
                 </div>
 
                 <!-- Date -->
-                <p class="text-muted small mb-4">Created: {{ campaign.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                <p class="text-muted small mb-1">Created: {{ campaign.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                {% if campaign.scheduled_at %}
+                <p class="text-muted small mb-4">Scheduled for: <strong>{{ campaign.scheduled_at.strftime('%B %d, %Y at %I:%M %p') }} UTC</strong></p>
+                {% else %}
+                <div class="mb-4"></div>
+                {% endif %}
 
                 <!-- Actions -->
                 <div class="d-grid gap-2">
-                    {% if campaign.status == 'draft' %}
+                    {% if campaign.status in ('draft', 'failed') %}
                     <form method="POST" action="/send-campaign/{{ campaign.id }}">
                         <button type="submit" class="btn btn-success btn-lg w-100">Send Email Campaign</button>
                     </form>

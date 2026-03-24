@@ -2,6 +2,9 @@ import os
 import bcrypt
 import stripe
 import smtplib
+import hmac
+import hashlib
+import base64
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, session, url_for, flash, jsonify
 from dotenv import load_dotenv
@@ -118,6 +121,7 @@ class Customer(db.Model):
     email = db.Column(db.String(200), nullable=False)
     phone = db.Column(db.String(50))
     dob = db.Column(db.String(50))
+    unsubscribed = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Campaign(db.Model):
@@ -130,6 +134,7 @@ class Campaign(db.Model):
     campaign_type = db.Column(db.String(50), nullable=False)
     message = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(50), default="draft")
+    scheduled_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class ContactMessage(db.Model):
@@ -158,7 +163,56 @@ def get_plan_limit(plan, limit_type):
 def clean_ai_text(text):
     return (text or "").replace("###", "").replace("**", "").strip()
 
-def build_html_email(business_name, customer_name, message, campaign_type):
+def get_unsubscribe_token(campaign_id):
+    secret = app.secret_key.encode() if isinstance(app.secret_key, str) else app.secret_key
+    sig = hmac.new(secret, str(campaign_id).encode(), hashlib.sha256).hexdigest()[:20]
+    token = base64.urlsafe_b64encode(f"{campaign_id}:{sig}".encode()).decode()
+    return token
+
+def verify_unsubscribe_token(token):
+    try:
+        decoded = base64.urlsafe_b64decode(token.encode()).decode()
+        campaign_id, sig = decoded.split(":", 1)
+        secret = app.secret_key.encode() if isinstance(app.secret_key, str) else app.secret_key
+        expected = hmac.new(secret, campaign_id.encode(), hashlib.sha256).hexdigest()[:20]
+        if hmac.compare_digest(sig, expected):
+            return int(campaign_id)
+    except Exception:
+        pass
+    return None
+
+def process_scheduled_campaigns():
+    """Send any campaigns whose scheduled_at time has passed."""
+    try:
+        now = datetime.utcnow()
+        pending = Campaign.query.filter(
+            Campaign.status == "scheduled",
+            Campaign.scheduled_at <= now
+        ).all()
+        for campaign in pending:
+            b = Business.query.get(campaign.business_id)
+            if not b:
+                continue
+            token = get_unsubscribe_token(campaign.id)
+            unsub_url = url_for("unsubscribe", token=token, _external=True)
+            subject = f"Special Offer from {b.business_name}"
+            success = send_email(
+                campaign.customer_email, subject, campaign.message,
+                customer_name=campaign.customer_name,
+                business_name=b.business_name,
+                campaign_type=campaign.campaign_type,
+                unsubscribe_url=unsub_url
+            )
+            campaign.status = "sent" if success else "failed"
+        if pending:
+            db.session.commit()
+    except Exception as e:
+        print(f"Scheduler error: {e}")
+
+def build_html_email(business_name, customer_name, message, campaign_type, unsubscribe_url=""):
+    unsub_html = ""
+    if unsubscribe_url:
+        unsub_html = f'<a href="{unsubscribe_url}" style="color:#aaa;font-size:11px;">Unsubscribe</a>'
     return f"""
     <html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#f5f5f5;">
     <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;border-radius:12px;text-align:center;margin-bottom:20px;">
@@ -174,11 +228,11 @@ def build_html_email(business_name, customer_name, message, campaign_type):
             </p>
         </div>
     </div>
-    <p style="text-align:center;color:#999;font-size:12px;">You received this because you're a valued customer of {business_name}.</p>
+    <p style="text-align:center;color:#999;font-size:12px;">You received this because you're a valued customer of {business_name}.<br>{unsub_html}</p>
     </body></html>
     """
 
-def send_email(to_email, subject, body, customer_name="", business_name="", campaign_type="promotion"):
+def send_email(to_email, subject, body, customer_name="", business_name="", campaign_type="promotion", unsubscribe_url=""):
     try:
         smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
         smtp_port = int(os.getenv("SMTP_PORT", 587))
@@ -193,8 +247,10 @@ def send_email(to_email, subject, body, customer_name="", business_name="", camp
         msg["From"] = sender_email
         msg["To"] = to_email
         msg["Subject"] = subject
+        if unsubscribe_url:
+            msg["List-Unsubscribe"] = f"<{unsubscribe_url}>"
         msg.attach(MIMEText(body, "plain"))
-        html_body = build_html_email(business_name or "GrowthAI", customer_name or "Valued Customer", body, campaign_type)
+        html_body = build_html_email(business_name or "GrowthAI", customer_name or "Valued Customer", body, campaign_type, unsubscribe_url)
         msg.attach(MIMEText(html_body, "html"))
 
         with smtplib.SMTP(smtp_server, smtp_port) as server:
@@ -353,6 +409,7 @@ def dashboard():
     b = current_business()
     if not b:
         return redirect("/login")
+    process_scheduled_campaigns()
     total_customers = Customer.query.filter_by(business_id=b.id).count()
     total_campaigns = Campaign.query.filter_by(business_id=b.id).count()
     sent_campaigns = Campaign.query.filter_by(business_id=b.id, status="sent").count()
@@ -449,6 +506,7 @@ def create_campaign():
         campaign_type = request.form.get("campaign_type", "promotion").strip()
         use_ai = request.form.get("use_ai") == "on"
         message = request.form.get("message", "").strip()
+        scheduled_at_str = request.form.get("scheduled_at", "").strip()
         if not customer_name or not customer_email:
             flash("Name and email required.", "error")
             return redirect("/create-campaign")
@@ -457,6 +515,13 @@ def create_campaign():
         elif not message:
             flash("Provide message or use AI.", "error")
             return redirect("/create-campaign")
+        scheduled_at = None
+        if scheduled_at_str:
+            try:
+                scheduled_at = datetime.strptime(scheduled_at_str, "%Y-%m-%dT%H:%M")
+            except ValueError:
+                pass
+        campaign_status = "scheduled" if scheduled_at else "draft"
         campaign = Campaign(
             business_id=b.id,
             customer_name=customer_name,
@@ -464,12 +529,16 @@ def create_campaign():
             customer_phone=customer_phone,
             campaign_type=campaign_type,
             message=message,
-            status="draft"
+            status=campaign_status,
+            scheduled_at=scheduled_at
         )
         try:
             db.session.add(campaign)
             db.session.commit()
-            flash("Campaign created!", "success")
+            if scheduled_at:
+                flash(f"Campaign scheduled for {scheduled_at.strftime('%b %d at %I:%M %p')}!", "success")
+            else:
+                flash("Campaign created!", "success")
             return redirect(f"/campaign/{campaign.id}")
         except:
             db.session.rollback()
@@ -488,6 +557,21 @@ def view_campaign(campaign_id):
         return redirect("/campaigns")
     return render_template("view_campaign.html", campaign=campaign, plan=b.plan, campaign_types=CAMPAIGN_TYPES)
 
+@app.route("/unsubscribe/<token>")
+def unsubscribe(token):
+    campaign_id = verify_unsubscribe_token(token)
+    if not campaign_id:
+        return render_template("404.html"), 404
+    campaign = Campaign.query.get(campaign_id)
+    if campaign:
+        # Mark all customers with this email (for this business) as unsubscribed
+        Customer.query.filter_by(
+            business_id=campaign.business_id,
+            email=campaign.customer_email
+        ).update({"unsubscribed": True})
+        db.session.commit()
+    return render_template("unsubscribed.html")
+
 @app.route("/send-campaign/<int:campaign_id>", methods=["POST"])
 def send_campaign(campaign_id):
     b = current_business()
@@ -497,12 +581,20 @@ def send_campaign(campaign_id):
     if not campaign or campaign.business_id != b.id:
         flash("Campaign not found.", "error")
         return redirect("/campaigns")
+    # Check if customer is unsubscribed
+    customer = Customer.query.filter_by(business_id=b.id, email=campaign.customer_email).first()
+    if customer and customer.unsubscribed:
+        flash("This customer has unsubscribed and cannot receive emails.", "error")
+        return redirect(f"/campaign/{campaign.id}")
+    token = get_unsubscribe_token(campaign.id)
+    unsub_url = url_for("unsubscribe", token=token, _external=True)
     subject = f"Special Offer from {b.business_name}"
     success = send_email(
         campaign.customer_email, subject, campaign.message,
         customer_name=campaign.customer_name,
         business_name=b.business_name,
-        campaign_type=campaign.campaign_type
+        campaign_type=campaign.campaign_type,
+        unsubscribe_url=unsub_url
     )
     if success:
         campaign.status = "sent"
@@ -547,6 +639,7 @@ def bulk_send():
         campaign_type = request.form.get("campaign_type", "promotion")
         use_ai = request.form.get("use_ai") == "on"
         custom_message = request.form.get("message", "").strip()
+        scheduled_at_str = request.form.get("scheduled_at", "").strip()
         customers_list = Customer.query.filter_by(business_id=b.id).all()
         if not customers_list:
             flash("No customers to send to. Add customers first.", "error")
@@ -554,9 +647,20 @@ def bulk_send():
         if not custom_message and not use_ai:
             flash("Enter a message or enable AI generation.", "error")
             return redirect("/bulk-send")
+        scheduled_at = None
+        if scheduled_at_str:
+            try:
+                scheduled_at = datetime.strptime(scheduled_at_str, "%Y-%m-%dT%H:%M")
+            except ValueError:
+                pass
         sent_count = 0
+        skipped_unsub = 0
         for customer in customers_list:
+            if customer.unsubscribed:
+                skipped_unsub += 1
+                continue
             msg = generate_ai_message(customer.first_name, b.business_name, campaign_type) if (use_ai and not custom_message) else custom_message
+            campaign_status = "scheduled" if scheduled_at else "draft"
             campaign = Campaign(
                 business_id=b.id,
                 customer_name=customer.first_name,
@@ -564,16 +668,24 @@ def bulk_send():
                 customer_phone=customer.phone,
                 campaign_type=campaign_type,
                 message=msg,
-                status="draft"
+                status=campaign_status,
+                scheduled_at=scheduled_at
             )
             db.session.add(campaign)
-            db.session.flush()
-            subject = f"Special Offer from {b.business_name}"
-            if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type):
-                campaign.status = "sent"
-                sent_count += 1
+            if not scheduled_at:
+                db.session.flush()
+                token = get_unsubscribe_token(campaign.id)
+                unsub_url = url_for("unsubscribe", token=token, _external=True)
+                subject = f"Special Offer from {b.business_name}"
+                if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type, unsubscribe_url=unsub_url):
+                    campaign.status = "sent"
+                    sent_count += 1
         db.session.commit()
-        flash(f"Bulk send complete! Sent to {sent_count}/{len(customers_list)} customers.", "success")
+        unsub_note = f" ({skipped_unsub} skipped — unsubscribed)" if skipped_unsub else ""
+        if scheduled_at:
+            flash(f"Scheduled {len(customers_list) - skipped_unsub} campaigns for {scheduled_at.strftime('%b %d at %I:%M %p')} UTC{unsub_note}.", "success")
+        else:
+            flash(f"Bulk send complete! Sent to {sent_count}/{len(customers_list)} customers{unsub_note}.", "success")
         return redirect("/campaigns")
     customers_count = Customer.query.filter_by(business_id=b.id).count()
     return render_template("bulk_send.html", campaign_types=CAMPAIGN_TYPES, customers_count=customers_count)

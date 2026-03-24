@@ -73,6 +73,12 @@
                     Preview AI Message
                 </button>
 
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Schedule for Later <span class="text-muted fw-normal">(optional)</span></label>
+                    <input type="datetime-local" class="form-control" name="scheduled_at" id="scheduledAt">
+                    <small class="text-muted">Leave blank to send now. Set a time to auto-send later.</small>
+                </div>
+
                 <div class="alert alert-warning mb-3">
                     <strong>Warning:</strong> This will send emails to all {{ customers_count }} customers at once.
                 </div>
