@@ -334,6 +334,9 @@ def login():
             session["user_id"] = b.id
             session.permanent = True
             flash(f"Welcome back, {b.owner_name}!", "success")
+            # If no customers yet, send to import page first
+            if Customer.query.filter_by(business_id=b.id).count() == 0:
+                return redirect("/upload-customers")
             return redirect("/dashboard")
         flash("Invalid email or password.", "error")
         return redirect("/login")
@@ -673,6 +676,62 @@ def upload_customers():
         return redirect("/customers")
 
     return render_template("upload_customers.html")
+
+@app.route("/paste-customers", methods=["POST"])
+def paste_customers():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+
+    raw = request.form.get("contacts", "").strip()
+    default_name = request.form.get("default_name", "Customer").strip() or "Customer"
+
+    if not raw:
+        flash("Please paste some contacts.", "error")
+        return redirect("/upload-customers")
+
+    import re
+    lines = [l.strip() for l in raw.splitlines() if l.strip()]
+    added = 0
+
+    for line in lines:
+        # Check plan limit
+        customer_limit = get_plan_limit(b.plan, "customers")
+        if customer_limit:
+            count = Customer.query.filter_by(business_id=b.id).count()
+            if count >= customer_limit:
+                flash(f"Customer limit reached ({customer_limit}). Upgrade to import more.", "error")
+                break
+
+        email = ""
+        phone = ""
+
+        # Detect if line is email
+        if "@" in line:
+            email = line
+        else:
+            # Clean and use as phone
+            phone = re.sub(r"[^\d\+\-\(\)\s]", "", line).strip()
+            if len(re.sub(r"\D", "", phone)) < 7:
+                continue  # skip if less than 7 digits
+
+        customer = Customer(
+            business_id=b.id,
+            first_name=default_name,
+            email=email or f"nophone_{added}@placeholder.com",
+            phone=phone,
+        )
+        db.session.add(customer)
+        added += 1
+
+    try:
+        db.session.commit()
+        flash(f"Imported {added} contacts successfully!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error saving contacts: {e}", "error")
+
+    return redirect("/customers")
 
 @app.route("/generate-message", methods=["POST"])
 def generate_message():

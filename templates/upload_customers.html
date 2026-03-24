@@ -3,124 +3,264 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Customers - GrowthAI</title>
+    <title>Import Customers - GrowthAI</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 2rem 0; }
-        .card { border: none; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 650px; margin: auto; }
-        .upload-zone { border: 2px dashed #667eea; border-radius: 12px; padding: 40px; text-align: center; background: #f8f9ff; cursor: pointer; transition: all 0.2s; }
-        .upload-zone:hover { border-color: #764ba2; background: #f0f0ff; }
-        .upload-zone.dragover { border-color: #764ba2; background: #e8e8ff; }
-        .btn-upload { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; }
-        .btn-upload:hover { color: white; opacity: 0.9; }
-        .tip-box { background: #e8f5e9; border-left: 4px solid #28a745; border-radius: 8px; padding: 15px; }
-        .col-example { background: #f8f9fa; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 0.85rem; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .method-card { border: 2px solid #e0e0e0; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.2s; background: white; }
+        .method-card:hover { border-color: #667eea; transform: translateY(-2px); }
+        .method-card.active { border-color: #667eea; background: #f0f0ff; }
+        .upload-zone { border: 2px dashed #667eea; border-radius: 12px; padding: 30px; text-align: center; background: #f8f9ff; cursor: pointer; transition: all 0.2s; }
+        .upload-zone:hover { background: #f0f0ff; }
+        .btn-import { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; }
+        .btn-import:hover { color: white; opacity: 0.9; }
+        .software-badge { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 8px 12px; font-size: 0.85rem; display: inline-block; margin: 4px; }
+        .tab-btn { border: 2px solid #dee2e6; background: white; border-radius: 10px; padding: 12px 20px; cursor: pointer; transition: all 0.2s; }
+        .tab-btn.active { border-color: #667eea; background: #667eea; color: white; }
+        .tab-btn:hover:not(.active) { border-color: #667eea; }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="card">
-        <div class="card-body p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="card-title mb-0 fw-bold">Upload Customers</h2>
-                <a href="/customers" class="btn btn-outline-secondary btn-sm">← Customers</a>
-            </div>
+<div class="container" style="max-width: 750px;">
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-
-            <!-- Tips -->
-            <div class="tip-box mb-4">
-                <strong>How it works:</strong>
-                <ul class="mb-0 mt-2">
-                    <li>Upload a <strong>CSV</strong> or <strong>Excel (.xlsx)</strong> file</li>
-                    <li>The app auto-detects <strong>email</strong> and <strong>phone</strong> columns</li>
-                    <li>Column names can be anything — it matches by keywords</li>
-                    <li>Rows without email or phone are skipped</li>
-                </ul>
-            </div>
-
-            <!-- Column examples -->
-            <div class="mb-4">
-                <p class="fw-bold mb-2">Supported column names (any of these work):</p>
-                <div class="row g-2">
-                    <div class="col-6">
-                        <div class="col-example">
-                            <strong>Email columns:</strong><br>
-                            email, e-mail, mail
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="col-example">
-                            <strong>Phone columns:</strong><br>
-                            phone, mobile, cell, tel, number
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="col-example">
-                            <strong>Name columns:</strong><br>
-                            first, fname, name
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="col-example">
-                            <strong>Last name columns:</strong><br>
-                            last, lname, surname
-                        </div>
-                    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show mt-3">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
-            </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
-            <!-- Example sheet -->
-            <div class="mb-4">
-                <p class="fw-bold mb-2">Example spreadsheet format:</p>
-                <div class="table-responsive">
-                    <table class="table table-bordered table-sm mb-0" style="font-size: 0.85rem;">
-                        <thead class="table-light">
-                            <tr><th>name</th><th>email</th><th>phone</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>John Smith</td><td>john@gmail.com</td><td>+1 555 123 4567</td></tr>
-                            <tr><td>Sarah Jones</td><td>sarah@gmail.com</td><td>+1 555 987 6543</td></tr>
-                        </tbody>
-                    </table>
+    <div class="card p-4 mt-3">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="fw-bold mb-1">Import Customers</h2>
+                <p class="text-muted mb-0">Add your existing customers to start sending campaigns</p>
+            </div>
+            <a href="/customers" class="btn btn-outline-secondary">← Back</a>
+        </div>
+
+        <!-- METHOD TABS -->
+        <div class="d-flex gap-2 mb-4 flex-wrap">
+            <button class="tab-btn active" onclick="showTab('paste')" id="tab-paste">
+                <i class="bi bi-phone me-1"></i> Paste Phone Numbers
+            </button>
+            <button class="tab-btn" onclick="showTab('file')" id="tab-file">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Upload CSV/Excel
+            </button>
+            <button class="tab-btn" onclick="showTab('software')" id="tab-software">
+                <i class="bi bi-gear me-1"></i> From Software
+            </button>
+        </div>
+
+        <!-- TAB 1: PASTE PHONE NUMBERS -->
+        <div id="pane-paste">
+            <p class="text-muted mb-3">Just paste your customer phone numbers or emails — one per line. Mix and match, we'll figure it out.</p>
+            <form method="POST" action="/paste-customers">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Paste Numbers or Emails</label>
+                    <textarea class="form-control" name="contacts" rows="10"
+                        placeholder="+1 555 123 4567&#10;+1 555 987 6543&#10;john@gmail.com&#10;+1 555 456 7890&#10;sarah@email.com&#10;..."></textarea>
+                    <small class="text-muted">Phone numbers, emails, or both — one per line. Works with any format.</small>
                 </div>
-            </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Default Name (optional)</label>
+                    <input type="text" class="form-control" name="default_name" placeholder="e.g. Customer — used if no name is available">
+                </div>
+                <button type="submit" class="btn btn-import w-100 btn-lg fw-bold">
+                    <i class="bi bi-upload me-2"></i>Import Contacts
+                </button>
+            </form>
+        </div>
 
-            <!-- Upload form -->
+        <!-- TAB 2: UPLOAD FILE -->
+        <div id="pane-file" class="d-none">
+            <p class="text-muted mb-3">Upload a spreadsheet with customer data. We auto-detect the email, phone, and name columns.</p>
+
             <form method="POST" enctype="multipart/form-data" id="uploadForm">
-                <div class="upload-zone mb-3" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                <div class="upload-zone mb-3" onclick="document.getElementById('fileInput').click()">
                     <div id="uploadText">
-                        <p class="fs-4 mb-1">Drop your file here</p>
-                        <p class="text-muted mb-2">or click to browse</p>
-                        <small class="text-muted">Supports: CSV, Excel (.xlsx)</small>
+                        <i class="bi bi-cloud-upload fs-1 text-muted"></i>
+                        <p class="fs-5 mb-1 mt-2">Drop your file here or click to browse</p>
+                        <small class="text-muted">Supports: CSV, Excel (.xlsx, .xls)</small>
                     </div>
                     <div id="fileSelected" class="d-none">
-                        <p class="fs-5 mb-1 text-success fw-bold" id="fileName"></p>
-                        <small class="text-muted">Ready to upload</small>
+                        <i class="bi bi-file-earmark-check fs-1 text-success"></i>
+                        <p class="fs-5 mb-0 text-success fw-bold mt-2" id="fileName"></p>
                     </div>
                 </div>
                 <input type="file" id="fileInput" name="file" accept=".csv,.xlsx,.xls" class="d-none" onchange="showFile(this)">
 
-                <button type="submit" class="btn btn-upload w-100 btn-lg fw-bold mb-2" id="submitBtn" disabled>
-                    Import Customers
+                <div class="alert alert-info mb-3">
+                    <strong>Column names we detect automatically:</strong><br>
+                    <span class="software-badge">email / e-mail / mail</span>
+                    <span class="software-badge">phone / mobile / cell / tel</span>
+                    <span class="software-badge">first / name / fname</span>
+                    <span class="software-badge">last / lname / surname</span>
+                </div>
+
+                <button type="submit" class="btn btn-import w-100 btn-lg fw-bold" id="submitBtn" disabled>
+                    <i class="bi bi-upload me-2"></i>Import from File
                 </button>
-                <a href="/customers" class="btn btn-outline-secondary w-100">Cancel</a>
             </form>
         </div>
+
+        <!-- TAB 3: FROM SOFTWARE -->
+        <div id="pane-software" class="d-none">
+            <p class="text-muted mb-3">Most small business software lets you export customers as a CSV file. Follow these steps:</p>
+
+            <div class="accordion" id="softwareAccordion">
+
+                <div class="accordion-item mb-2 border rounded">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#square">
+                            Square (POS)
+                        </button>
+                    </h2>
+                    <div id="square" class="accordion-collapse collapse" data-bs-parent="#softwareAccordion">
+                        <div class="accordion-body">
+                            <ol>
+                                <li>Go to <strong>Square Dashboard</strong> → Customers</li>
+                                <li>Click <strong>Import/Export</strong> → Export Customers</li>
+                                <li>Download the CSV file</li>
+                                <li>Come back here and upload using <strong>Upload CSV/Excel</strong> tab</li>
+                            </ol>
+                            <small class="text-muted">Square exports include: name, email, phone number</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item mb-2 border rounded">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#clover">
+                            Clover (POS)
+                        </button>
+                    </h2>
+                    <div id="clover" class="accordion-collapse collapse" data-bs-parent="#softwareAccordion">
+                        <div class="accordion-body">
+                            <ol>
+                                <li>Go to <strong>Clover Dashboard</strong> → Customers</li>
+                                <li>Click <strong>Export</strong> button (top right)</li>
+                                <li>Download CSV</li>
+                                <li>Upload here using <strong>Upload CSV/Excel</strong> tab</li>
+                            </ol>
+                            <small class="text-muted">Clover exports include: name, email, phone</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item mb-2 border rounded">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#toast">
+                            Toast (Restaurant POS)
+                        </button>
+                    </h2>
+                    <div id="toast" class="accordion-collapse collapse" data-bs-parent="#softwareAccordion">
+                        <div class="accordion-body">
+                            <ol>
+                                <li>Go to <strong>Toast Web</strong> → Guests</li>
+                                <li>Click <strong>Export Guest List</strong></li>
+                                <li>Download CSV</li>
+                                <li>Upload here using <strong>Upload CSV/Excel</strong> tab</li>
+                            </ol>
+                            <small class="text-muted">Toast exports include: name, email, phone</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item mb-2 border rounded">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#mindbody">
+                            Mindbody (Salon/Spa)
+                        </button>
+                    </h2>
+                    <div id="mindbody" class="accordion-collapse collapse" data-bs-parent="#softwareAccordion">
+                        <div class="accordion-body">
+                            <ol>
+                                <li>Go to <strong>Mindbody</strong> → Clients</li>
+                                <li>Click <strong>Export</strong> → Export to CSV</li>
+                                <li>Download and upload here</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item mb-2 border rounded">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#quickbooks">
+                            QuickBooks
+                        </button>
+                    </h2>
+                    <div id="quickbooks" class="accordion-collapse collapse" data-bs-parent="#softwareAccordion">
+                        <div class="accordion-body">
+                            <ol>
+                                <li>Go to <strong>QuickBooks</strong> → Customers</li>
+                                <li>Click <strong>Export</strong> → Export to Excel</li>
+                                <li>Save as CSV or upload the Excel file directly</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item mb-2 border rounded">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#google">
+                            Google Contacts / Gmail
+                        </button>
+                    </h2>
+                    <div id="google" class="accordion-collapse collapse" data-bs-parent="#softwareAccordion">
+                        <div class="accordion-body">
+                            <ol>
+                                <li>Go to <strong>contacts.google.com</strong></li>
+                                <li>Click <strong>Export</strong> → Google CSV</li>
+                                <li>Upload here</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item border rounded">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#any">
+                            Any other software
+                        </button>
+                    </h2>
+                    <div id="any" class="accordion-collapse collapse" data-bs-parent="#softwareAccordion">
+                        <div class="accordion-body">
+                            <p>Most software has an <strong>Export</strong> or <strong>Download</strong> button in the Customers section. Export as CSV or Excel, then upload here. We'll automatically detect the email and phone columns regardless of the column names.</p>
+                            <p class="mb-0">If you only have phone numbers, use the <strong>Paste Phone Numbers</strong> tab instead.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="mt-4 text-center">
+                <button class="btn btn-import px-5 btn-lg" onclick="showTab('file')">
+                    Upload My CSV File
+                </button>
+            </div>
+        </div>
+
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    function showTab(name) {
+        ['paste', 'file', 'software'].forEach(t => {
+            document.getElementById('pane-' + t).classList.add('d-none');
+            document.getElementById('tab-' + t).classList.remove('active');
+        });
+        document.getElementById('pane-' + name).classList.remove('d-none');
+        document.getElementById('tab-' + name).classList.add('active');
+    }
+
     function showFile(input) {
         if (input.files.length > 0) {
             document.getElementById('uploadText').classList.add('d-none');
@@ -130,21 +270,23 @@
         }
     }
 
-    const zone = document.getElementById('uploadZone');
-    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-    zone.addEventListener('drop', e => {
-        e.preventDefault();
-        zone.classList.remove('dragover');
-        const file = e.dataTransfer.files[0];
-        if (file) {
-            const input = document.getElementById('fileInput');
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            input.files = dt.files;
-            showFile(input);
-        }
-    });
+    const zone = document.querySelector('.upload-zone');
+    if (zone) {
+        zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.background = '#e8e8ff'; });
+        zone.addEventListener('dragleave', () => { zone.style.background = '#f8f9ff'; });
+        zone.addEventListener('drop', e => {
+            e.preventDefault();
+            zone.style.background = '#f8f9ff';
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                const input = document.getElementById('fileInput');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+                showFile(input);
+            }
+        });
+    }
 </script>
 </body>
 </html>
