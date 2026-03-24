@@ -150,7 +150,7 @@ class ContactMessage(db.Model):
 
 with app.app_context():
     db.create_all()
-    # Safely add columns that may be missing from existing databases
+    # Safely add columns that may be missing from existing PostgreSQL databases
     from sqlalchemy import text
     migrations = [
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS address VARCHAR(300)",
@@ -159,13 +159,10 @@ with app.app_context():
     ]
     for sql in migrations:
         try:
-            db.session.execute(text(sql))
-        except Exception:
-            pass
-    try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
+            with db.engine.begin() as conn:
+                conn.execute(text(sql))
+        except Exception as e:
+            print(f"Migration skipped: {e}")
 
 # ============================================
 # HELPERS
