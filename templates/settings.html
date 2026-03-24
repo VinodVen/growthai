@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <title>Settings - GrowthAI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 2rem 0; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 600px; margin: auto; }
+        .btn-save { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; }
+        .btn-save:hover { color: white; opacity: 0.9; }
+        .form-control:focus { border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102,126,234,0.25); }
+        .address-tip { background: #f0f0ff; border-radius: 8px; padding: 12px; font-size: 0.88rem; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold mb-0">Business Settings</h2>
+                <a href="/dashboard" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Business Name</label>
+                    <input type="text" class="form-control form-control-lg" name="business_name"
+                        value="{{ business.business_name }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Your Name</label>
+                    <input type="text" class="form-control form-control-lg" name="owner_name"
+                        value="{{ business.owner_name }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Email</label>
+                    <input type="email" class="form-control form-control-lg" value="{{ business.email }}" disabled>
+                    <small class="text-muted">Email cannot be changed.</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Business Address</label>
+                    <input type="text" class="form-control form-control-lg" name="address"
+                        value="{{ business.address or '' }}"
+                        placeholder="e.g. 123 Main St, Dallas, TX 75001">
+                    <div class="address-tip mt-2">
+                        <strong>Why this matters:</strong> Your address appears in the footer of every promotional email you send.
+                        US law (CAN-SPAM Act) requires a physical postal address in all commercial emails.
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-save w-100 btn-lg fw-bold mt-2">Save Settings</button>
+            </form>
+
+            <hr class="mt-4">
+            <div class="text-center">
+                <small class="text-muted">Plan: <strong>{{ business.plan.title() }}</strong> &nbsp;·&nbsp; <a href="/upgrade">Upgrade Plan</a></small>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

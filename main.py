@@ -110,6 +110,7 @@ class Business(db.Model):
     password = db.Column(db.String(200), nullable=False)
     plan = db.Column(db.String(50), default="free")
     stripe_customer_id = db.Column(db.String(200))
+    address = db.Column(db.String(300))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Customer(db.Model):
@@ -201,7 +202,8 @@ def process_scheduled_campaigns():
                 customer_name=campaign.customer_name,
                 business_name=b.business_name,
                 campaign_type=campaign.campaign_type,
-                unsubscribe_url=unsub_url
+                unsubscribe_url=unsub_url,
+                business_address=b.address or ""
             )
             campaign.status = "sent" if success else "failed"
         if pending:
@@ -209,10 +211,11 @@ def process_scheduled_campaigns():
     except Exception as e:
         print(f"Scheduler error: {e}")
 
-def build_html_email(business_name, customer_name, message, campaign_type, unsubscribe_url=""):
+def build_html_email(business_name, customer_name, message, campaign_type, unsubscribe_url="", business_address=""):
     unsub_html = ""
     if unsubscribe_url:
-        unsub_html = f'<a href="{unsubscribe_url}" style="color:#aaa;font-size:11px;">Unsubscribe</a>'
+        unsub_html = f' · <a href="{unsubscribe_url}" style="color:#aaa;font-size:11px;">Unsubscribe</a>'
+    address_line = business_address if business_address else "8105 Rasor Blvd Suite 280 · Plano, TX 75024"
     return f"""
     <html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#f5f5f5;">
     <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;border-radius:12px;text-align:center;margin-bottom:20px;">
@@ -230,13 +233,12 @@ def build_html_email(business_name, customer_name, message, campaign_type, unsub
     </div>
     <p style="text-align:center;color:#999;font-size:12px;">
         You received this because you're a valued customer of {business_name}.<br>
-        GrowthAI · 8105 Rasor Blvd Suite 280 · Plano, TX 75024<br>
-        {unsub_html}
+        {business_name} · {address_line}{unsub_html}
     </p>
     </body></html>
     """
 
-def send_email(to_email, subject, body, customer_name="", business_name="", campaign_type="promotion", unsubscribe_url=""):
+def send_email(to_email, subject, body, customer_name="", business_name="", campaign_type="promotion", unsubscribe_url="", business_address=""):
     try:
         smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
         smtp_port = int(os.getenv("SMTP_PORT", 587))
@@ -254,7 +256,7 @@ def send_email(to_email, subject, body, customer_name="", business_name="", camp
         if unsubscribe_url:
             msg["List-Unsubscribe"] = f"<{unsubscribe_url}>"
         msg.attach(MIMEText(body, "plain"))
-        html_body = build_html_email(business_name or "GrowthAI", customer_name or "Valued Customer", body, campaign_type, unsubscribe_url)
+        html_body = build_html_email(business_name or "GrowthAI", customer_name or "Valued Customer", body, campaign_type, unsubscribe_url, business_address)
         msg.attach(MIMEText(html_body, "html"))
 
         with smtplib.SMTP(smtp_server, smtp_port) as server:
@@ -606,7 +608,8 @@ def send_campaign(campaign_id):
         customer_name=campaign.customer_name,
         business_name=b.business_name,
         campaign_type=campaign.campaign_type,
-        unsubscribe_url=unsub_url
+        unsubscribe_url=unsub_url,
+        business_address=b.address or ""
     )
     if success:
         campaign.status = "sent"
@@ -689,7 +692,7 @@ def bulk_send():
                 token = get_unsubscribe_token(campaign.id)
                 unsub_url = url_for("unsubscribe", token=token, _external=True)
                 subject = f"Special Offer from {b.business_name}"
-                if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type, unsubscribe_url=unsub_url):
+                if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type, unsubscribe_url=unsub_url, business_address=b.address or ""):
                     campaign.status = "sent"
                     sent_count += 1
         db.session.commit()
@@ -872,6 +875,24 @@ def generate_message():
         return jsonify({"success": True, "message": message})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+
+@app.route("/settings", methods=["GET", "POST"])
+def settings():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    if request.method == "POST":
+        b.business_name = request.form.get("business_name", b.business_name).strip() or b.business_name
+        b.owner_name = request.form.get("owner_name", b.owner_name).strip() or b.owner_name
+        b.address = request.form.get("address", "").strip()
+        try:
+            db.session.commit()
+            flash("Settings saved!", "success")
+        except:
+            db.session.rollback()
+            flash("Error saving settings.", "error")
+        return redirect("/settings")
+    return render_template("settings.html", business=b)
 
 @app.route("/upgrade")
 def upgrade():
