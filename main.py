@@ -150,6 +150,22 @@ class ContactMessage(db.Model):
 
 with app.app_context():
     db.create_all()
+    # Safely add columns that may be missing from existing databases
+    from sqlalchemy import text
+    migrations = [
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS address VARCHAR(300)",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS unsubscribed BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMP",
+    ]
+    for sql in migrations:
+        try:
+            db.session.execute(text(sql))
+        except Exception:
+            pass
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 # ============================================
 # HELPERS
