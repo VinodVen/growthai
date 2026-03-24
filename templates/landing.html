@@ -1,152 +1,291 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>GrowthAI | AI Marketing for Small Businesses</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    body {
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-      color: white;
-    }
-    .hero {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
-    .btn-custom {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      border: none;
-      color: white;
-    }
-    .btn-custom:hover {
-      color: white;
-      transform: translateY(-2px);
-    }
-    .card {
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.2);
-      backdrop-filter: blur(10px);
-    }
-    .card-body {
-      color: white;
-    }
-  </style>
-</head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GrowthAI | Send Promotions to Your Customers in 60 Seconds</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; }
 
+        /* NAVBAR */
+        .navbar { background: white; box-shadow: 0 2px 20px rgba(0,0,0,0.08); padding: 16px 0; }
+        .navbar-brand { font-size: 1.4rem; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .btn-nav-login { border: 2px solid #667eea; color: #667eea; border-radius: 8px; padding: 8px 20px; font-weight: 600; }
+        .btn-nav-login:hover { background: #667eea; color: white; }
+        .btn-nav-start { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 8px; padding: 8px 20px; font-weight: 600; }
+        .btn-nav-start:hover { color: white; opacity: 0.9; }
+
+        /* HERO */
+        .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 100px 0 80px; color: white; }
+        .hero h1 { font-size: 3.2rem; font-weight: 800; line-height: 1.2; }
+        .hero p.lead { font-size: 1.25rem; opacity: 0.9; max-width: 600px; }
+        .btn-hero { background: white; color: #667eea; border: none; border-radius: 10px; padding: 16px 36px; font-size: 1.1rem; font-weight: 700; }
+        .btn-hero:hover { color: #764ba2; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+        .btn-hero-outline { background: transparent; color: white; border: 2px solid white; border-radius: 10px; padding: 16px 36px; font-size: 1.1rem; font-weight: 700; }
+        .btn-hero-outline:hover { background: white; color: #667eea; }
+        .hero-badge { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 20px; padding: 6px 16px; font-size: 0.9rem; display: inline-block; margin-bottom: 20px; }
+
+        /* BUSINESSES */
+        .businesses { background: #f8f9ff; padding: 50px 0; }
+        .biz-tag { background: white; border: 1px solid #e0e0e0; border-radius: 25px; padding: 10px 20px; font-size: 0.95rem; font-weight: 600; display: inline-block; margin: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+        /* HOW IT WORKS */
+        .how { padding: 80px 0; }
+        .step-num { background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; margin: 0 auto 16px; }
+
+        /* FEATURES */
+        .features { background: #f8f9ff; padding: 80px 0; }
+        .feature-card { background: white; border-radius: 16px; padding: 30px; border: 1px solid #e8e8f0; height: 100%; transition: transform 0.2s; }
+        .feature-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(102,126,234,0.15); }
+        .feature-icon { font-size: 2.5rem; margin-bottom: 16px; }
+
+        /* PRICING */
+        .pricing { padding: 80px 0; }
+        .price-card { border-radius: 16px; padding: 36px; border: 2px solid #e8e8f0; text-align: center; height: 100%; transition: transform 0.2s; }
+        .price-card:hover { transform: translateY(-4px); }
+        .price-card.popular { border-color: #667eea; box-shadow: 0 12px 40px rgba(102,126,234,0.2); }
+        .popular-label { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 20px; padding: 4px 16px; font-size: 0.8rem; font-weight: 700; }
+        .price-num { font-size: 3rem; font-weight: 800; }
+        .btn-price { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 10px; padding: 14px; font-size: 1rem; font-weight: 700; width: 100%; }
+        .btn-price:hover { color: white; opacity: 0.9; }
+        .check { color: #28a745; font-weight: bold; margin-right: 6px; }
+
+        /* CTA */
+        .cta { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 80px 0; color: white; text-align: center; }
+
+        /* FOOTER */
+        footer { background: #1a1a2e; color: rgba(255,255,255,0.6); padding: 40px 0; text-align: center; }
+        footer a { color: rgba(255,255,255,0.6); text-decoration: none; }
+        footer a:hover { color: white; }
+    </style>
+</head>
 <body>
 
 <!-- NAVBAR -->
-<nav class="navbar navbar-dark sticky-top" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-  <div class="container-fluid">
-    <span class="navbar-brand mb-0 h1">🍽️ GrowthAI</span>
-    <div>
-      <a href="/login" class="btn btn-light btn-sm me-2">Login</a>
-      <a href="/register" class="btn btn-outline-light btn-sm">Register</a>
+<nav class="navbar navbar-expand-lg sticky-top">
+    <div class="container">
+        <a class="navbar-brand" href="/">GrowthAI</a>
+        <div class="d-flex gap-2">
+            <a href="/login" class="btn btn-nav-login">Login</a>
+            <a href="/register" class="btn btn-nav-start">Start Free</a>
+        </div>
     </div>
-  </div>
 </nav>
 
-<!-- HERO SECTION -->
-<div class="hero">
-  <div class="container">
-    <h1 class="display-4 mb-3">🚀 GrowthAI</h1>
-    <p class="lead mb-4">
-      AI-Powered Marketing for Small Businesses  
-      <br>
-      Restaurants • Furniture • Salons • Retail • Services
-    </p>
-
-    <div class="d-flex justify-content-center gap-3 mb-4 flex-wrap">
-      <a href="/register" class="btn btn-custom btn-lg">
-        Start Free Trial
-      </a>
-      <a href="/login" class="btn btn-outline-light btn-lg">
-        Login
-      </a>
-    </div>
-
-    <div>
-      <a href="/contact" class="text-info text-decoration-none me-3">
-        Contact Us
-      </a>
-      |
-      <a href="#pricing" class="text-info text-decoration-none ms-3">
-        Pricing
-      </a>
-    </div>
-  </div>
-</div>
-
-<!-- FEATURES SECTION -->
-<div class="container py-5">
-  <h2 class="text-center mb-5">Why GrowthAI?</h2>
-
-  <div class="row text-center">
-    <div class="col-md-4 mb-4">
-      <h5>⚡ AI Campaigns</h5>
-      <p class="text-muted">
-        Instantly generate birthday, loyalty and weekend promotions in seconds.
-      </p>
-    </div>
-
-    <div class="col-md-4 mb-4">
-      <h5>📧 Email Automation</h5>
-      <p class="text-muted">
-        Send personalized promotions directly to your customers.
-      </p>
-    </div>
-
-    <div class="col-md-4 mb-4">
-      <h5>📊 Campaign Tracking</h5>
-      <p class="text-muted">
-        View recent campaigns and track marketing activity.
-      </p>
-    </div>
-  </div>
-</div>
-
-<!-- PRICING SECTION -->
-<div id="pricing" class="py-5" style="background: rgba(0,0,0,0.3);">
-  <div class="container text-center">
-    <h2 class="mb-5">Simple Pricing</h2>
-
-    <div class="row justify-content-center">
-      <div class="col-md-4 mb-4">
-        <div class="card">
-          <div class="card-body">
-            <h4>Starter</h4>
-            <h2>$29<span class="fs-6">/month</span></h2>
-            <p>Up to 500 campaigns/month</p>
-            <p>Email marketing included</p>
-            <a href="/register" class="btn btn-custom w-100">Start Free</a>
-          </div>
+<!-- HERO -->
+<section class="hero">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-7">
+                <div class="hero-badge">Free to start — no credit card needed</div>
+                <h1 class="mb-4">Send Promotions to Your Customers in 60 Seconds</h1>
+                <p class="lead mb-5">GrowthAI helps small businesses bring customers back with AI-powered email and SMS campaigns. Upload your customer list and start sending in minutes.</p>
+                <div class="d-flex gap-3 flex-wrap">
+                    <a href="/register" class="btn btn-hero">Start Free Trial</a>
+                    <a href="/login" class="btn btn-hero-outline">Login</a>
+                </div>
+            </div>
+            <div class="col-lg-5 mt-5 mt-lg-0 text-center">
+                <div style="background: rgba(255,255,255,0.15); border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.3);">
+                    <div style="background: rgba(255,255,255,0.2); border-radius: 12px; padding: 16px; margin-bottom: 12px; text-align: left;">
+                        <small style="opacity: 0.8;">Come Back Offer sent to 48 customers</small>
+                        <div style="font-size: 1.3rem; font-weight: 700; margin-top: 4px;">48 emails delivered</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.2); border-radius: 12px; padding: 16px; margin-bottom: 12px; text-align: left;">
+                        <small style="opacity: 0.8;">Weekend Special — AI generated</small>
+                        <div style="font-size: 0.95rem; margin-top: 4px; opacity: 0.9;">"Hi Sarah! Special weekend deal at Mario's Grill — enjoy 20% off this Saturday only!"</div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.2); border-radius: 12px; padding: 16px; text-align: left;">
+                        <small style="opacity: 0.8;">Total customers imported</small>
+                        <div style="font-size: 1.3rem; font-weight: 700; margin-top: 4px;">243 customers</div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-
-      <div class="col-md-4 mb-4">
-        <div class="card">
-          <div class="card-body">
-            <h4>Pro</h4>
-            <h2>$59<span class="fs-6">/month</span></h2>
-            <p>Unlimited campaigns</p>
-            <p>Priority support</p>
-            <a href="/register" class="btn btn-custom w-100">Upgrade</a>
-          </div>
-        </div>
-      </div>
     </div>
-  </div>
-</div>
+</section>
+
+<!-- BUSINESSES -->
+<section class="businesses">
+    <div class="container text-center">
+        <p class="text-muted fw-bold mb-4">WORKS FOR ANY SMALL BUSINESS</p>
+        <div>
+            <span class="biz-tag">Restaurants</span>
+            <span class="biz-tag">Cafes</span>
+            <span class="biz-tag">Salons & Barbershops</span>
+            <span class="biz-tag">Retail Stores</span>
+            <span class="biz-tag">Gyms & Fitness</span>
+            <span class="biz-tag">Auto Repair</span>
+            <span class="biz-tag">Spas</span>
+            <span class="biz-tag">Food Trucks</span>
+            <span class="biz-tag">Boutiques</span>
+            <span class="biz-tag">Pizza & Takeout</span>
+            <span class="biz-tag">Nail Salons</span>
+            <span class="biz-tag">Any Local Business</span>
+        </div>
+    </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how">
+    <div class="container">
+        <h2 class="text-center fw-bold mb-2">How It Works</h2>
+        <p class="text-center text-muted mb-5">Three simple steps to bring your customers back</p>
+        <div class="row text-center">
+            <div class="col-md-4 mb-4">
+                <div class="step-num">1</div>
+                <h5 class="fw-bold mb-2">Import Your Customers</h5>
+                <p class="text-muted">Upload a CSV, Excel file, or just paste phone numbers and emails. Works with Square, Clover, Toast, and any software.</p>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="step-num">2</div>
+                <h5 class="fw-bold mb-2">Pick a Campaign</h5>
+                <p class="text-muted">Choose from Come Back Offer, Weekend Special, Lunch Deal, Birthday, Happy Hour, and more. AI writes the message for you.</p>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="step-num">3</div>
+                <h5 class="fw-bold mb-2">Send & Grow</h5>
+                <p class="text-muted">Send to one customer or all customers at once. Professional emails delivered directly to their inbox.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features">
+    <div class="container">
+        <h2 class="text-center fw-bold mb-2">Everything You Need</h2>
+        <p class="text-center text-muted mb-5">Built specifically for small business owners</p>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h5 class="fw-bold">AI Message Generation</h5>
+                    <p class="text-muted mb-0">Type a customer name and campaign type — AI writes a personalized message in seconds. No marketing experience needed.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">📤</div>
+                    <h5 class="fw-bold">Bulk Send to All Customers</h5>
+                    <p class="text-muted mb-0">Send one campaign to all your customers at once. Perfect for weekend specials or come back offers.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h5 class="fw-bold">Email & SMS</h5>
+                    <p class="text-muted mb-0">Send professional HTML emails and SMS text messages. Customers get your offer wherever they are.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">📥</div>
+                    <h5 class="fw-bold">Easy Customer Import</h5>
+                    <p class="text-muted mb-0">Paste phone numbers, upload CSV/Excel, or export from Square, Clover, Toast, QuickBooks, and more.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h5 class="fw-bold">9 Campaign Types</h5>
+                    <p class="text-muted mb-0">Come Back Offer, Weekend Special, Lunch Deal, Dinner Special, Birthday, Loyalty Reward, Happy Hour, and more.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h5 class="fw-bold">Simple Dashboard</h5>
+                    <p class="text-muted mb-0">See all your customers, campaigns sent, and quick actions in one place. No complexity, just results.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+    <div class="container">
+        <h2 class="text-center fw-bold mb-2">Simple Pricing</h2>
+        <p class="text-center text-muted mb-5">Start free, upgrade when you're ready</p>
+        <div class="row justify-content-center g-4">
+
+            <div class="col-md-4">
+                <div class="price-card">
+                    <h5 class="text-muted">Free</h5>
+                    <div class="price-num">$0</div>
+                    <p class="text-muted mb-4">Forever free</p>
+                    <ul class="list-unstyled text-start mb-4">
+                        <li class="mb-2"><span class="check">✓</span>50 customers</li>
+                        <li class="mb-2"><span class="check">✓</span>10 campaigns/month</li>
+                        <li class="mb-2"><span class="check">✓</span>AI message generation</li>
+                        <li class="mb-2"><span class="check">✓</span>Email marketing</li>
+                    </ul>
+                    <a href="/register" class="btn btn-price">Get Started Free</a>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="price-card popular">
+                    <div class="mb-2"><span class="popular-label">MOST POPULAR</span></div>
+                    <h5 class="text-muted">Starter</h5>
+                    <div class="price-num">$19</div>
+                    <p class="text-muted mb-4">per month</p>
+                    <ul class="list-unstyled text-start mb-4">
+                        <li class="mb-2"><span class="check">✓</span>500 customers</li>
+                        <li class="mb-2"><span class="check">✓</span>Unlimited campaigns</li>
+                        <li class="mb-2"><span class="check">✓</span>Bulk send to all</li>
+                        <li class="mb-2"><span class="check">✓</span>Email + SMS</li>
+                    </ul>
+                    <a href="/register" class="btn btn-price">Start Free Trial</a>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="price-card">
+                    <h5 class="text-muted">Pro</h5>
+                    <div class="price-num">$50</div>
+                    <p class="text-muted mb-4">per month</p>
+                    <ul class="list-unstyled text-start mb-4">
+                        <li class="mb-2"><span class="check">✓</span>Unlimited customers</li>
+                        <li class="mb-2"><span class="check">✓</span>Unlimited campaigns</li>
+                        <li class="mb-2"><span class="check">✓</span>Bulk send to all</li>
+                        <li class="mb-2"><span class="check">✓</span>Email + SMS</li>
+                        <li class="mb-2"><span class="check">✓</span>Priority support</li>
+                    </ul>
+                    <a href="/register" class="btn btn-price">Get Pro</a>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+    <div class="container">
+        <h2 class="fw-bold display-5 mb-3">Ready to Grow Your Business?</h2>
+        <p class="lead mb-5 opacity-75">Join small business owners sending smarter promotions with GrowthAI</p>
+        <a href="/register" class="btn btn-hero btn-lg px-5">Start Free — No Credit Card Needed</a>
+    </div>
+</section>
 
 <!-- FOOTER -->
-<footer class="text-center py-4" style="background: rgba(0,0,0,0.5); border-top: 1px solid rgba(255,255,255,0.1);">
-  <div class="container">
-    <p class="mb-2">© 2026 GrowthAI. All rights reserved.</p>
-    <a href="/contact" class="text-info text-decoration-none">Contact</a>
-  </div>
+<footer>
+    <div class="container">
+        <p class="fw-bold text-white mb-2">GrowthAI</p>
+        <p class="mb-3">AI-Powered Marketing for Small Businesses</p>
+        <div class="d-flex justify-content-center gap-4 mb-3">
+            <a href="/contact">Contact</a>
+            <a href="#pricing">Pricing</a>
+            <a href="/login">Login</a>
+            <a href="/register">Register</a>
+        </div>
+        <p class="mb-0" style="font-size: 0.85rem;">© 2026 GrowthAI. All rights reserved.</p>
+    </div>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
