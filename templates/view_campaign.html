@@ -16,6 +16,8 @@
         .status-scheduled { background: #cfe2ff; color: #084298; padding: 4px 12px; border-radius: 20px; }
         .status-failed { background: #f8d7da; color: #842029; padding: 4px 12px; border-radius: 20px; }
         .message-box { background: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 4px solid #667eea; line-height: 1.7; }
+        .btn-test { background: #f0f0ff; border: 1px solid #667eea; color: #667eea; }
+        .btn-test:hover { background: #667eea; color: white; }
     </style>
 </head>
 <body>
@@ -88,11 +90,50 @@
                         {% endif %}
                     {% endif %}
 
-                    <form method="POST" action="/delete-campaign/{{ campaign.id }}" onsubmit="return confirm('Delete this campaign?')">
-                        <button type="submit" class="btn btn-outline-danger btn-lg w-100">Delete Campaign</button>
+                    <!-- Test email -->
+                    <form method="POST" action="/test-email/{{ campaign.id }}">
+                        <button type="submit" class="btn btn-test w-100">Send Test Email to Myself</button>
                     </form>
 
-                    <a href="/campaigns" class="btn btn-outline-secondary btn-lg">← Back to Campaigns</a>
+                    <!-- Edit message (draft/scheduled only) -->
+                    {% if campaign.status in ('draft', 'scheduled') %}
+                    <button class="btn btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#editPanel">
+                        Edit Message / Schedule
+                    </button>
+                    <div class="collapse" id="editPanel">
+                        <form method="POST" action="/edit-campaign/{{ campaign.id }}" class="mt-2">
+                            <div class="mb-2">
+                                <label class="form-label fw-bold small">Campaign Type</label>
+                                <select class="form-select" name="campaign_type">
+                                    {% for key, label in campaign_types.items() %}
+                                    <option value="{{ key }}" {% if campaign.campaign_type == key %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label fw-bold small">Message</label>
+                                <textarea class="form-control" name="message" rows="4">{{ campaign.message }}</textarea>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label fw-bold small">Scheduled Time (optional)</label>
+                                <input type="datetime-local" class="form-control" name="scheduled_at"
+                                    value="{% if campaign.scheduled_at %}{{ campaign.scheduled_at.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    <!-- Clone -->
+                    <form method="POST" action="/clone-campaign/{{ campaign.id }}">
+                        <button type="submit" class="btn btn-outline-secondary w-100">Clone as New Draft</button>
+                    </form>
+
+                    <form method="POST" action="/delete-campaign/{{ campaign.id }}" onsubmit="return confirm('Delete this campaign?')">
+                        <button type="submit" class="btn btn-outline-danger w-100">Delete Campaign</button>
+                    </form>
+
+                    <a href="/campaigns" class="btn btn-outline-secondary w-100">← Back to Campaigns</a>
                 </div>
             </div>
         </div>

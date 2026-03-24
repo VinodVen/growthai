@@ -484,6 +484,28 @@ def add_customer():
             flash("Error adding customer.", "error")
     return render_template("add_customer.html")
 
+@app.route("/edit-customer/<int:customer_id>", methods=["POST"])
+def edit_customer(customer_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    customer = Customer.query.get(customer_id)
+    if not customer or customer.business_id != b.id:
+        flash("Customer not found.", "error")
+        return redirect("/customers")
+    customer.first_name = request.form.get("first_name", customer.first_name).strip() or customer.first_name
+    customer.last_name = request.form.get("last_name", "").strip()
+    customer.email = request.form.get("email", customer.email).strip() or customer.email
+    customer.phone = request.form.get("phone", "").strip()
+    customer.dob = request.form.get("dob", "").strip()
+    try:
+        db.session.commit()
+        flash("Customer updated.", "success")
+    except:
+        db.session.rollback()
+        flash("Error updating customer.", "error")
+    return redirect("/customers")
+
 @app.route("/delete-customer/<int:customer_id>", methods=["POST"])
 def delete_customer(customer_id):
     b = current_business()
@@ -704,6 +726,89 @@ def bulk_send():
         return redirect("/campaigns")
     customers_count = Customer.query.filter_by(business_id=b.id).count()
     return render_template("bulk_send.html", campaign_types=CAMPAIGN_TYPES, customers_count=customers_count)
+
+@app.route("/edit-campaign/<int:campaign_id>", methods=["POST"])
+def edit_campaign(campaign_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    campaign = Campaign.query.get(campaign_id)
+    if not campaign or campaign.business_id != b.id:
+        flash("Campaign not found.", "error")
+        return redirect("/campaigns")
+    if campaign.status == "sent":
+        flash("Cannot edit a sent campaign.", "error")
+        return redirect(f"/campaign/{campaign.id}")
+    campaign.message = request.form.get("message", campaign.message).strip() or campaign.message
+    campaign.campaign_type = request.form.get("campaign_type", campaign.campaign_type)
+    scheduled_at_str = request.form.get("scheduled_at", "").strip()
+    if scheduled_at_str:
+        try:
+            campaign.scheduled_at = datetime.strptime(scheduled_at_str, "%Y-%m-%dT%H:%M")
+            campaign.status = "scheduled"
+        except ValueError:
+            pass
+    elif campaign.status == "scheduled":
+        campaign.status = "draft"
+        campaign.scheduled_at = None
+    try:
+        db.session.commit()
+        flash("Campaign updated.", "success")
+    except:
+        db.session.rollback()
+        flash("Error updating campaign.", "error")
+    return redirect(f"/campaign/{campaign.id}")
+
+@app.route("/clone-campaign/<int:campaign_id>", methods=["POST"])
+def clone_campaign(campaign_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    original = Campaign.query.get(campaign_id)
+    if not original or original.business_id != b.id:
+        flash("Campaign not found.", "error")
+        return redirect("/campaigns")
+    clone = Campaign(
+        business_id=b.id,
+        customer_name=original.customer_name,
+        customer_email=original.customer_email,
+        customer_phone=original.customer_phone,
+        campaign_type=original.campaign_type,
+        message=original.message,
+        status="draft"
+    )
+    try:
+        db.session.add(clone)
+        db.session.commit()
+        flash("Campaign cloned as a new draft.", "success")
+        return redirect(f"/campaign/{clone.id}")
+    except:
+        db.session.rollback()
+        flash("Error cloning campaign.", "error")
+        return redirect(f"/campaign/{campaign_id}")
+
+@app.route("/test-email/<int:campaign_id>", methods=["POST"])
+def test_email(campaign_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    campaign = Campaign.query.get(campaign_id)
+    if not campaign or campaign.business_id != b.id:
+        flash("Campaign not found.", "error")
+        return redirect("/campaigns")
+    subject = f"[TEST] {b.business_name} — {CAMPAIGN_TYPES.get(campaign.campaign_type, 'Campaign')}"
+    success = send_email(
+        b.email, subject, campaign.message,
+        customer_name=b.owner_name,
+        business_name=b.business_name,
+        campaign_type=campaign.campaign_type,
+        business_address=b.address or ""
+    )
+    if success:
+        flash(f"Test email sent to {b.email}!", "success")
+    else:
+        flash("Test email failed. Check email configuration.", "error")
+    return redirect(f"/campaign/{campaign.id}")
 
 @app.route("/delete-campaign/<int:campaign_id>", methods=["POST"])
 def delete_campaign(campaign_id):
