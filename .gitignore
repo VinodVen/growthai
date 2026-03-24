@@ -1,0 +1,10 @@
+.env
+*.db
+instance/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+config.py
+"404.html and 500.html"
+add.customer.html

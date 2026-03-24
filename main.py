@@ -256,7 +256,7 @@ def send_email(to_email, subject, body, customer_name="", business_name="", camp
         if unsubscribe_url:
             msg["List-Unsubscribe"] = f"<{unsubscribe_url}>"
         msg.attach(MIMEText(body, "plain"))
-        html_body = build_html_email(business_name or "GrowthAI", customer_name or "Valued Customer", body, campaign_type, unsubscribe_url, business_address)
+        html_body = build_html_email(business_name or "Revvio", customer_name or "Valued Customer", body, campaign_type, unsubscribe_url, business_address)
         msg.attach(MIMEText(html_body, "html"))
 
         with smtplib.SMTP(smtp_server, smtp_port) as server:
