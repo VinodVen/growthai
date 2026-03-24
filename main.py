@@ -228,7 +228,11 @@ def build_html_email(business_name, customer_name, message, campaign_type, unsub
             </p>
         </div>
     </div>
-    <p style="text-align:center;color:#999;font-size:12px;">You received this because you're a valued customer of {business_name}.<br>{unsub_html}</p>
+    <p style="text-align:center;color:#999;font-size:12px;">
+        You received this because you're a valued customer of {business_name}.<br>
+        GrowthAI · 2261 Market Street #4667 · San Francisco, CA 94114<br>
+        {unsub_html}
+    </p>
     </body></html>
     """
 
@@ -328,6 +332,14 @@ def landing():
         return render_template("landing.html")
     except Exception as e:
         return f"<h1>Error: {e}</h1>", 500
+
+@app.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+@app.route("/terms")
+def terms():
+    return render_template("terms.html")
 
 @app.route("/contact", methods=["GET", "POST"])
 def contact():
