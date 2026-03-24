@@ -231,18 +231,42 @@ def build_html_email(business_name, customer_name, message, campaign_type, unsub
     if unsubscribe_url:
         unsub_html = f' · <a href="{unsubscribe_url}" style="color:#aaa;font-size:11px;">Unsubscribe</a>'
     address_line = business_address if business_address else "8105 Rasor Blvd Suite 280 · Plano, TX 75024"
+    cta_labels = {
+        "come_back":  "Come Back Today!",
+        "weekend":    "Visit Us This Weekend!",
+        "lunch":      "Join Us for Lunch!",
+        "dinner":     "Reserve Your Table!",
+        "birthday":   "Claim Your Birthday Gift!",
+        "loyalty":    "Claim Your Reward!",
+        "happy_hour": "Join Happy Hour!",
+        "new_item":   "Try It Today!",
+        "promotion":  "Claim This Offer!",
+    }
+    cta_text = cta_labels.get(campaign_type, "Visit Us Today!")
+    header_labels = {
+        "come_back":  "We Miss You!",
+        "weekend":    "Weekend Special",
+        "lunch":      "Lunch Special",
+        "dinner":     "Dinner Special",
+        "birthday":   "Happy Birthday!",
+        "loyalty":    "You're a VIP!",
+        "happy_hour": "Happy Hour!",
+        "new_item":   "Something New!",
+        "promotion":  "Special Offer",
+    }
+    header_text = header_labels.get(campaign_type, "Special Offer Just For You")
     return f"""
     <html><body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;background:#f5f5f5;">
     <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);padding:30px;border-radius:12px;text-align:center;margin-bottom:20px;">
         <h1 style="color:white;margin:0;font-size:26px;">{business_name}</h1>
-        <p style="color:rgba(255,255,255,0.9);margin:8px 0 0 0;">Special Offer Just For You</p>
+        <p style="color:rgba(255,255,255,0.9);margin:8px 0 0 0;">{header_text}</p>
     </div>
     <div style="background:white;padding:30px;border-radius:12px;margin-bottom:20px;">
         <p style="font-size:16px;color:#333;">Hi <strong>{customer_name}</strong>,</p>
         <p style="font-size:16px;color:#555;line-height:1.7;">{message}</p>
         <div style="text-align:center;margin-top:25px;">
             <p style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:14px 30px;border-radius:8px;display:inline-block;font-size:16px;font-weight:bold;">
-                Visit Us Today!
+                {cta_text}
             </p>
         </div>
     </div>
