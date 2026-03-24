@@ -74,6 +74,21 @@
         {% endif %}
     {% endwith %}
 
+    {% if session.get('is_demo') %}
+    <div class="alert mb-3" style="background: rgba(255,255,255,0.95); border: 2px solid #fda085; border-radius: 12px;">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+                <strong>👋 You're in Demo Mode</strong> — explore freely, no real emails or SMS are sent.
+                <span class="text-muted ms-1">This is Mario's Grill with 20 sample customers.</span>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/register" class="btn btn-sm fw-bold" style="background: linear-gradient(135deg,#667eea,#764ba2); color:white;">Sign Up Free →</a>
+                <a href="/login" class="btn btn-sm btn-outline-secondary">Login</a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- HEADER -->
     <div class="header">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">

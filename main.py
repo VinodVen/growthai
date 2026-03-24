@@ -7,6 +7,7 @@ import hashlib
 import base64
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, session, url_for, flash, jsonify
+from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -16,6 +17,7 @@ from email.mime.multipart import MIMEMultipart
 load_dotenv()
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 ENV = os.getenv("FLASK_ENV", "development")
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
@@ -617,6 +619,9 @@ def send_campaign(campaign_id):
     if not campaign or campaign.business_id != b.id:
         flash("Campaign not found.", "error")
         return redirect("/campaigns")
+    if session.get("is_demo"):
+        flash("Demo mode — emails are not sent. Sign up for a free account to send real campaigns!", "success")
+        return redirect(f"/campaign/{campaign.id}")
     # Check if customer is unsubscribed
     customer = Customer.query.filter_by(business_id=b.id, email=campaign.customer_email).first()
     if customer and customer.unsubscribed:
@@ -650,6 +655,9 @@ def send_sms_campaign(campaign_id):
     b = current_business()
     if not b:
         return redirect("/login")
+    if session.get("is_demo"):
+        flash("Demo mode — SMS not sent. Sign up for a free account to send real campaigns!", "success")
+        return redirect(f"/campaign/{campaign_id}")
     if b.plan == "free":
         flash("SMS requires Starter or Pro plan.", "error")
         return redirect("/upgrade")
@@ -672,6 +680,9 @@ def bulk_send():
     b = current_business()
     if not b:
         return redirect("/login")
+    if session.get("is_demo") and request.method == "POST":
+        flash("Demo mode — emails not sent. Sign up for a free account to send real campaigns!", "success")
+        return redirect("/bulk-send")
     if request.method == "POST":
         campaign_type = request.form.get("campaign_type", "promotion")
         use_ai = request.form.get("use_ai") == "on"
@@ -792,6 +803,9 @@ def test_email(campaign_id):
     b = current_business()
     if not b:
         return redirect("/login")
+    if session.get("is_demo"):
+        flash("Demo mode — test email not sent. Sign up for a free account!", "success")
+        return redirect(f"/campaign/{campaign_id}")
     campaign = Campaign.query.get(campaign_id)
     if not campaign or campaign.business_id != b.id:
         flash("Campaign not found.", "error")
@@ -1076,6 +1090,100 @@ def load_demo():
         flash(f"Error loading demo data: {e}", "error")
 
     return redirect("/dashboard")
+
+DEMO_EMAIL = "demo@revvio.ai"
+
+@app.route("/demo-login")
+def demo_login():
+    """One-click demo: creates/resets the demo account and logs in."""
+    # Find or create demo business
+    demo = Business.query.filter_by(email=DEMO_EMAIL).first()
+    if not demo:
+        hashed = bcrypt.hashpw(b"demo-revvio-2024", bcrypt.gensalt()).decode("utf-8")
+        demo = Business(
+            business_name="Mario's Grill",
+            owner_name="Demo User",
+            email=DEMO_EMAIL,
+            password=hashed,
+            plan="starter",
+            address="123 Main St, Dallas, TX 75201"
+        )
+        db.session.add(demo)
+        db.session.flush()  # get demo.id before commit
+
+    # Wipe and re-seed demo data
+    Customer.query.filter(Customer.business_id == demo.id).delete(synchronize_session=False)
+    Campaign.query.filter(Campaign.business_id == demo.id).delete(synchronize_session=False)
+
+    DEMO_CUSTOMERS = [
+        {"first": "James",   "last": "Martinez",  "email": "james.martinez@demo.com",  "phone": "+12145550101"},
+        {"first": "Priya",   "last": "Sharma",    "email": "priya.sharma@demo.com",    "phone": "+12145550102"},
+        {"first": "Carlos",  "last": "Reyes",     "email": "carlos.reyes@demo.com",    "phone": "+12145550103"},
+        {"first": "Ashley",  "last": "Thompson",  "email": "ashley.t@demo.com",        "phone": "+12145550104"},
+        {"first": "Michael", "last": "Chen",      "email": "michael.chen@demo.com",    "phone": "+12145550105"},
+        {"first": "Fatima",  "last": "Al-Hassan", "email": "fatima.h@demo.com",        "phone": "+12145550106"},
+        {"first": "David",   "last": "Williams",  "email": "david.w@demo.com",         "phone": "+12145550107"},
+        {"first": "Sofia",   "last": "Nguyen",    "email": "sofia.nguyen@demo.com",    "phone": "+12145550108"},
+        {"first": "Kevin",   "last": "Johnson",   "email": "kevin.j@demo.com",         "phone": "+12145550109"},
+        {"first": "Maria",   "last": "Garcia",    "email": "maria.garcia@demo.com",    "phone": "+12145550110"},
+        {"first": "Tyler",   "last": "Brooks",    "email": "tyler.brooks@demo.com",    "phone": "+12145550111"},
+        {"first": "Aisha",   "last": "Patel",     "email": "aisha.patel@demo.com",     "phone": "+12145550112"},
+        {"first": "Ryan",    "last": "Kim",       "email": "ryan.kim@demo.com",        "phone": "+12145550113"},
+        {"first": "Jessica", "last": "Davis",     "email": "jessica.d@demo.com",       "phone": "+12145550114"},
+        {"first": "Brandon", "last": "Lee",       "email": "brandon.lee@demo.com",     "phone": "+12145550115"},
+        {"first": "Natalie", "last": "Robinson",  "email": "natalie.r@demo.com",       "phone": "+12145550116"},
+        {"first": "Omar",    "last": "Hassan",    "email": "omar.hassan@demo.com",     "phone": "+12145550117"},
+        {"first": "Lauren",  "last": "Mitchell",  "email": "lauren.m@demo.com",        "phone": "+12145550118"},
+        {"first": "Ethan",   "last": "Cooper",    "email": "ethan.c@demo.com",         "phone": "+12145550119"},
+        {"first": "Rachel",  "last": "Torres",    "email": "rachel.t@demo.com",        "phone": "+12145550120"},
+    ]
+    DEMO_CAMPAIGNS = [
+        {"name": "James Martinez",   "email": "james.martinez@demo.com",  "phone": "+12145550101", "type": "come_back",  "status": "sent",
+         "msg": "Hey James! We miss you at Mario's Grill! Come back this week and enjoy 15% off your next visit. Use code: COMEBACK15"},
+        {"name": "Priya Sharma",     "email": "priya.sharma@demo.com",    "phone": "+12145550102", "type": "birthday",   "status": "sent",
+         "msg": "Happy Birthday Priya! From all of us at Mario's Grill, enjoy 20% off your next visit. Use code: BDAY20"},
+        {"name": "Carlos Reyes",     "email": "carlos.reyes@demo.com",    "phone": "+12145550103", "type": "weekend",    "status": "sent",
+         "msg": "Carlos, this weekend only — Mario's Grill is running an exclusive special for our regulars! Come in Saturday or Sunday."},
+        {"name": "Ashley Thompson",  "email": "ashley.t@demo.com",        "phone": "+12145550104", "type": "loyalty",    "status": "sent",
+         "msg": "Ashley, you're one of our most valued customers at Mario's Grill! Your exclusive loyalty reward is waiting — ask us when you visit!"},
+        {"name": "Michael Chen",     "email": "michael.chen@demo.com",    "phone": "+12145550105", "type": "lunch",      "status": "sent",
+         "msg": "Michael, join us for lunch at Mario's Grill! Fresh daily specials and your favorite dishes ready to go. Come see us!"},
+        {"name": "Fatima Al-Hassan", "email": "fatima.h@demo.com",        "phone": "+12145550106", "type": "new_item",   "status": "sent",
+         "msg": "Fatima, exciting news! Mario's Grill just launched something new and we think you're going to love it. Come in and be first to try it!"},
+        {"name": "David Williams",   "email": "david.w@demo.com",         "phone": "+12145550107", "type": "happy_hour", "status": "sent",
+         "msg": "David! Happy Hour at Mario's Grill this week — amazing drinks, great bites, unbeatable prices. Bring a friend!"},
+        {"name": "Sofia Nguyen",     "email": "sofia.nguyen@demo.com",    "phone": "+12145550108", "type": "dinner",     "status": "sent",
+         "msg": "Sofia, treat yourself tonight! Mario's Grill has a special dinner offer just for you — exceptional food and a memorable evening."},
+        {"name": "Kevin Johnson",    "email": "kevin.j@demo.com",         "phone": "+12145550109", "type": "promotion",  "status": "sent",
+         "msg": "Kevin, Mario's Grill has an exclusive promotion this week for VIP customers! Visit us and mention this message at the door."},
+        {"name": "Maria Garcia",     "email": "maria.garcia@demo.com",    "phone": "+12145550110", "type": "come_back",  "status": "draft",
+         "msg": "Maria, it's been a while and we miss you! Come back to Mario's Grill this week and we'll treat you like a VIP."},
+        {"name": "Tyler Brooks",     "email": "tyler.brooks@demo.com",    "phone": "+12145550111", "type": "weekend",    "status": "draft",
+         "msg": "Tyler! Big weekend at Mario's Grill — something special planned and we want YOU there. Saturday and Sunday only!"},
+    ]
+
+    for c in DEMO_CUSTOMERS:
+        db.session.add(Customer(
+            business_id=demo.id, first_name=c["first"], last_name=c["last"],
+            email=c["email"], phone=c["phone"]
+        ))
+    for c in DEMO_CAMPAIGNS:
+        db.session.add(Campaign(
+            business_id=demo.id, customer_name=c["name"], customer_email=c["email"],
+            customer_phone=c["phone"], campaign_type=c["type"],
+            message=c["msg"], status=c["status"]
+        ))
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return f"Demo setup error: {e}", 500
+
+    session["user_id"] = demo.id
+    session["is_demo"] = True
+    session.permanent = True
+    return redirect("/dashboard")
+
 
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
