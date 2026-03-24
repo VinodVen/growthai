@@ -236,7 +236,8 @@ def process_scheduled_campaigns():
                 business_phone=b.phone or "",
                 business_website=b.website or "",
                 tracking_pixel_url=pixel_url,
-                click_tracking_url=click_url
+                click_tracking_url=click_url,
+                business_reply_email=b.email
             )
             campaign.status = "sent" if success else "failed"
         if pending:
@@ -301,35 +302,62 @@ def build_html_email(business_name, customer_name, message, campaign_type, unsub
     </body></html>
     """
 
-def send_email(to_email, subject, body, customer_name="", business_name="", campaign_type="promotion", unsubscribe_url="", business_address="", business_phone="", business_website="", tracking_pixel_url="", click_tracking_url=""):
-    try:
-        smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-        smtp_port = int(os.getenv("SMTP_PORT", 587))
-        sender_email = os.getenv("SENDER_EMAIL")
-        sender_password = os.getenv("SENDER_PASSWORD")
+def send_email(to_email, subject, body, customer_name="", business_name="", campaign_type="promotion", unsubscribe_url="", business_address="", business_phone="", business_website="", tracking_pixel_url="", click_tracking_url="", business_reply_email=""):
+    from_name = business_name or "Revvio"
+    html_body = build_html_email(from_name, customer_name or "Valued Customer", body, campaign_type, unsubscribe_url, business_address, business_phone, business_website, tracking_pixel_url, click_tracking_url)
 
-        if not all([sender_email, sender_password]):
-            print("Email not configured")
+    sendgrid_key = os.getenv("SENDGRID_API_KEY")
+    if sendgrid_key:
+        # Option 2: SendGrid — sends from mail.revvio.ai with business name
+        try:
+            import sendgrid as sg_module
+            from sendgrid.helpers.mail import Mail, Email, To, ReplyTo
+            from_email = os.getenv("SENDGRID_FROM_EMAIL", "noreply@mail.revvio.ai")
+            message = Mail(
+                from_email=Email(from_email, from_name),
+                to_emails=To(to_email),
+                subject=subject,
+                plain_text_content=body,
+                html_content=html_body,
+            )
+            if business_reply_email:
+                message.reply_to = ReplyTo(business_reply_email, from_name)
+            if unsubscribe_url:
+                message.header = {"List-Unsubscribe": f"<{unsubscribe_url}>"}
+            sg = sg_module.SendGridAPIClient(api_key=sendgrid_key)
+            response = sg.send(message)
+            return response.status_code in (200, 202)
+        except Exception as e:
+            print(f"SendGrid error: {e}")
             return False
-
-        msg = MIMEMultipart("alternative")
-        msg["From"] = sender_email
-        msg["To"] = to_email
-        msg["Subject"] = subject
-        if unsubscribe_url:
-            msg["List-Unsubscribe"] = f"<{unsubscribe_url}>"
-        msg.attach(MIMEText(body, "plain"))
-        html_body = build_html_email(business_name or "Revvio", customer_name or "Valued Customer", body, campaign_type, unsubscribe_url, business_address, business_phone, business_website, tracking_pixel_url, click_tracking_url)
-        msg.attach(MIMEText(html_body, "html"))
-
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(sender_email, sender_password)
-            server.send_message(msg)
-        return True
-    except Exception as e:
-        print(f"Email error: {e}")
-        return False
+    else:
+        # Option 1: SMTP — From name is business name, Reply-To is business email
+        try:
+            smtp_server = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+            smtp_port = int(os.getenv("SMTP_PORT", 587))
+            sender_email = os.getenv("SENDER_EMAIL")
+            sender_password = os.getenv("SENDER_PASSWORD")
+            if not all([sender_email, sender_password]):
+                print("Email not configured")
+                return False
+            msg = MIMEMultipart("alternative")
+            msg["From"] = f'"{from_name}" <{sender_email}>'
+            msg["To"] = to_email
+            msg["Subject"] = subject
+            if business_reply_email:
+                msg["Reply-To"] = business_reply_email
+            if unsubscribe_url:
+                msg["List-Unsubscribe"] = f"<{unsubscribe_url}>"
+            msg.attach(MIMEText(body, "plain"))
+            msg.attach(MIMEText(html_body, "html"))
+            with smtplib.SMTP(smtp_server, smtp_port) as server:
+                server.starttls()
+                server.login(sender_email, sender_password)
+                server.send_message(msg)
+            return True
+        except Exception as e:
+            print(f"Email error: {e}")
+            return False
 
 def send_sms(to_phone, message):
     if not twilio_client or not twilio_phone:
@@ -733,7 +761,8 @@ def send_campaign(campaign_id):
         business_phone=b.phone or "",
         business_website=b.website or "",
         tracking_pixel_url=pixel_url,
-        click_tracking_url=click_url
+        click_tracking_url=click_url,
+        business_reply_email=b.email
     )
     if success:
         campaign.status = "sent"
@@ -824,7 +853,7 @@ def bulk_send():
                 pixel_url = url_for("track_open", campaign_id=campaign.id, _external=True)
                 click_url = url_for("track_click", campaign_id=campaign.id, _external=True)
                 subject = f"Special Offer from {b.business_name}"
-                if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type, unsubscribe_url=unsub_url, business_address=b.address or "", business_phone=b.phone or "", business_website=b.website or "", tracking_pixel_url=pixel_url, click_tracking_url=click_url):
+                if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type, unsubscribe_url=unsub_url, business_address=b.address or "", business_phone=b.phone or "", business_website=b.website or "", tracking_pixel_url=pixel_url, click_tracking_url=click_url, business_reply_email=b.email):
                     campaign.status = "sent"
                     sent_count += 1
         db.session.commit()
@@ -916,8 +945,9 @@ def test_email(campaign_id):
         business_name=b.business_name,
         campaign_type=campaign.campaign_type,
         business_address=b.address or "",
-                business_phone=b.phone or "",
-                business_website=b.website or ""
+        business_phone=b.phone or "",
+        business_website=b.website or "",
+        business_reply_email=b.email
     )
     if success:
         flash(f"Test email sent to {b.email}!", "success")
