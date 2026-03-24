@@ -774,9 +774,7 @@ def bulk_send():
                 token = get_unsubscribe_token(campaign.id)
                 unsub_url = url_for("unsubscribe", token=token, _external=True)
                 subject = f"Special Offer from {b.business_name}"
-                if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type, unsubscribe_url=unsub_url, business_address=b.address or "", business_phone=b.phone or "", business_website=b.website or "",
-                business_phone=b.phone or "",
-                business_website=b.website or ""):
+                if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type, unsubscribe_url=unsub_url, business_address=b.address or "", business_phone=b.phone or "", business_website=b.website or ""):
                     campaign.status = "sent"
                     sent_count += 1
         db.session.commit()
