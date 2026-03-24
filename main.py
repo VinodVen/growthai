@@ -230,7 +230,7 @@ def build_html_email(business_name, customer_name, message, campaign_type, unsub
     </div>
     <p style="text-align:center;color:#999;font-size:12px;">
         You received this because you're a valued customer of {business_name}.<br>
-        GrowthAI · 2261 Market Street #4667 · San Francisco, CA 94114<br>
+        GrowthAI · 8105 Rasor Blvd Suite 280 · Plano, TX 75024<br>
         {unsub_html}
     </p>
     </body></html>
