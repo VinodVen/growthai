@@ -1049,8 +1049,8 @@ def upload_customers():
                 business_id=b.id,
                 first_name=first_name,
                 last_name=last_name,
-                email=email or f"noemail_{added}@placeholder.com",
-                phone=phone,
+                email=email or None,
+                phone=phone or None,
             )
             db.session.add(customer)
             added += 1
@@ -1107,8 +1107,8 @@ def paste_customers():
         customer = Customer(
             business_id=b.id,
             first_name=default_name,
-            email=email or f"nophone_{added}@placeholder.com",
-            phone=phone,
+            email=email or None,
+            phone=phone or None,
         )
         db.session.add(customer)
         added += 1
