@@ -232,6 +232,22 @@ with app.app_context():
         for key, label, order in defaults:
             db.session.add(CampaignTypeModel(key=key, label=label, sort_order=order))
         db.session.commit()
+    else:
+        # Ensure newer campaign types exist on existing deployments
+        new_types = [
+            ("invitation",    "Business Invitation",    9),
+            ("hotel_stay",    "Hotel Stay Offer",       11),
+            ("hotel_upgrade", "Room Upgrade Deal",      12),
+            ("hotel_event",   "Event / Package Deal",   13),
+            ("hotel_loyalty", "Guest Loyalty Reward",   14),
+        ]
+        changed = False
+        for key, label, order in new_types:
+            if not CampaignTypeModel.query.filter_by(key=key).first():
+                db.session.add(CampaignTypeModel(key=key, label=label, sort_order=order))
+                changed = True
+        if changed:
+            db.session.commit()
 
 # ============================================
 # HELPERS
