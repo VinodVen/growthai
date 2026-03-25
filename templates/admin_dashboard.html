@@ -82,6 +82,75 @@
         </div>
     </div>
 
+    <!-- Campaign Types Management -->
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <small class="section-title">Campaign Types</small>
+    </div>
+    <div class="card mb-5" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px;">
+        <div class="card-body p-3">
+            <!-- Add new -->
+            <form method="POST" action="/admin/campaign-types/add" class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" name="key" placeholder="key (e.g. vip_offer)" required>
+                    <small class="text-muted" style="font-size:0.7rem;">Unique key, no spaces</small>
+                </div>
+                <div class="col-md-5">
+                    <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" name="label" placeholder="Label (e.g. VIP Member Offer)" required>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-sm btn-primary w-100">+ Add Type</button>
+                </div>
+            </form>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}{% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show py-2 mb-2">
+                    {{ message }}<button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}{% endif %}
+            {% endwith %}
+            <!-- Existing types -->
+            <table class="table table-dark table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th style="font-size:0.7rem;">KEY</th>
+                        <th style="font-size:0.7rem;">LABEL</th>
+                        <th style="font-size:0.7rem;">STATUS</th>
+                        <th style="font-size:0.7rem;">ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for ct in campaign_types %}
+                <tr>
+                    <td><code style="color:#a78bfa; font-size:0.8rem;">{{ ct.key }}</code></td>
+                    <td>
+                        <form method="POST" action="/admin/campaign-types/edit/{{ ct.id }}" class="d-flex gap-2 align-items-center">
+                            <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" name="label" value="{{ ct.label }}" style="max-width:200px;">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" name="active" {% if ct.active %}checked{% endif %}>
+                                <label class="form-check-label text-muted small">Active</label>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-outline-light py-0 px-2">Save</button>
+                        </form>
+                    </td>
+                    <td>
+                        {% if ct.active %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Hidden</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="POST" action="/admin/campaign-types/delete/{{ ct.id }}" onsubmit="return confirm('Delete {{ ct.label }}?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger py-0 px-2">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- All Businesses -->
     <div class="mb-2"><small class="section-title">All Businesses</small></div>
     <div class="card bg-transparent border-0 mb-5">

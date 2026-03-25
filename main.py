@@ -156,6 +156,15 @@ class ContactMessage(db.Model):
     message = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class CampaignTypeModel(db.Model):
+    __tablename__ = "campaign_type_options"
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False)
+    label = db.Column(db.String(100), nullable=False)
+    active = db.Column(db.Boolean, default=True)
+    sort_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 with app.app_context():
     db.create_all()
     # Safely add columns that may be missing from existing PostgreSQL databases
@@ -179,10 +188,32 @@ with app.app_context():
                 conn.execute(text(sql))
         except Exception as e:
             print(f"Migration skipped: {e}")
+    # Seed default campaign types if table is empty
+    if CampaignTypeModel.query.count() == 0:
+        defaults = [
+            ("come_back",  "Come Back Offer",      0),
+            ("weekend",    "Weekend Special",       1),
+            ("lunch",      "Lunch Deal",            2),
+            ("dinner",     "Dinner Special",        3),
+            ("birthday",   "Birthday Special",      4),
+            ("loyalty",    "Loyalty Reward",        5),
+            ("happy_hour", "Happy Hour",            6),
+            ("new_item",   "New Item Launch",       7),
+            ("promotion",  "General Promotion",     8),
+            ("invitation", "Business Invitation",   9),
+            ("custom",     "Custom Message",        10),
+        ]
+        for key, label, order in defaults:
+            db.session.add(CampaignTypeModel(key=key, label=label, sort_order=order))
+        db.session.commit()
 
 # ============================================
 # HELPERS
 # ============================================
+
+def get_campaign_types():
+    types = CampaignTypeModel.query.filter_by(active=True).order_by(CampaignTypeModel.sort_order, CampaignTypeModel.label).all()
+    return {t.key: t.label for t in types}
 
 def current_business():
     if "user_id" not in session:
@@ -530,7 +561,7 @@ def dashboard():
         plan=b.plan,
         campaigns=campaigns,
         customer_limit=customer_limit,
-        campaign_types=CAMPAIGN_TYPES,
+        campaign_types=get_campaign_types(),
     )
 
 @app.route("/customers")
@@ -624,7 +655,7 @@ def campaigns():
     if not b:
         return redirect("/login")
     campaigns_list = Campaign.query.filter_by(business_id=b.id).order_by(Campaign.created_at.desc()).all()
-    return render_template("campaigns.html", campaigns=campaigns_list, campaign_types=CAMPAIGN_TYPES)
+    return render_template("campaigns.html", campaigns=campaigns_list, campaign_types=get_campaign_types())
 
 @app.route("/create-campaign", methods=["GET", "POST"])
 def create_campaign():
@@ -679,7 +710,7 @@ def create_campaign():
             db.session.rollback()
             flash("Error creating campaign.", "error")
     customers_list = Customer.query.filter_by(business_id=b.id).all()
-    return render_template("create_campaign.html", campaign_types=CAMPAIGN_TYPES, customers=customers_list)
+    return render_template("create_campaign.html", campaign_types=get_campaign_types(), customers=customers_list)
 
 @app.route("/campaign/<int:campaign_id>")
 def view_campaign(campaign_id):
@@ -690,7 +721,7 @@ def view_campaign(campaign_id):
     if not campaign or campaign.business_id != b.id:
         flash("Campaign not found.", "error")
         return redirect("/campaigns")
-    return render_template("view_campaign.html", campaign=campaign, plan=b.plan, campaign_types=CAMPAIGN_TYPES)
+    return render_template("view_campaign.html", campaign=campaign, plan=b.plan, campaign_types=get_campaign_types())
 
 @app.route("/unsubscribe/<token>")
 def unsubscribe(token):
@@ -856,7 +887,7 @@ def quick_sms():
             flash("SMS not sent. Check Twilio configuration.", "error")
         return redirect("/quick-sms")
     customers_list = Customer.query.filter_by(business_id=b.id).filter(Customer.phone != None).filter(Customer.phone != "").order_by(Customer.first_name).all()
-    return render_template("quick_sms.html", campaign_types=CAMPAIGN_TYPES, customers=customers_list, plan=b.plan)
+    return render_template("quick_sms.html", campaign_types=get_campaign_types(), customers=customers_list, plan=b.plan)
 
 @app.route("/bulk-send", methods=["GET", "POST"])
 def bulk_send():
@@ -928,7 +959,7 @@ def bulk_send():
             flash(f"Bulk send complete! Sent to {sent_count}/{len(customers_list)} customers{note_str}.", "success")
         return redirect("/campaigns")
     customers_count = Customer.query.filter_by(business_id=b.id).count()
-    return render_template("bulk_send.html", campaign_types=CAMPAIGN_TYPES, customers_count=customers_count)
+    return render_template("bulk_send.html", campaign_types=get_campaign_types(), customers_count=customers_count)
 
 @app.route("/edit-campaign/<int:campaign_id>", methods=["POST"])
 def edit_campaign(campaign_id):
@@ -1002,7 +1033,7 @@ def test_email(campaign_id):
     if not campaign or campaign.business_id != b.id:
         flash("Campaign not found.", "error")
         return redirect("/campaigns")
-    subject = f"[TEST] {b.business_name} — {CAMPAIGN_TYPES.get(campaign.campaign_type, 'Campaign')}"
+    subject = f"[TEST] {b.business_name} — {get_campaign_types().get(campaign.campaign_type, 'Campaign')}"
     success = send_email(
         b.email, subject, campaign.message,
         customer_name=b.owner_name,
@@ -1410,7 +1441,7 @@ def analytics():
         s = type_stats[t]["sent"]
         type_stats[t]["open_rate"] = round(type_stats[t]["opens"] / s * 100, 1) if s else 0
         type_stats[t]["click_rate"] = round(type_stats[t]["clicks"] / s * 100, 1) if s else 0
-        type_stats[t]["label"] = CAMPAIGN_TYPES.get(t, t)
+        type_stats[t]["label"] = get_campaign_types().get(t, t)
 
     # Last 30 days daily sends
     today = datetime.utcnow().date()
@@ -1446,7 +1477,7 @@ def analytics():
         daily_labels=daily_labels,
         daily_data=daily_data,
         top_customers=top_customers,
-        campaign_types=CAMPAIGN_TYPES,
+        campaign_types=get_campaign_types(),
     )
 
 @app.route("/settings", methods=["GET", "POST"])
@@ -1593,6 +1624,7 @@ def admin_dashboard():
         "starter": sum(1 for b in businesses if b.plan == "starter"),
         "pro": sum(1 for b in businesses if b.plan == "pro"),
     }
+    all_campaign_types = CampaignTypeModel.query.order_by(CampaignTypeModel.sort_order, CampaignTypeModel.label).all()
     return render_template("admin_dashboard.html",
         stats=stats,
         total_businesses=total_businesses,
@@ -1600,7 +1632,51 @@ def admin_dashboard():
         total_sent=total_sent,
         total_opens=total_opens,
         plan_counts=plan_counts,
+        campaign_types=all_campaign_types,
     )
+
+@app.route("/admin/campaign-types/add", methods=["POST"])
+def admin_add_campaign_type():
+    if not admin_required():
+        return redirect("/admin/login")
+    key = request.form.get("key", "").strip().lower().replace(" ", "_")
+    label = request.form.get("label", "").strip()
+    if not key or not label:
+        flash("Key and label are required.", "error")
+        return redirect("/admin/dashboard")
+    if CampaignTypeModel.query.filter_by(key=key).first():
+        flash(f"Key '{key}' already exists.", "error")
+        return redirect("/admin/dashboard")
+    max_order = db.session.query(db.func.max(CampaignTypeModel.sort_order)).scalar() or 0
+    db.session.add(CampaignTypeModel(key=key, label=label, sort_order=max_order + 1))
+    db.session.commit()
+    flash(f"Campaign type '{label}' added.", "success")
+    return redirect("/admin/dashboard")
+
+@app.route("/admin/campaign-types/edit/<int:type_id>", methods=["POST"])
+def admin_edit_campaign_type(type_id):
+    if not admin_required():
+        return redirect("/admin/login")
+    ct = CampaignTypeModel.query.get(type_id)
+    if not ct:
+        flash("Not found.", "error")
+        return redirect("/admin/dashboard")
+    ct.label = request.form.get("label", ct.label).strip() or ct.label
+    ct.active = request.form.get("active") == "on"
+    db.session.commit()
+    flash("Updated.", "success")
+    return redirect("/admin/dashboard")
+
+@app.route("/admin/campaign-types/delete/<int:type_id>", methods=["POST"])
+def admin_delete_campaign_type(type_id):
+    if not admin_required():
+        return redirect("/admin/login")
+    ct = CampaignTypeModel.query.get(type_id)
+    if ct:
+        db.session.delete(ct)
+        db.session.commit()
+        flash(f"Deleted '{ct.label}'.", "success")
+    return redirect("/admin/dashboard")
 
 if __name__ == "__main__":
     with app.app_context():
