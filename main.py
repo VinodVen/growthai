@@ -257,6 +257,54 @@ def get_campaign_types():
     types = CampaignTypeModel.query.filter_by(active=True).order_by(CampaignTypeModel.sort_order, CampaignTypeModel.label).all()
     return {t.key: t.label for t in types}
 
+def get_segment_customers(business_id, segment):
+    """Return list of Customer objects matching the given segment."""
+    now = datetime.utcnow()
+    base = Customer.query.filter_by(business_id=business_id, unsubscribed=False)
+
+    if segment == "new":
+        cutoff = now - timedelta(days=30)
+        return base.filter(Customer.created_at >= cutoff).all()
+
+    elif segment == "inactive":
+        cutoff = now - timedelta(days=60)
+        # Customers who have never been contacted, or last campaign > 60 days ago
+        all_customers = base.all()
+        result = []
+        for c in all_customers:
+            last = Campaign.query.filter_by(
+                business_id=business_id, customer_email=c.email
+            ).order_by(Campaign.created_at.desc()).first()
+            if not last or last.created_at < cutoff:
+                result.append(c)
+        return result
+
+    elif segment == "birthday_month":
+        month_str = now.strftime("-%m-")
+        alt_month = f"-{now.month}-"  # handles single digit months without leading zero
+        all_customers = base.all()
+        return [c for c in all_customers if c.dob and (
+            month_str in c.dob or alt_month in c.dob
+        )]
+
+    elif segment == "vip":
+        all_customers = base.all()
+        result = []
+        for c in all_customers:
+            count = Campaign.query.filter_by(
+                business_id=business_id, customer_email=c.email
+            ).count()
+            if count >= 3:
+                result.append(c)
+        return result
+
+    elif segment == "sms_only":
+        return base.filter(Customer.phone.isnot(None), Customer.phone != "",
+                           (Customer.email.is_(None)) | (Customer.email == "")).all()
+
+    else:  # "all"
+        return base.all()
+
 def current_business():
     if "user_id" not in session:
         return None
@@ -1094,10 +1142,11 @@ def bulk_send():
         use_ai = request.form.get("use_ai") == "on"
         custom_message = request.form.get("message", "").strip()
         scheduled_at_str = request.form.get("scheduled_at", "").strip()
-        customers_list = Customer.query.filter_by(business_id=b.id).all()
+        segment = request.form.get("segment", "all")
+        customers_list = get_segment_customers(b.id, segment)
         if not customers_list:
-            flash("No customers to send to. Add customers first.", "error")
-            return redirect("/customers")
+            flash("No customers match that segment. Try a different one.", "error")
+            return redirect("/bulk-send")
         if not custom_message and not use_ai:
             flash("Enter a message or enable AI generation.", "error")
             return redirect("/bulk-send")
@@ -1150,7 +1199,7 @@ def bulk_send():
         else:
             flash(f"Bulk send complete! Sent to {sent_count}/{len(customers_list)} customers{note_str}.", "success")
         return redirect("/campaigns")
-    customers_count = Customer.query.filter_by(business_id=b.id).count()
+    customers_count = Customer.query.filter_by(business_id=b.id, unsubscribed=False).count()
     return render_template("bulk_send.html", campaign_types=get_campaign_types(), customers_count=customers_count)
 
 @app.route("/edit-campaign/<int:campaign_id>", methods=["POST"])
@@ -1530,6 +1579,16 @@ def automations():
         return redirect("/automations")
     rules = {r.rule_type: r for r in AutomationRule.query.filter_by(business_id=b.id).all()}
     return render_template("automations.html", rules=rules, defaults=AUTOMATION_DEFAULTS)
+
+@app.route("/api/segment-count")
+def segment_count():
+    b = current_business()
+    if not b:
+        return jsonify({"count": 0})
+    segment = request.args.get("segment", "all")
+    customers = get_segment_customers(b.id, segment)
+    sample = [{"name": f"{c.first_name} {c.last_name or ''}".strip(), "email": c.email or "", "phone": c.phone or ""} for c in customers[:5]]
+    return jsonify({"count": len(customers), "sample": sample})
 
 @app.route("/ai-ideas", methods=["POST"])
 def ai_ideas():

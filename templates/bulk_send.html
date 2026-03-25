@@ -3,91 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bulk Send - Revvio</title>
+    <title>Smart Bulk Send - Revvio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 2rem 0; }
-        .card { border: none; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 650px; margin: auto; }
-        .ai-badge { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }
-        .btn-send { background: linear-gradient(135deg, #f6d365, #fda085); color: white; border: none; }
-        .btn-send:hover { color: white; opacity: 0.9; }
-        .customer-count { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 10px; padding: 15px; text-align: center; }
+        .main-card { border: none; border-radius: 20px; box-shadow: 0 16px 40px rgba(0,0,0,0.25); max-width: 720px; margin: auto; }
+        .segment-card {
+            border: 2px solid #e9ecef; border-radius: 14px; padding: 16px 14px;
+            cursor: pointer; transition: all 0.18s; background: white; text-align: center;
+        }
+        .segment-card:hover { border-color: #667eea; box-shadow: 0 4px 16px rgba(102,126,234,0.15); transform: translateY(-2px); }
+        .segment-card.selected { border-color: #667eea; background: #f4f1ff; box-shadow: 0 4px 20px rgba(102,126,234,0.2); }
+        .segment-icon { font-size: 2rem; margin-bottom: 6px; display: block; }
+        .segment-label { font-weight: 700; font-size: 0.88rem; margin-bottom: 2px; }
+        .segment-desc { font-size: 0.72rem; color: #888; line-height: 1.3; }
+        .segment-count { font-size: 1.4rem; font-weight: 800; color: #667eea; }
+        .audience-preview { background: #f8f9ff; border: 1.5px solid #c7d2fe; border-radius: 12px; padding: 14px 16px; }
+        .preview-pill { background: white; border: 1px solid #e0e7ff; border-radius: 20px; padding: 3px 12px; font-size: 0.78rem; display: inline-block; margin: 2px; }
+        .btn-send { background: linear-gradient(135deg, #f6d365, #fda085); color: white; border: none; font-size: 1.1rem; }
+        .btn-send:hover { color: white; opacity: 0.9; transform: translateY(-1px); }
+        .btn-send:disabled { opacity: 0.5; transform: none; }
+        .ai-chip { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .step-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; color: #667eea; text-transform: uppercase; margin-bottom: 8px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="card">
+
+    <div class="d-flex justify-content-between align-items-center mb-3" style="max-width:720px;margin:auto;">
+        <div>
+            <h2 class="text-white fw-bold mb-0">Smart Bulk Send</h2>
+            <small class="text-white opacity-75">Target the right customers — not just all of them</small>
+        </div>
+        <a href="/dashboard" class="btn btn-light btn-sm">← Dashboard</a>
+    </div>
+
+    <div class="main-card">
         <div class="card-body p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="card-title mb-0 fw-bold">Bulk Send</h2>
-                <a href="/dashboard" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
-            </div>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
+                {% if messages %}{% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
+                    {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}{% endif %}
             {% endwith %}
 
-            <!-- Customer count -->
-            <div class="customer-count mb-4">
-                <h3 class="mb-0 fw-bold">{{ customers_count }}</h3>
-                <p class="mb-0 opacity-75">customers will receive this campaign</p>
-            </div>
-
             {% if customers_count == 0 %}
-            <div class="alert alert-warning">
-                You have no customers yet. <a href="/add-customer">Add customers first</a>.
+            <div class="text-center py-4">
+                <div style="font-size:3rem;">👥</div>
+                <h5 class="mt-2">No customers yet</h5>
+                <a href="/add-customer" class="btn btn-primary mt-2">Add Your First Customer</a>
             </div>
             {% else %}
 
             <form method="POST" id="bulkForm">
+                <input type="hidden" name="segment" id="segmentInput" value="all">
+
+                <!-- STEP 1: Pick Audience -->
+                <div class="step-label">Step 1 — Who should receive this?</div>
+                <div class="row g-2 mb-3" id="segmentGrid">
+                    <div class="col-4 col-md-2">
+                        <div class="segment-card selected" data-segment="all" onclick="selectSegment(this)">
+                            <span class="segment-icon">👥</span>
+                            <div class="segment-label">All</div>
+                            <div class="segment-count" id="count-all">{{ customers_count }}</div>
+                            <div class="segment-desc">Everyone</div>
+                        </div>
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <div class="segment-card" data-segment="new" onclick="selectSegment(this)">
+                            <span class="segment-icon">🌱</span>
+                            <div class="segment-label">New</div>
+                            <div class="segment-count" id="count-new">—</div>
+                            <div class="segment-desc">Last 30 days</div>
+                        </div>
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <div class="segment-card" data-segment="inactive" onclick="selectSegment(this)">
+                            <span class="segment-icon">😴</span>
+                            <div class="segment-label">Inactive</div>
+                            <div class="segment-count" id="count-inactive">—</div>
+                            <div class="segment-desc">60+ days quiet</div>
+                        </div>
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <div class="segment-card" data-segment="birthday_month" onclick="selectSegment(this)">
+                            <span class="segment-icon">🎂</span>
+                            <div class="segment-label">Birthday</div>
+                            <div class="segment-count" id="count-birthday_month">—</div>
+                            <div class="segment-desc">This month</div>
+                        </div>
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <div class="segment-card" data-segment="vip" onclick="selectSegment(this)">
+                            <span class="segment-icon">⭐</span>
+                            <div class="segment-label">VIP</div>
+                            <div class="segment-count" id="count-vip">—</div>
+                            <div class="segment-desc">3+ campaigns</div>
+                        </div>
+                    </div>
+                    <div class="col-4 col-md-2">
+                        <div class="segment-card" data-segment="sms_only" onclick="selectSegment(this)">
+                            <span class="segment-icon">📱</span>
+                            <div class="segment-label">SMS Only</div>
+                            <div class="segment-count" id="count-sms_only">—</div>
+                            <div class="segment-desc">Phone, no email</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audience Preview -->
+                <div class="audience-preview mb-4" id="audiencePreview">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong id="previewTitle">All Customers</strong>
+                            <span class="ms-2 text-muted" style="font-size:0.85rem;">— <span id="previewCount">{{ customers_count }}</span> recipients</span>
+                        </div>
+                        <span id="previewBadge" class="badge" style="background:#667eea;">Everyone</span>
+                    </div>
+                    <div class="mt-2" id="previewSampleRow">
+                        <small class="text-muted">Loading sample...</small>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Campaign Type -->
+                <div class="step-label">Step 2 — Campaign type</div>
                 <div class="mb-3">
-                    <label class="form-label fw-bold">Campaign Type</label>
-                    <select class="form-select form-select-lg" id="campaignType" name="campaign_type">
+                    <select class="form-select" id="campaignType" name="campaign_type">
                         {% for key, label in campaign_types.items() %}
                         <option value="{{ key }}">{{ label }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Message</label>
-                    <textarea class="form-control" id="messageField" name="message" rows="5" placeholder="Enter your promotion message... or use AI to generate one below."></textarea>
-                    <small class="text-muted">Leave empty and check "Use AI" to auto-generate a personalized message for each customer.</small>
+                <!-- STEP 3: Message -->
+                <div class="step-label">Step 3 — Your message</div>
+                <div class="mb-2">
+                    <textarea class="form-control" id="messageField" name="message" rows="4"
+                        placeholder="Write your message here, or use AI to generate one..."></textarea>
+                    <small class="text-muted">Leave blank + check "Use AI" to personalize each message with the customer's name.</small>
                 </div>
 
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="useAi" name="use_ai">
-                    <label class="form-check-label" for="useAi">
-                        <span class="ai-badge">Use AI</span> Generate a personalized message for each customer
-                    </label>
+                <div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="previewAiBtn">
+                        ✨ Preview AI Message
+                    </button>
+                    <div class="form-check mb-0 ms-1">
+                        <input type="checkbox" class="form-check-input" id="useAi" name="use_ai">
+                        <label class="form-check-label small" for="useAi">
+                            <span class="ai-chip">AI</span> Personalize for each customer
+                        </label>
+                    </div>
                 </div>
 
-                <button type="button" class="btn btn-outline-primary w-100 mb-3" id="previewBtn">
-                    Preview AI Message
+                <!-- STEP 4: Schedule (optional) -->
+                <div class="step-label">Step 4 — Send time <span class="text-muted fw-normal" style="text-transform:none;">(optional)</span></div>
+                <div class="mb-4">
+                    <input type="datetime-local" class="form-control" name="scheduled_at">
+                    <small class="text-muted">Leave blank to send immediately.</small>
+                </div>
+
+                <!-- Send Button -->
+                <button type="submit" class="btn btn-send w-100 btn-lg fw-bold" id="sendBtn"
+                        onclick="return confirmSend()">
+                    <i class="bi bi-send-fill me-2"></i>
+                    Send to <span id="sendCount">{{ customers_count }}</span> Customers
                 </button>
-
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Schedule for Later <span class="text-muted fw-normal">(optional)</span></label>
-                    <input type="datetime-local" class="form-control" name="scheduled_at" id="scheduledAt">
-                    <small class="text-muted">Leave blank to send now. Set a time to auto-send later.</small>
-                </div>
-
-                <div class="alert alert-warning mb-3">
-                    <strong>Warning:</strong> This will send emails to all {{ customers_count }} customers at once.
-                </div>
-
-                <button type="submit" class="btn btn-send w-100 btn-lg fw-bold mb-2"
-                    onclick="return confirm('Send to all {{ customers_count }} customers?')">
-                    Send to All {{ customers_count }} Customers
-                </button>
-                <a href="/campaigns" class="btn btn-outline-secondary w-100">← Back to Campaigns</a>
+                <a href="/dashboard" class="btn btn-outline-secondary w-100 mt-2">Cancel</a>
             </form>
             {% endif %}
         </div>
@@ -96,29 +180,111 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    document.getElementById('previewBtn').addEventListener('click', async function() {
-        const type = document.getElementById('campaignType').value;
-        const btn = this;
-        btn.disabled = true;
-        btn.textContent = 'Generating preview...';
-        try {
-            const res = await fetch('/generate-message', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ customer_name: 'John', campaign_type: type })
-            });
-            const data = await res.json();
-            if (data.success) {
-                document.getElementById('messageField').value = data.message;
-                document.getElementById('useAi').checked = true;
-            }
-        } catch (e) {
-            alert('Failed to generate: ' + e.message);
-        } finally {
-            btn.disabled = false;
-            btn.textContent = 'Preview AI Message';
+const SEGMENT_LABELS = {
+    all: "All Customers",
+    new: "New Guests (last 30 days)",
+    inactive: "Inactive Guests (60+ days)",
+    birthday_month: "Birthday This Month",
+    vip: "VIP Guests (3+ campaigns)",
+    sms_only: "Phone-Only (SMS)"
+};
+const SEGMENT_BADGES = {
+    all: "Everyone", new: "New", inactive: "Inactive",
+    birthday_month: "🎂 Birthday", vip: "⭐ VIP", sms_only: "📱 SMS"
+};
+
+let currentSegment = "all";
+let currentCount = {{ customers_count }};
+
+async function selectSegment(el) {
+    document.querySelectorAll('.segment-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    currentSegment = el.dataset.segment;
+    document.getElementById('segmentInput').value = currentSegment;
+
+    // Show loading
+    document.getElementById('previewTitle').textContent = SEGMENT_LABELS[currentSegment];
+    document.getElementById('previewBadge').textContent = SEGMENT_BADGES[currentSegment];
+    document.getElementById('previewCount').textContent = '...';
+    document.getElementById('sendCount').textContent = '...';
+    document.getElementById('previewSampleRow').innerHTML = '<small class="text-muted">Loading...</small>';
+
+    const countEl = document.getElementById('count-' + currentSegment);
+    if (countEl && countEl.textContent === '—') {
+        countEl.textContent = '...';
+    }
+
+    try {
+        const res = await fetch('/api/segment-count?segment=' + currentSegment);
+        const data = await res.json();
+        currentCount = data.count;
+
+        // Update count in card
+        if (countEl) countEl.textContent = data.count;
+        document.getElementById('previewCount').textContent = data.count;
+        document.getElementById('sendCount').textContent = data.count;
+
+        // Sample names
+        if (data.sample && data.sample.length > 0) {
+            const pills = data.sample.map(c =>
+                `<span class="preview-pill">${c.name}${c.email ? ' · ' + c.email : (c.phone ? ' · ' + c.phone : '')}</span>`
+            ).join('');
+            const more = data.count > 5 ? `<span class="preview-pill text-muted">+${data.count - 5} more</span>` : '';
+            document.getElementById('previewSampleRow').innerHTML = pills + more;
+        } else {
+            document.getElementById('previewSampleRow').innerHTML = '<small class="text-muted">No customers in this segment.</small>';
+        }
+    } catch(e) {
+        document.getElementById('previewSampleRow').innerHTML = '<small class="text-danger">Could not load preview.</small>';
+    }
+}
+
+function confirmSend() {
+    if (currentCount === 0) {
+        alert('No customers in this segment. Pick a different audience.');
+        return false;
+    }
+    return confirm(`Send to ${currentCount} customers in "${SEGMENT_LABELS[currentSegment]}"?`);
+}
+
+document.getElementById('previewAiBtn').addEventListener('click', async function() {
+    const type = document.getElementById('campaignType').value;
+    const btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    try {
+        const res = await fetch('/generate-message', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({customer_name: 'Guest', campaign_type: type})
+        });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('messageField').value = data.message;
+            document.getElementById('useAi').checked = true;
+        } else {
+            alert(data.error || 'Could not generate message.');
+        }
+    } catch(e) {
+        alert('Generation failed.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '✨ Preview AI Message';
+    }
+});
+
+// Load initial sample for "all" on page load
+window.addEventListener('DOMContentLoaded', () => {
+    fetch('/api/segment-count?segment=all').then(r => r.json()).then(data => {
+        if (data.sample && data.sample.length > 0) {
+            const pills = data.sample.map(c =>
+                `<span class="preview-pill">${c.name}${c.email ? ' · ' + c.email : (c.phone ? ' · ' + c.phone : '')}</span>`
+            ).join('');
+            const more = data.count > 5 ? `<span class="preview-pill text-muted">+${data.count - 5} more</span>` : '';
+            document.getElementById('previewSampleRow').innerHTML = pills + more;
         }
     });
+});
 </script>
 </body>
 </html>
