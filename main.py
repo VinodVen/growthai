@@ -156,6 +156,17 @@ class ContactMessage(db.Model):
     message = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class Promotion(db.Model):
+    __tablename__ = "promotions"
+    id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    price = db.Column(db.String(50))
+    category = db.Column(db.String(50), default="promotion")
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class CampaignTypeModel(db.Model):
     __tablename__ = "campaign_type_options"
     id = db.Column(db.Integer, primary_key=True)
@@ -191,17 +202,21 @@ with app.app_context():
     # Seed default campaign types if table is empty
     if CampaignTypeModel.query.count() == 0:
         defaults = [
-            ("come_back",  "Come Back Offer",      0),
-            ("weekend",    "Weekend Special",       1),
-            ("lunch",      "Lunch Deal",            2),
-            ("dinner",     "Dinner Special",        3),
-            ("birthday",   "Birthday Special",      4),
-            ("loyalty",    "Loyalty Reward",        5),
-            ("happy_hour", "Happy Hour",            6),
-            ("new_item",   "New Item Launch",       7),
-            ("promotion",  "General Promotion",     8),
-            ("invitation", "Business Invitation",   9),
-            ("custom",     "Custom Message",        10),
+            ("come_back",     "Come Back Offer",       0),
+            ("weekend",       "Weekend Special",        1),
+            ("lunch",         "Lunch Deal",             2),
+            ("dinner",        "Dinner Special",         3),
+            ("birthday",      "Birthday Special",       4),
+            ("loyalty",       "Loyalty Reward",         5),
+            ("happy_hour",    "Happy Hour",             6),
+            ("new_item",      "New Item Launch",        7),
+            ("promotion",     "General Promotion",      8),
+            ("invitation",    "Business Invitation",    9),
+            ("custom",        "Custom Message",         10),
+            ("hotel_stay",    "Hotel Stay Offer",       11),
+            ("hotel_upgrade", "Room Upgrade Deal",      12),
+            ("hotel_event",   "Event / Package Deal",   13),
+            ("hotel_loyalty", "Guest Loyalty Reward",   14),
         ]
         for key, label, order in defaults:
             db.session.add(CampaignTypeModel(key=key, label=label, sort_order=order))
@@ -412,24 +427,32 @@ def generate_ai_message(customer_name, business_name, campaign_type):
         "dinner":     f"Hi {customer_name}! Special dinner offer tonight at {business_name}. Reserve your table and enjoy an unforgettable evening!",
         "birthday":   f"Happy Birthday {customer_name}! Enjoy 20% off your next visit to {business_name}. Use code: BIRTHDAY20",
         "loyalty":    f"Thank you for being a loyal customer, {customer_name}! Your exclusive reward is waiting at {business_name}.",
-        "happy_hour": f"Hi {customer_name}! Happy Hour at {business_name} — amazing drinks and bites at special prices. Come join us!",
-        "new_item":   f"Hi {customer_name}! We just launched something exciting at {business_name}. Come be the first to try it!",
-        "promotion":  f"Hi {customer_name}! Special promotion at {business_name} just for you. Don't miss out — visit us soon!",
+        "happy_hour":    f"Hi {customer_name}! Happy Hour at {business_name} — amazing drinks and bites at special prices. Come join us!",
+        "new_item":      f"Hi {customer_name}! We just launched something exciting at {business_name}. Come be the first to try it!",
+        "promotion":     f"Hi {customer_name}! Special promotion at {business_name} just for you. Don't miss out — visit us soon!",
+        "hotel_stay":    f"Hi {customer_name}! Exclusive stay offer at {business_name}. Book now and save on your next visit!",
+        "hotel_upgrade": f"Hi {customer_name}! Enjoy a complimentary room upgrade on your next stay at {business_name}. Limited availability!",
+        "hotel_event":   f"Hi {customer_name}! Special event package at {business_name} — the perfect getaway. Book before it's gone!",
+        "hotel_loyalty": f"Thank you for being a loyal guest, {customer_name}! You've earned exclusive rewards at {business_name}.",
     }
 
     if not client:
         return fallbacks.get(campaign_type, fallbacks["promotion"])
 
     prompts = {
-        "come_back":  f"Write a warm 'we miss you, come back' offer for {customer_name} from {business_name}. Include a discount to return.",
-        "weekend":    f"Write a weekend special promotion for {customer_name} from {business_name}. Make it exciting.",
-        "lunch":      f"Write a lunch deal promotion for {customer_name} from {business_name}. Make it appetizing.",
-        "dinner":     f"Write a dinner special for {customer_name} from {business_name}. Make it feel exclusive and special.",
-        "birthday":   f"Write a birthday offer for {customer_name} from {business_name}. Include a discount.",
-        "loyalty":    f"Write a loyalty reward message for {customer_name} from {business_name}. Thank them warmly.",
-        "happy_hour": f"Write a happy hour promotion for {customer_name} from {business_name}. Make it fun.",
-        "new_item":   f"Write a new menu item announcement for {customer_name} from {business_name}. Make it exciting.",
-        "promotion":  f"Write a general promotion for {customer_name} from {business_name}. Make it compelling.",
+        "come_back":     f"Write a warm 'we miss you, come back' offer for {customer_name} from {business_name}. Include a discount to return.",
+        "weekend":       f"Write a weekend special promotion for {customer_name} from {business_name}. Make it exciting.",
+        "lunch":         f"Write a lunch deal promotion for {customer_name} from {business_name}. Make it appetizing.",
+        "dinner":        f"Write a dinner special for {customer_name} from {business_name}. Make it feel exclusive and special.",
+        "birthday":      f"Write a birthday offer for {customer_name} from {business_name}. Include a discount.",
+        "loyalty":       f"Write a loyalty reward message for {customer_name} from {business_name}. Thank them warmly.",
+        "happy_hour":    f"Write a happy hour promotion for {customer_name} from {business_name}. Make it fun.",
+        "new_item":      f"Write a new menu item announcement for {customer_name} from {business_name}. Make it exciting.",
+        "promotion":     f"Write a general promotion for {customer_name} from {business_name}. Make it compelling.",
+        "hotel_stay":    f"Write a special hotel stay offer for {customer_name} from {business_name} hotel. Include a discount on room rate.",
+        "hotel_upgrade": f"Write a room upgrade offer for {customer_name} from {business_name} hotel. Make it feel luxurious and exclusive.",
+        "hotel_event":   f"Write an event/package deal promotion for {customer_name} from {business_name} hotel. Make it sound exciting.",
+        "hotel_loyalty": f"Write a guest loyalty reward message for {customer_name} from {business_name} hotel. Thank them warmly.",
     }
 
     prompt = prompts.get(campaign_type, prompts["promotion"]) + " Keep it under 3 sentences. No markdown. Include emojis."
@@ -727,7 +750,14 @@ def create_campaign():
             db.session.rollback()
             flash("Error creating campaign.", "error")
     customers_list = Customer.query.filter_by(business_id=b.id).all()
-    return render_template("create_campaign.html", campaign_types=get_campaign_types(), customers=customers_list)
+    # Pre-load a saved promotion if ?promo_id= passed
+    promo_id = request.args.get("promo_id")
+    selected_promo = None
+    if promo_id:
+        p = Promotion.query.get(int(promo_id))
+        if p and p.business_id == b.id:
+            selected_promo = {"id": p.id, "name": p.name, "description": p.description, "price": p.price, "category": p.category}
+    return render_template("create_campaign.html", campaign_types=get_campaign_types(), customers=customers_list, selected_promo=selected_promo)
 
 @app.route("/campaign/<int:campaign_id>")
 def view_campaign(campaign_id):
@@ -1237,6 +1267,66 @@ def generate_message():
         return jsonify({"success": True, "message": message})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+
+@app.route("/promotions", methods=["GET", "POST"])
+def promotions():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        price = request.form.get("price", "").strip()
+        category = request.form.get("category", "promotion").strip()
+        if not name:
+            flash("Name is required.", "error")
+            return redirect("/promotions")
+        db.session.add(Promotion(
+            business_id=b.id, name=name, description=description,
+            price=price, category=category
+        ))
+        db.session.commit()
+        flash(f"'{name}' saved to your promotions library!", "success")
+        return redirect("/promotions")
+    promos = Promotion.query.filter_by(business_id=b.id, active=True).order_by(Promotion.created_at.desc()).all()
+    return render_template("promotions.html", promotions=promos, campaign_types=get_campaign_types())
+
+@app.route("/promotions/delete/<int:promo_id>", methods=["POST"])
+def delete_promotion(promo_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    p = Promotion.query.get(promo_id)
+    if p and p.business_id == b.id:
+        db.session.delete(p)
+        db.session.commit()
+        flash("Promotion deleted.", "success")
+    return redirect("/promotions")
+
+@app.route("/promotions/edit/<int:promo_id>", methods=["POST"])
+def edit_promotion(promo_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    p = Promotion.query.get(promo_id)
+    if not p or p.business_id != b.id:
+        flash("Not found.", "error")
+        return redirect("/promotions")
+    p.name = request.form.get("name", p.name).strip() or p.name
+    p.description = request.form.get("description", "").strip()
+    p.price = request.form.get("price", "").strip()
+    p.category = request.form.get("category", p.category)
+    db.session.commit()
+    flash("Updated.", "success")
+    return redirect("/promotions")
+
+@app.route("/api/promotions")
+def api_promotions():
+    b = current_business()
+    if not b:
+        return jsonify([])
+    promos = Promotion.query.filter_by(business_id=b.id, active=True).order_by(Promotion.created_at.desc()).all()
+    return jsonify([{"id": p.id, "name": p.name, "description": p.description, "price": p.price, "category": p.category} for p in promos])
 
 @app.route("/ai-ideas", methods=["POST"])
 def ai_ideas():
