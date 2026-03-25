@@ -102,9 +102,15 @@
                 <!-- Actions -->
                 <div class="d-grid gap-2">
                     {% if campaign.status in ('draft', 'failed') %}
-                    <form method="POST" action="/send-campaign/{{ campaign.id }}">
-                        <button type="submit" class="btn btn-success btn-lg w-100">Send Email Campaign</button>
-                    </form>
+                        {% if campaign.customer_email %}
+                        <form method="POST" action="/send-campaign/{{ campaign.id }}">
+                            <button type="submit" class="btn btn-success btn-lg w-100">Send Email Campaign</button>
+                        </form>
+                        {% else %}
+                        <div class="alert alert-warning py-2 mb-0 text-center">
+                            <small>No email address — SMS only for this customer</small>
+                        </div>
+                        {% endif %}
                     {% endif %}
 
                     {% if campaign.customer_phone %}

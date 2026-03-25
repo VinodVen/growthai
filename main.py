@@ -123,7 +123,7 @@ class Customer(db.Model):
     business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=False)
     first_name = db.Column(db.String(120), nullable=False)
     last_name = db.Column(db.String(120))
-    email = db.Column(db.String(200), nullable=False)
+    email = db.Column(db.String(200), nullable=True)
     phone = db.Column(db.String(50))
     dob = db.Column(db.String(50))
     unsubscribed = db.Column(db.Boolean, default=False)
@@ -168,6 +168,7 @@ with app.app_context():
         "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS opened_at TIMESTAMP",
         "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS click_count INTEGER DEFAULT 0",
         "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS clicked_at TIMESTAMP",
+        "ALTER TABLE customers ALTER COLUMN email DROP NOT NULL",
     ]
     for sql in migrations:
         try:
@@ -550,16 +551,20 @@ def add_customer():
                 flash(f"Customer limit reached ({customer_limit}). Upgrade your plan.", "error")
                 return redirect("/upgrade")
         first_name = request.form.get("first_name", "").strip()
-        email = request.form.get("email", "").strip()
-        if not first_name or not email:
-            flash("First name and email required.", "error")
+        email = request.form.get("email", "").strip() or None
+        phone = request.form.get("phone", "").strip()
+        if not first_name:
+            flash("First name is required.", "error")
+            return redirect("/add-customer")
+        if not email and not phone:
+            flash("Please provide at least a phone number or email.", "error")
             return redirect("/add-customer")
         customer = Customer(
             business_id=b.id,
             first_name=first_name,
             last_name=request.form.get("last_name", "").strip(),
             email=email,
-            phone=request.form.get("phone", "").strip(),
+            phone=phone,
             dob=request.form.get("dob", "").strip()
         )
         try:
@@ -829,9 +834,13 @@ def bulk_send():
                 pass
         sent_count = 0
         skipped_unsub = 0
+        skipped_no_email = 0
         for customer in customers_list:
             if customer.unsubscribed:
                 skipped_unsub += 1
+                continue
+            if not customer.email:
+                skipped_no_email += 1
                 continue
             msg = generate_ai_message(customer.first_name, b.business_name, campaign_type) if (use_ai and not custom_message) else custom_message
             campaign_status = "scheduled" if scheduled_at else "draft"
@@ -857,11 +866,14 @@ def bulk_send():
                     campaign.status = "sent"
                     sent_count += 1
         db.session.commit()
-        unsub_note = f" ({skipped_unsub} skipped — unsubscribed)" if skipped_unsub else ""
+        notes = []
+        if skipped_unsub: notes.append(f"{skipped_unsub} unsubscribed")
+        if skipped_no_email: notes.append(f"{skipped_no_email} phone-only (no email)")
+        note_str = f" ({', '.join(notes)} skipped)" if notes else ""
         if scheduled_at:
-            flash(f"Scheduled {len(customers_list) - skipped_unsub} campaigns for {scheduled_at.strftime('%b %d at %I:%M %p')} UTC{unsub_note}.", "success")
+            flash(f"Scheduled {len(customers_list) - skipped_unsub - skipped_no_email} campaigns for {scheduled_at.strftime('%b %d at %I:%M %p')} UTC{note_str}.", "success")
         else:
-            flash(f"Bulk send complete! Sent to {sent_count}/{len(customers_list)} customers{unsub_note}.", "success")
+            flash(f"Bulk send complete! Sent to {sent_count}/{len(customers_list)} customers{note_str}.", "success")
         return redirect("/campaigns")
     customers_count = Customer.query.filter_by(business_id=b.id).count()
     return render_template("bulk_send.html", campaign_types=CAMPAIGN_TYPES, customers_count=customers_count)
