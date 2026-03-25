@@ -12,267 +12,540 @@
     <link rel="apple-touch-icon" href="/static/icon-192.png">
     <title>Dashboard - Revvio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
-        .navbar { background: rgba(0,0,0,0.15); backdrop-filter: blur(10px); }
-        .card { border: none; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
-        .stat-card { background: rgba(255,255,255,0.15); color: white; border-radius: 15px; backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.2); }
-        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); border: none; }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
-        .btn-bulk { background: linear-gradient(135deg, #f6d365, #fda085); border: none; color: white; }
-        .btn-bulk:hover { color: white; transform: translateY(-2px); }
-        .container { max-width: 1200px; }
-        .header { color: white; margin-bottom: 30px; }
-        .plan-free { background: #6c757d; }
-        .plan-starter { background: linear-gradient(135deg, #667eea, #764ba2); }
-        .plan-pro { background: linear-gradient(135deg, #f6d365, #fda085); }
-        /* Mobile bottom nav */
-        .bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e0e0e0; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
-        .bottom-nav a { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 4px; font-size: 0.65rem; color: #666; text-decoration: none; }
-        .bottom-nav a.active, .bottom-nav a:hover { color: #667eea; }
-        .bottom-nav i { font-size: 1.3rem; margin-bottom: 2px; }
-        @media (max-width: 768px) {
-            .bottom-nav { display: flex; }
-            body { padding-bottom: 70px; }
+        :root {
+            --primary: #667eea;
+            --primary-dark: #764ba2;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background: #f0f2ff;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 240px; min-height: 100vh; position: fixed; top: 0; left: 0;
+            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            padding: 0; z-index: 100; display: flex; flex-direction: column;
+            box-shadow: 4px 0 20px rgba(102,126,234,0.3);
+        }
+        .sidebar-brand {
+            padding: 22px 20px 18px;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+        }
+        .sidebar-brand .logo { font-size: 1.5rem; font-weight: 800; color: white; letter-spacing: -0.5px; }
+        .sidebar-brand .tagline { font-size: 0.7rem; color: rgba(255,255,255,0.7); margin-top: 1px; }
+        .sidebar-nav { padding: 12px 10px; flex: 1; overflow-y: auto; }
+        .nav-section { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em;
+            color: rgba(255,255,255,0.45); padding: 10px 10px 4px; text-transform: uppercase; }
+        .nav-item a {
+            display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+            color: rgba(255,255,255,0.8); text-decoration: none; border-radius: 10px;
+            font-size: 0.88rem; font-weight: 500; transition: all 0.15s; margin-bottom: 2px;
+        }
+        .nav-item a:hover, .nav-item a.active {
+            background: rgba(255,255,255,0.18); color: white;
+        }
+        .nav-item a i { font-size: 1rem; width: 18px; text-align: center; }
+        .sidebar-footer {
+            padding: 12px 10px; border-top: 1px solid rgba(255,255,255,0.15);
+        }
+        .sidebar-footer a {
+            display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+            color: rgba(255,255,255,0.7); text-decoration: none; border-radius: 10px;
+            font-size: 0.85rem; transition: all 0.15s;
+        }
+        .sidebar-footer a:hover { background: rgba(255,255,255,0.12); color: white; }
+
+        /* Main content */
+        .main-content { margin-left: 240px; min-height: 100vh; }
+        .top-bar {
+            background: white; border-bottom: 1px solid #e8eaf0;
+            padding: 14px 28px; display: flex; align-items: center;
+            justify-content: space-between; position: sticky; top: 0; z-index: 50;
+            box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+        }
+        .top-bar-left h4 { margin: 0; font-size: 1rem; font-weight: 700; color: #1a1a2e; }
+        .top-bar-left p { margin: 0; font-size: 0.78rem; color: #888; }
+        .plan-badge { padding: 4px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+        .plan-free { background: #f3f4f6; color: #6b7280; }
+        .plan-starter { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .plan-pro { background: linear-gradient(135deg, #f59e0b, #ef4444); color: white; }
+        .content-area { padding: 24px 28px; }
+
+        /* Stat cards */
+        .stat-card {
+            background: white; border-radius: 16px; padding: 22px 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06); border: 1px solid #f0f0f8;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,0.12); }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem; margin-bottom: 12px;
+        }
+        .stat-icon.purple { background: #f0eeff; color: var(--primary); }
+        .stat-icon.green  { background: #ecfdf5; color: var(--success); }
+        .stat-icon.orange { background: #fff7ed; color: var(--warning); }
+        .stat-icon.blue   { background: #eff6ff; color: var(--info); }
+        .stat-number { font-size: 2rem; font-weight: 800; color: #1a1a2e; line-height: 1; }
+        .stat-label { font-size: 0.78rem; color: #888; margin-top: 4px; }
+        .stat-trend { font-size: 0.75rem; font-weight: 600; margin-top: 6px; }
+        .trend-up { color: var(--success); }
+        .trend-neutral { color: #888; }
+
+        /* Section cards */
+        .section-card {
+            background: white; border-radius: 16px; padding: 22px 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06); border: 1px solid #f0f0f8;
+        }
+        .section-title { font-size: 0.95rem; font-weight: 700; color: #1a1a2e; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+        /* Quick action buttons */
+        .quick-btn {
+            display: flex; align-items: center; gap: 12px; padding: 13px 16px;
+            border-radius: 12px; text-decoration: none; font-weight: 600;
+            font-size: 0.88rem; border: none; cursor: pointer; transition: all 0.2s;
+            margin-bottom: 8px; width: 100%;
+        }
+        .quick-btn:last-child { margin-bottom: 0; }
+        .quick-btn .btn-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+        .quick-btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .quick-btn-primary:hover { color: white; transform: translateX(2px); box-shadow: 0 4px 12px rgba(102,126,234,0.4); }
+        .quick-btn-primary .btn-icon { background: rgba(255,255,255,0.2); }
+        .quick-btn-success { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .quick-btn-success:hover { color: white; transform: translateX(2px); box-shadow: 0 4px 12px rgba(16,185,129,0.4); }
+        .quick-btn-success .btn-icon { background: rgba(255,255,255,0.2); }
+        .quick-btn-warning { background: linear-gradient(135deg, #f59e0b, #f97316); color: white; }
+        .quick-btn-warning:hover { color: white; transform: translateX(2px); box-shadow: 0 4px 12px rgba(245,158,11,0.4); }
+        .quick-btn-warning .btn-icon { background: rgba(255,255,255,0.2); }
+        .quick-btn-outline { background: #f8f9ff; color: #667eea; border: 1.5px solid #e8e4ff; }
+        .quick-btn-outline:hover { background: #f0eeff; color: #5a6fd6; transform: translateX(2px); }
+        .quick-btn-outline .btn-icon { background: #ede9ff; }
+
+        /* Birthday radar */
+        .birthday-card {
+            background: linear-gradient(135deg, #fff8f0, #fff0f5);
+            border: 1.5px solid #fda08550; border-radius: 14px; padding: 16px;
+        }
+        .birthday-guest {
+            background: white; border: 1px solid #fda08540; border-radius: 10px;
+            padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+        }
+        .birthday-avatar {
+            width: 38px; height: 38px; border-radius: 50%;
+            background: linear-gradient(135deg, #f6d365, #fda085);
+            color: white; font-weight: 700; font-size: 0.9rem;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+
+        /* Campaign table */
+        .campaigns-table th { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #aaa; border: none; padding: 8px 12px; }
+        .campaigns-table td { font-size: 0.85rem; vertical-align: middle; border-color: #f5f5f5; padding: 10px 12px; }
+        .campaigns-table tr:hover td { background: #fafbff; }
+        .status-badge { padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; }
+        .status-sent { background: #ecfdf5; color: #059669; }
+        .status-draft { background: #f3f4f6; color: #6b7280; }
+        .status-scheduled { background: #fffbeb; color: #d97706; }
+
+        /* Top customers */
+        .top-customer { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f5f5f5; }
+        .top-customer:last-child { border-bottom: none; }
+        .cust-avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; font-weight: 700; font-size: 0.82rem;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .cust-bar-wrap { flex: 1; }
+        .cust-bar { height: 4px; border-radius: 2px; background: linear-gradient(135deg, #667eea, #764ba2); }
+
+        /* Demo banner */
+        .demo-banner { background: rgba(255,255,255,0.97); border: 2px solid #fda085; border-radius: 14px; padding: 14px 18px; }
+
+        /* Progress bar */
+        .limit-bar { height: 6px; border-radius: 3px; background: #f0f0f0; overflow: hidden; margin-top: 8px; }
+        .limit-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(135deg, #667eea, #764ba2); transition: width 0.5s; }
+
+        /* Mobile */
+        .mobile-bar { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e8eaf0; z-index: 200; padding-bottom: env(safe-area-inset-bottom); box-shadow: 0 -4px 16px rgba(0,0,0,0.08); }
+        .mobile-bar a { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 4px; font-size: 0.62rem; color: #888; text-decoration: none; font-weight: 600; }
+        .mobile-bar a.active, .mobile-bar a:hover { color: var(--primary); }
+        .mobile-bar i { font-size: 1.25rem; margin-bottom: 2px; }
+        .mobile-topbar { display: none; background: linear-gradient(135deg, #667eea, #764ba2); padding: 14px 16px; position: sticky; top: 0; z-index: 100; }
+
+        @media (max-width: 900px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; }
+            .top-bar { display: none; }
+            .mobile-topbar { display: flex; align-items: center; justify-content: space-between; }
+            .mobile-bar { display: flex; }
+            .content-area { padding: 16px; padding-bottom: 80px; }
+        }
+        @media (max-width: 576px) {
+            .stat-number { font-size: 1.6rem; }
         }
     </style>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark mb-4">
-    <div class="container">
-        <a class="navbar-brand fw-bold fs-4" href="/">Revvio</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav ms-auto">
-                <li class="nav-item"><a class="nav-link active" href="/dashboard">Dashboard</a></li>
-                <li class="nav-item"><a class="nav-link" href="/customers">Customers</a></li>
-                <li class="nav-item"><a class="nav-link" href="/upload-customers">Upload Customers</a></li>
-                <li class="nav-item"><a class="nav-link" href="/campaigns">Campaigns</a></li>
-                <li class="nav-item"><a class="nav-link" href="/promotions">Promotions</a></li>
-                <li class="nav-item"><a class="nav-link" href="/automations">Automations</a></li>
-                <li class="nav-item"><a class="nav-link" href="/analytics">Analytics</a></li>
-                <li class="nav-item"><a class="nav-link" href="/bulk-send">Bulk Send</a></li>
-                <li class="nav-item"><a class="nav-link" href="/upgrade">Upgrade</a></li>
-                <li class="nav-item"><a class="nav-link" href="/settings">Settings</a></li>
-                <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
-            </ul>
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <div class="logo">Revvio</div>
+        <div class="tagline">AI Marketing for Small Business</div>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-section">Main</div>
+        <div class="nav-item"><a href="/dashboard" class="active"><i class="bi bi-grid-fill"></i> Dashboard</a></div>
+        <div class="nav-item"><a href="/customers"><i class="bi bi-people-fill"></i> Customers</a></div>
+        <div class="nav-item"><a href="/campaigns"><i class="bi bi-envelope-fill"></i> Campaigns</a></div>
+        <div class="nav-item"><a href="/analytics"><i class="bi bi-bar-chart-fill"></i> Analytics</a></div>
+
+        <div class="nav-section mt-2">Engage</div>
+        <div class="nav-item"><a href="/bulk-send"><i class="bi bi-send-fill"></i> Bulk Send</a></div>
+        <div class="nav-item"><a href="/quick-sms"><i class="bi bi-chat-fill"></i> Quick SMS</a></div>
+        <div class="nav-item"><a href="/automations"><i class="bi bi-lightning-fill"></i> Automations</a></div>
+        <div class="nav-item"><a href="/promotions"><i class="bi bi-tag-fill"></i> Promotions</a></div>
+
+        <div class="nav-section mt-2">Account</div>
+        <div class="nav-item"><a href="/upload-customers"><i class="bi bi-upload"></i> Import Customers</a></div>
+        <div class="nav-item"><a href="/upgrade"><i class="bi bi-star-fill"></i> Upgrade Plan</a></div>
+        <div class="nav-item"><a href="/settings"><i class="bi bi-gear-fill"></i> Settings</a></div>
+    </nav>
+    <div class="sidebar-footer">
+        <a href="/logout"><i class="bi bi-box-arrow-right"></i> Log Out</a>
+    </div>
+</aside>
+
+<!-- ── MOBILE TOP BAR ── -->
+<div class="mobile-topbar">
+    <span style="color:white;font-weight:800;font-size:1.2rem;">Revvio</span>
+    <span class="plan-badge plan-{{ plan }}" style="font-size:0.68rem;">{{ plan.upper() }}</span>
+</div>
+
+<!-- ── MAIN ── -->
+<div class="main-content">
+
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="top-bar-left">
+            <h4>{{ business_name }}</h4>
+            <p>Small Business Marketing Dashboard</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="plan-badge plan-{{ plan }}">{{ plan.upper() }} PLAN</span>
+            {% if plan == 'free' %}<a href="/upgrade" class="btn btn-warning btn-sm fw-bold">Upgrade</a>{% endif %}
         </div>
     </div>
-</nav>
 
-<div class="container mt-2">
+    <div class="content-area">
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}{% for category, message in messages %}
+            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show mb-3" style="border-radius:12px;">
+                {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}{% endif %}
+        {% endwith %}
 
-    {% if session.get('is_demo') %}
-    <div class="alert mb-3" style="background: rgba(255,255,255,0.95); border: 2px solid #fda085; border-radius: 12px;">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <!-- Demo Banner -->
+        {% if session.get('is_demo') %}
+        <div class="demo-banner mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
-                <strong>👋 You're in Demo Mode</strong> — explore freely, no real emails or SMS are sent.
-                <span class="text-muted ms-1">This is Mario's Grill with 20 sample customers.</span>
+                <strong>You're in Demo Mode</strong>
+                <span class="text-muted ms-2 small">Explore freely — no real emails or SMS are sent. This is Mario's Grill with sample data.</span>
             </div>
             <div class="d-flex gap-2">
-                <a href="/register" class="btn btn-sm fw-bold" style="background: linear-gradient(135deg,#667eea,#764ba2); color:white;">Sign Up Free →</a>
+                <a href="/register" class="btn btn-sm fw-bold" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;">Sign Up Free</a>
                 <a href="/login" class="btn btn-sm btn-outline-secondary">Login</a>
             </div>
         </div>
-    </div>
-    {% endif %}
+        {% endif %}
 
-    <!-- HEADER -->
-    <div class="header">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <div>
-                <h1 class="display-5 fw-bold mb-1">{{ business_name }}</h1>
-                <p class="lead mb-0 opacity-75">Small Business Marketing Dashboard</p>
-            </div>
-            <div class="d-flex gap-2 align-items-center">
-                <span class="badge plan-{{ plan }} fs-6 px-3 py-2">{{ plan.upper() }} PLAN</span>
-                {% if plan == 'free' %}
-                    <a href="/upgrade" class="btn btn-warning btn-lg fw-bold">Upgrade Now</a>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- DEMO DATA BANNER (only show when no customers yet) -->
-    {% if total_customers == 0 %}
-    <div class="card mb-4 border-0" style="background: rgba(255,255,255,0.15); backdrop-filter: blur(5px);">
-        <div class="card-body p-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <!-- Load Demo Data Banner -->
+        {% if total_customers == 0 %}
+        <div class="section-card mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2" style="background:linear-gradient(135deg,#667eea,#764ba2);">
             <div class="text-white">
                 <strong>Recording a demo?</strong>
-                <span class="opacity-75 ms-2">Load 20 sample customers and campaigns to make your app look real and ready.</span>
+                <span class="opacity-75 ms-2 small">Load 20 sample customers and campaigns instantly.</span>
             </div>
             <form method="POST" action="/load-demo">
-                <button type="submit" class="btn btn-warning fw-bold px-4">Load Demo Data</button>
+                <button type="submit" class="btn btn-warning fw-bold">Load Demo Data</button>
             </form>
         </div>
-    </div>
-    {% endif %}
+        {% endif %}
 
-    <!-- STATS -->
-    <div class="row mb-4">
-        <div class="col-md-4 mb-3">
-            <div class="stat-card card p-4 text-center">
-                <p class="mb-1 opacity-75">Total Customers</p>
-                <h2 class="display-4 fw-bold mb-1">{{ total_customers }}</h2>
-                {% if customer_limit %}
-                    <small class="opacity-75">of {{ customer_limit }} max</small>
-                    <div class="progress mt-2" style="height: 6px;">
-                        <div class="progress-bar bg-white" style="width: {{ [(total_customers / customer_limit * 100)|int, 100]|min }}%"></div>
-                    </div>
-                {% endif %}
-                <a href="/customers" class="btn btn-light btn-sm mt-3">View Customers</a>
+        <!-- ── STAT CARDS ── -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon purple"><i class="bi bi-people-fill"></i></div>
+                    <div class="stat-number">{{ total_customers }}</div>
+                    <div class="stat-label">Total Customers</div>
+                    {% if customer_limit %}
+                    <div class="limit-bar mt-2"><div class="limit-bar-fill" style="width:{{ [(total_customers / customer_limit * 100)|int, 100]|min }}%;"></div></div>
+                    <div class="stat-trend trend-neutral" style="margin-top:4px;">{{ total_customers }}/{{ customer_limit }} max</div>
+                    {% elif new_this_week > 0 %}
+                    <div class="stat-trend trend-up"><i class="bi bi-arrow-up"></i> +{{ new_this_week }} this week</div>
+                    {% endif %}
+                    <a href="/customers" class="btn btn-sm mt-3 w-100" style="background:#f0eeff;color:#667eea;font-weight:600;border-radius:8px;">View All</a>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="bi bi-send-check-fill"></i></div>
+                    <div class="stat-number">{{ sent_campaigns }}</div>
+                    <div class="stat-label">Campaigns Sent</div>
+                    {% if sent_campaigns > 0 %}
+                    <div class="stat-trend trend-up"><i class="bi bi-check-circle-fill"></i> {{ total_campaigns }} total created</div>
+                    {% else %}
+                    <div class="stat-trend trend-neutral">No campaigns yet</div>
+                    {% endif %}
+                    <a href="/campaigns" class="btn btn-sm mt-3 w-100" style="background:#ecfdf5;color:#059669;font-weight:600;border-radius:8px;">View Campaigns</a>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon orange"><i class="bi bi-eye-fill"></i></div>
+                    <div class="stat-number">{{ open_rate }}%</div>
+                    <div class="stat-label">Email Open Rate</div>
+                    {% if open_rate >= 20 %}
+                    <div class="stat-trend trend-up"><i class="bi bi-graph-up"></i> Above average!</div>
+                    {% elif sent_campaigns == 0 %}
+                    <div class="stat-trend trend-neutral">Send your first campaign</div>
+                    {% else %}
+                    <div class="stat-trend trend-neutral">Industry avg: 20-25%</div>
+                    {% endif %}
+                    <a href="/analytics" class="btn btn-sm mt-3 w-100" style="background:#fff7ed;color:#d97706;font-weight:600;border-radius:8px;">Analytics</a>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="bi bi-person-plus-fill"></i></div>
+                    <div class="stat-number">{{ new_this_week }}</div>
+                    <div class="stat-label">New This Week</div>
+                    {% if new_this_week > 0 %}
+                    <div class="stat-trend trend-up"><i class="bi bi-arrow-up"></i> Growing!</div>
+                    {% else %}
+                    <div class="stat-trend trend-neutral">Add customers to grow</div>
+                    {% endif %}
+                    <a href="/add-customer" class="btn btn-sm mt-3 w-100" style="background:#eff6ff;color:#3b82f6;font-weight:600;border-radius:8px;">Add Customer</a>
+                </div>
             </div>
         </div>
-        <div class="col-md-4 mb-3">
-            <div class="stat-card card p-4 text-center">
-                <p class="mb-1 opacity-75">Total Campaigns</p>
-                <h2 class="display-4 fw-bold mb-1">{{ total_campaigns }}</h2>
-                <small class="opacity-75">all time</small>
-                <br>
-                <a href="/campaigns" class="btn btn-light btn-sm mt-3">View Campaigns</a>
-            </div>
-        </div>
-        <div class="col-md-4 mb-3">
-            <div class="stat-card card p-4 text-center">
-                <p class="mb-1 opacity-75">Emails Sent</p>
-                <h2 class="display-4 fw-bold mb-1">{{ sent_campaigns }}</h2>
-                <small class="opacity-75">campaigns delivered</small>
-                <br>
-                <a href="/bulk-send" class="btn btn-light btn-sm mt-3">Bulk Send</a>
-            </div>
-        </div>
-    </div>
 
-    <!-- BIRTHDAY RADAR -->
-    {% if birthday_customers %}
-    <div class="card mb-4 border-0" style="background:linear-gradient(135deg,#fff8f0,#fff0f8); border-left:4px solid #fda085 !important; border:1px solid #fda08550;">
-        <div class="card-body p-3">
-            <div class="d-flex align-items-center gap-2 mb-2">
+        <!-- ── BIRTHDAY RADAR ── -->
+        {% if birthday_customers %}
+        <div class="birthday-card mb-4">
+            <div class="d-flex align-items-center gap-2 mb-3">
                 <span style="font-size:1.4rem;">🎂</span>
-                <strong>Birthday Radar</strong>
-                <span class="badge bg-warning text-dark">{{ birthday_customers|length }} this week</span>
+                <strong style="font-size:0.95rem;">Birthday Radar</strong>
+                <span class="badge" style="background:linear-gradient(135deg,#f6d365,#fda085);color:white;">{{ birthday_customers|length }} upcoming</span>
             </div>
             <div class="d-flex flex-wrap gap-2">
                 {% for row in birthday_customers %}
                 {% set c = row.customer %}
-                <div class="d-flex align-items-center gap-2 p-2 rounded-3" style="background:white; border:1px solid #fda08560;">
+                <div class="birthday-guest">
+                    <div class="birthday-avatar">{{ c.first_name[0] }}{{ (c.last_name or 'X')[0] }}</div>
                     <div>
-                        <strong class="small">{{ c.first_name }} {{ c.last_name or '' }}</strong>
-                        <div class="text-muted" style="font-size:0.72rem;">
+                        <div class="fw-bold small">{{ c.first_name }} {{ c.last_name or '' }}</div>
+                        <div style="font-size:0.72rem;color:#e07050;">
                             {% if row.days == 0 %}Today!{% elif row.days == 1 %}Tomorrow{% else %}In {{ row.days }} days{% endif %}
                         </div>
                     </div>
                     <a href="/create-campaign?type=birthday&name={{ c.first_name }}+{{ c.last_name or '' }}&email={{ c.email or '' }}&phone={{ c.phone or '' }}"
-                       class="btn btn-sm fw-bold" style="background:linear-gradient(135deg,#f6d365,#fda085);color:white;border:none;white-space:nowrap;">
+                       class="btn btn-sm ms-2 fw-bold" style="background:linear-gradient(135deg,#f6d365,#fda085);color:white;border:none;font-size:0.75rem;white-space:nowrap;border-radius:8px;">
                         Send Gift
                     </a>
                 </div>
                 {% endfor %}
             </div>
         </div>
-    </div>
-    {% endif %}
+        {% endif %}
 
-    <!-- QUICK ACTIONS -->
-    <div class="row mb-4">
-        <div class="col-md-6 mb-3">
-            <div class="card p-4">
-                <h5 class="mb-3 fw-bold">Quick Actions</h5>
-                <a href="/add-customer" class="btn btn-primary w-100 mb-2 btn-lg">Add Customer</a>
-                <a href="/create-campaign" class="btn btn-success w-100 mb-2 btn-lg">Create Campaign</a>
-                <a href="/bulk-send" class="btn btn-bulk w-100 mb-2 btn-lg">Send to All Customers</a>
-                <a href="/quick-sms" class="btn w-100 mb-2 btn-lg" style="background:linear-gradient(135deg,#11998e,#38ef7d);color:white;border:none;">Quick SMS</a>
-                <a href="/promotions" class="btn w-100 btn-lg btn-outline-secondary">My Promotions Library</a>
+        <!-- ── MAIN GRID ── -->
+        <div class="row g-3 mb-4">
+
+            <!-- Quick Actions -->
+            <div class="col-md-4">
+                <div class="section-card h-100">
+                    <div class="section-title"><i class="bi bi-lightning-fill" style="color:#667eea;"></i> Quick Actions</div>
+                    <a href="/add-customer" class="quick-btn quick-btn-primary">
+                        <div class="btn-icon"><i class="bi bi-person-plus-fill"></i></div>
+                        <span>Add Customer</span>
+                    </a>
+                    <a href="/create-campaign" class="quick-btn quick-btn-success">
+                        <div class="btn-icon"><i class="bi bi-envelope-plus-fill"></i></div>
+                        <span>Create Campaign</span>
+                    </a>
+                    <a href="/bulk-send" class="quick-btn quick-btn-warning">
+                        <div class="btn-icon"><i class="bi bi-send-fill"></i></div>
+                        <span>Smart Bulk Send</span>
+                    </a>
+                    <a href="/quick-sms" class="quick-btn quick-btn-outline">
+                        <div class="btn-icon"><i class="bi bi-chat-dots-fill"></i></div>
+                        <span>Quick SMS</span>
+                    </a>
+                    <a href="/promotions" class="quick-btn quick-btn-outline">
+                        <div class="btn-icon"><i class="bi bi-tag-fill"></i></div>
+                        <span>Promotions Library</span>
+                    </a>
+                    <a href="/automations" class="quick-btn quick-btn-outline">
+                        <div class="btn-icon"><i class="bi bi-robot"></i></div>
+                        <span>Automations</span>
+                    </a>
+                </div>
             </div>
-        </div>
-        <div class="col-md-6 mb-3">
-            <div class="card p-4">
-                <h5 class="mb-3 fw-bold">Campaign Types</h5>
-                <div class="row g-2">
-                    {% for key, label in campaign_types.items() %}
-                    <div class="col-6">
-                        <a href="/create-campaign" class="btn btn-outline-secondary w-100 btn-sm">{{ label }}</a>
+
+            <!-- Chart -->
+            <div class="col-md-4">
+                <div class="section-card h-100">
+                    <div class="section-title"><i class="bi bi-pie-chart-fill" style="color:#667eea;"></i> Campaign Breakdown</div>
+                    {% if chart_data %}
+                    <div style="position:relative;height:200px;">
+                        <canvas id="campaignChart"></canvas>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-pie-chart" style="font-size:3rem;color:#ddd;"></i>
+                        <p class="text-muted small mt-2">Send campaigns to see your breakdown here</p>
+                        <a href="/create-campaign" class="btn btn-sm" style="background:#f0eeff;color:#667eea;font-weight:600;">Create First Campaign</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Top Customers -->
+            <div class="col-md-4">
+                <div class="section-card h-100">
+                    <div class="section-title"><i class="bi bi-star-fill" style="color:#f59e0b;"></i> Top Engaged Guests</div>
+                    {% if top_customers %}
+                    {% set max_count = top_customers[0].count %}
+                    {% for item in top_customers %}
+                    {% set c = item.customer %}
+                    <div class="top-customer">
+                        <div class="cust-avatar">{{ c.first_name[0] }}{{ (c.last_name or 'X')[0] }}</div>
+                        <div class="cust-bar-wrap">
+                            <div class="fw-bold" style="font-size:0.85rem;">{{ c.first_name }} {{ c.last_name or '' }}</div>
+                            <div class="d-flex align-items-center gap-2 mt-1">
+                                <div class="cust-bar" style="width:{{ (item.count / max_count * 100)|int }}%;"></div>
+                                <span style="font-size:0.72rem;color:#888;">{{ item.count }} campaign{{ 's' if item.count != 1 }}</span>
+                            </div>
+                        </div>
+                        <a href="/create-campaign" class="btn btn-sm" style="background:#f0eeff;color:#667eea;font-size:0.72rem;font-weight:600;border-radius:8px;white-space:nowrap;">+ Send</a>
                     </div>
                     {% endfor %}
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-people" style="font-size:3rem;color:#ddd;"></i>
+                        <p class="text-muted small mt-2">Top guests will appear after you send campaigns</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- RECENT CAMPAIGNS -->
-    <div class="card p-4 mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0 fw-bold">Recent Campaigns</h5>
-            <a href="/campaigns" class="btn btn-outline-primary btn-sm">View All</a>
+        <!-- ── CAMPAIGN TYPES ── -->
+        <div class="section-card mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="section-title mb-0"><i class="bi bi-grid-fill" style="color:#667eea;"></i> Campaign Types</div>
+                <a href="/create-campaign" class="btn btn-sm fw-bold" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:8px;">+ New Campaign</a>
+            </div>
+            <div class="row g-2">
+                {% set type_icons = {'come_back':'🔄','weekend':'🎉','lunch':'🥗','dinner':'🍽️','birthday':'🎂','loyalty':'⭐','happy_hour':'🍹','new_item':'✨','promotion':'📣','invitation':'💌','custom':'✏️','hotel_stay':'🏨','hotel_upgrade':'🛎️','hotel_event':'🎊','hotel_loyalty':'🌟'} %}
+                {% for key, label in campaign_types.items() %}
+                <div class="col-6 col-md-3 col-lg-2">
+                    <a href="/create-campaign" class="d-block text-center p-3 rounded-3 text-decoration-none" style="background:#f8f9ff;border:1.5px solid #eee;transition:all 0.2s;" onmouseover="this.style.borderColor='#667eea';this.style.background='#f0eeff'" onmouseout="this.style.borderColor='#eee';this.style.background='#f8f9ff'">
+                        <div style="font-size:1.5rem;">{{ type_icons.get(key, '📋') }}</div>
+                        <div style="font-size:0.75rem;font-weight:600;color:#444;margin-top:4px;">{{ label }}</div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
         </div>
-        {% if campaigns %}
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Customer</th>
-                        <th>Type</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for campaign in campaigns[:8] %}
-                    <tr>
-                        <td>
-                            <strong>{{ campaign.customer_name }}</strong><br>
-                            <small class="text-muted">{{ campaign.customer_email }}</small>
-                            {% if campaign.customer_phone %}<br><small class="text-muted">{{ campaign.customer_phone }}</small>{% endif %}
-                        </td>
-                        <td><span class="badge bg-info text-dark">{{ campaign_types.get(campaign.campaign_type, campaign.campaign_type) }}</span></td>
-                        <td>
-                            <span class="badge bg-{{ 'success' if campaign.status == 'sent' else 'warning text-dark' }}">
-                                {{ campaign.status.upper() }}
-                            </span>
-                            {% if campaign.status == 'sent' and campaign.open_count and campaign.open_count > 0 %}
-                            <br><small class="text-success">👁 {{ campaign.open_count }}</small>
-                            {% endif %}
-                        </td>
-                        <td><small>{{ campaign.created_at.strftime('%b %d') }}</small></td>
-                        <td><a href="/campaign/{{ campaign.id }}" class="btn btn-sm btn-outline-primary">View</a></td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+
+        <!-- ── RECENT CAMPAIGNS ── -->
+        <div class="section-card mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="section-title mb-0"><i class="bi bi-clock-history" style="color:#667eea;"></i> Recent Campaigns</div>
+                <a href="/campaigns" class="btn btn-sm btn-outline-secondary" style="border-radius:8px;">View All</a>
+            </div>
+            {% if campaigns %}
+            <div class="table-responsive">
+                <table class="table campaigns-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Guest</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for campaign in campaigns[:8] %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:0.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                        {{ campaign.customer_name[0] if campaign.customer_name else '?' }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold" style="font-size:0.85rem;">{{ campaign.customer_name }}</div>
+                                        <div class="text-muted" style="font-size:0.72rem;">{{ campaign.customer_email or campaign.customer_phone or '—' }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge" style="background:#f0eeff;color:#667eea;font-size:0.72rem;">
+                                    {{ campaign_types.get(campaign.campaign_type, campaign.campaign_type) }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="status-badge status-{{ campaign.status }}">{{ campaign.status.upper() }}</span>
+                                {% if campaign.status == 'sent' and campaign.open_count and campaign.open_count > 0 %}
+                                <div style="font-size:0.7rem;color:#10b981;margin-top:2px;"><i class="bi bi-eye-fill"></i> {{ campaign.open_count }} open{{ 's' if campaign.open_count != 1 }}</div>
+                                {% endif %}
+                            </td>
+                            <td><span class="text-muted" style="font-size:0.8rem;">{{ campaign.created_at.strftime('%b %d') }}</span></td>
+                            <td><a href="/campaign/{{ campaign.id }}" class="btn btn-sm" style="background:#f0eeff;color:#667eea;font-size:0.75rem;border-radius:8px;">View</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <i class="bi bi-envelope" style="font-size:3rem;color:#ddd;"></i>
+                <p class="text-muted mt-2">No campaigns yet. <a href="/create-campaign">Create your first one.</a></p>
+            </div>
+            {% endif %}
         </div>
-        {% else %}
-        <div class="alert alert-info mb-0">
-            No campaigns yet. <a href="/create-campaign">Create your first campaign</a> or <a href="/add-customer">add customers</a> first.
-        </div>
-        {% endif %}
-    </div>
 
-    <footer class="text-center text-white py-4 opacity-75">
-        <p class="mb-0">Revvio — AI-Powered Marketing for Small Businesses &nbsp;·&nbsp; <a href="/privacy" class="text-white opacity-75">Privacy</a> · <a href="/terms" class="text-white opacity-75">Terms</a></p>
-    </footer>
+        <footer class="text-center text-muted py-3" style="font-size:0.78rem;">
+            Revvio — AI-Powered Marketing for Small Businesses &nbsp;·&nbsp;
+            <a href="/privacy" class="text-muted">Privacy</a> &nbsp;·&nbsp;
+            <a href="/terms" class="text-muted">Terms</a>
+        </footer>
 
-</div>
+    </div><!-- /content-area -->
+</div><!-- /main-content -->
 
-<!-- Mobile Bottom Navigation -->
-<nav class="bottom-nav">
-    <a href="/dashboard" class="active"><i class="bi bi-house-fill"></i>Home</a>
-    <a href="/customers"><i class="bi bi-people-fill"></i>Customers</a>
+<!-- Mobile Bottom Nav -->
+<nav class="mobile-bar">
+    <a href="/dashboard" class="active"><i class="bi bi-grid-fill"></i>Home</a>
+    <a href="/customers"><i class="bi bi-people-fill"></i>Guests</a>
     <a href="/bulk-send"><i class="bi bi-send-fill"></i>Send</a>
     <a href="/analytics"><i class="bi bi-bar-chart-fill"></i>Analytics</a>
     <a href="/upgrade"><i class="bi bi-star-fill"></i>Upgrade</a>
@@ -280,9 +553,44 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    document.querySelectorAll('.alert').forEach(alert => {
-        setTimeout(() => new bootstrap.Alert(alert).close(), 5000);
+    // Auto-dismiss alerts
+    document.querySelectorAll('.alert').forEach(a => setTimeout(() => { try { new bootstrap.Alert(a).close(); } catch(e){} }, 5000));
+
+    // Campaign breakdown chart
+    {% if chart_data %}
+    const ctx = document.getElementById('campaignChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ chart_labels | tojson }},
+            datasets: [{
+                data: {{ chart_data | tojson }},
+                backgroundColor: [
+                    '#667eea','#764ba2','#10b981','#f59e0b','#ef4444',
+                    '#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316',
+                    '#6366f1','#84cc16','#06b6d4','#a855f7','#fb923c'
+                ],
+                borderWidth: 0,
+                hoverOffset: 6,
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { font: { size: 11 }, padding: 10, boxWidth: 12, boxHeight: 12 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ` ${ctx.label}: ${ctx.raw} sent`
+                    }
+                }
+            }
+        }
     });
+    {% endif %}
 </script>
 </body>
 </html>

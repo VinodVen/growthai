@@ -763,20 +763,39 @@ def dashboard():
         return redirect("/login")
     process_scheduled_campaigns()
     run_automations(b.id)
+    today = datetime.utcnow()
+
     total_customers = Customer.query.filter_by(business_id=b.id).count()
     total_campaigns = Campaign.query.filter_by(business_id=b.id).count()
     sent_campaigns = Campaign.query.filter_by(business_id=b.id, status="sent").count()
     campaigns = Campaign.query.filter_by(business_id=b.id).order_by(Campaign.created_at.desc()).all()
     customer_limit = get_plan_limit(b.plan, "customers")
+
+    # New customers this week
+    week_ago = today - timedelta(days=7)
+    new_this_week = Customer.query.filter_by(business_id=b.id).filter(Customer.created_at >= week_ago).count()
+
+    # Open rate
+    total_opens = sum((c.open_count or 0) for c in campaigns if c.status == "sent")
+    open_rate = round(total_opens / sent_campaigns * 100) if sent_campaigns > 0 else 0
+
+    # Campaigns by type for chart
+    type_counts = {}
+    for c in campaigns:
+        if c.status == "sent":
+            type_counts[c.campaign_type] = type_counts.get(c.campaign_type, 0) + 1
+    ct = get_campaign_types()
+    chart_labels = [ct.get(k, k) for k in type_counts]
+    chart_data = list(type_counts.values())
+
     # Birthday radar — customers with birthdays in the next 7 days
-    today = datetime.utcnow()
     birthday_customers = []
-    all_customers = Customer.query.filter_by(business_id=b.id).filter(Customer.dob != None, Customer.dob != "").all()
-    for c in all_customers:
+    all_customers_dob = Customer.query.filter_by(business_id=b.id).filter(Customer.dob != None, Customer.dob != "").all()
+    for c in all_customers_dob:
         try:
             dob = datetime.strptime(c.dob, "%Y-%m-%d")
             this_year_bday = dob.replace(year=today.year)
-            if this_year_bday < today:
+            if this_year_bday < today.replace(hour=0, minute=0, second=0):
                 this_year_bday = this_year_bday.replace(year=today.year + 1)
             days_until = (this_year_bday - today).days
             if 0 <= days_until <= 7:
@@ -784,17 +803,33 @@ def dashboard():
         except Exception:
             pass
     birthday_customers.sort(key=lambda x: x["days"])
+
+    # Top engaged customers (most campaigns sent to them)
+    from collections import Counter
+    email_counter = Counter(c.customer_email for c in campaigns if c.status == "sent" and c.customer_email)
+    top_emails = [e for e, _ in email_counter.most_common(5)]
+    top_customers = []
+    for email in top_emails:
+        c = Customer.query.filter_by(business_id=b.id, email=email).first()
+        if c:
+            top_customers.append({"customer": c, "count": email_counter[email]})
+
     return render_template(
         "dashboard.html",
         business_name=b.business_name,
         total_customers=total_customers,
         total_campaigns=total_campaigns,
         sent_campaigns=sent_campaigns,
+        open_rate=open_rate,
+        new_this_week=new_this_week,
         plan=b.plan,
         campaigns=campaigns,
         customer_limit=customer_limit,
-        campaign_types=get_campaign_types(),
+        campaign_types=ct,
         birthday_customers=birthday_customers,
+        top_customers=top_customers,
+        chart_labels=chart_labels,
+        chart_data=chart_data,
     )
 
 @app.route("/customers")

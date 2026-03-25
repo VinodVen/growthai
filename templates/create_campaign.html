@@ -57,8 +57,23 @@
         .btn-next { background: #667eea; color: white; border: none; border-radius: 10px; font-weight: 600; }
         .btn-next:hover { background: #5a6fd6; color: white; }
 
-        .customer-list-wrap { max-height: 320px; overflow-y: auto; }
+        .customer-list-wrap { max-height: 300px; overflow-y: auto; }
         .manual-toggle { color: #667eea; cursor: pointer; font-size: 0.85rem; text-decoration: underline; }
+        .cust-initials {
+            width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; font-weight: 700; font-size: 0.88rem;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .tab-btn {
+            padding: 5px 14px; border-radius: 20px; border: 1.5px solid #e9ecef;
+            background: white; font-size: 0.8rem; font-weight: 600; color: #666;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .tab-btn:hover { border-color: #667eea; color: #667eea; }
+        .tab-btn.active { background: #667eea; border-color: #667eea; color: white; }
+        .tab-count { background: rgba(255,255,255,0.3); border-radius: 10px; padding: 1px 6px; font-size: 0.72rem; margin-left: 3px; }
+        .tab-btn:not(.active) .tab-count { background: #f0eeff; color: #667eea; }
     </style>
 </head>
 <body>
@@ -100,30 +115,56 @@
     <!-- ── STEP 1: Select Customer ── -->
     <div class="step-panel active" id="panel-1">
         {% if customers %}
+        <!-- Search -->
         <div class="search-box mb-3">
             <span class="search-icon">🔍</span>
             <input type="text" class="form-control" id="customerSearch" placeholder="Search by name, email, or phone..." oninput="filterCustomers()">
         </div>
+
+        <!-- Filter Tabs -->
+        <div class="d-flex gap-1 mb-3 flex-wrap" id="filterTabs">
+            <button class="tab-btn active" data-filter="all" onclick="setTab(this)">All <span class="tab-count" id="cnt-all"></span></button>
+            <button class="tab-btn" data-filter="vip" onclick="setTab(this)">⭐ VIP <span class="tab-count" id="cnt-vip"></span></button>
+            <button class="tab-btn" data-filter="birthday" onclick="setTab(this)">🎂 Birthday Soon <span class="tab-count" id="cnt-birthday"></span></button>
+            <button class="tab-btn" data-filter="new" onclick="setTab(this)">🌱 New Guests <span class="tab-count" id="cnt-new"></span></button>
+        </div>
+
         <div class="customer-list-wrap" id="customerList">
             {% for c in customers %}
+            {% set initials = c.first_name[0] + ((c.last_name or 'X')[0]) %}
             <div class="customer-card"
-                 data-name="{{ c.first_name }} {{ c.last_name }}"
+                 data-name="{{ c.first_name }} {{ c.last_name or '' }}"
                  data-email="{{ c.email or '' }}"
                  data-phone="{{ c.phone or '' }}"
+                 data-dob="{{ c.dob or '' }}"
+                 data-created="{{ c.created_at.strftime('%Y-%m-%d') }}"
+                 data-vip="{{ 'true' if loop.index <= 5 else 'false' }}"
                  data-search="{{ (c.first_name + ' ' + (c.last_name or '') + ' ' + (c.email or '') + ' ' + (c.phone or '')) | lower }}"
                  onclick="selectCustomer(this)">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <strong>{{ c.first_name }} {{ c.last_name }}</strong>
-                        {% if c.email %}<br><small class="text-muted">{{ c.email }}</small>{% endif %}
-                        {% if c.phone %}<br><small class="text-muted">{{ c.phone }}</small>{% endif %}
+                <div class="d-flex align-items-center gap-3">
+                    <div class="cust-initials">{{ initials }}</div>
+                    <div class="flex-fill">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong style="font-size:0.92rem;">{{ c.first_name }} {{ c.last_name or '' }}</strong>
+                                <div class="d-flex gap-1 mt-1 flex-wrap">
+                                    {% if c.email %}<span style="font-size:0.72rem;color:#888;">{{ c.email }}</span>{% endif %}
+                                    {% if c.phone %}<span style="font-size:0.72rem;color:#888;"> · {{ c.phone }}</span>{% endif %}
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                {% if c.dob %}
+                                <span style="font-size:0.65rem;background:#fff7ed;color:#f59e0b;padding:2px 7px;border-radius:10px;font-weight:600;">🎂</span>
+                                {% endif %}
+                                <span class="check-icon" style="display:none;color:#667eea;font-size:1.1rem;font-weight:700;">✓</span>
+                            </div>
+                        </div>
                     </div>
-                    <span class="text-muted fs-5 check-icon" style="display:none;">✓</span>
                 </div>
             </div>
             {% endfor %}
         </div>
-        <div class="text-center my-2">
+        <div class="text-center mt-2 mb-1">
             <span class="manual-toggle" onclick="toggleManual()">+ Enter manually instead</span>
         </div>
         {% endif %}
@@ -145,8 +186,15 @@
             </div>
         </div>
 
-        <div id="selectedSummary" class="alert alert-primary py-2 mt-3" style="display:none; border-radius:10px;">
-            <strong id="summaryName"></strong> — <span id="summaryContact" class="text-muted small"></span>
+        <div id="selectedSummary" class="mt-3 p-3 rounded-3" style="display:none;background:#f0eeff;border:1.5px solid #c5b8ff;">
+            <div class="d-flex align-items-center gap-2">
+                <div class="cust-initials" id="summaryInitials" style="width:36px;height:36px;font-size:0.82rem;"></div>
+                <div>
+                    <strong id="summaryName" style="font-size:0.9rem;"></strong>
+                    <div id="summaryContact" class="text-muted" style="font-size:0.75rem;"></div>
+                </div>
+                <span style="margin-left:auto;color:#667eea;font-size:0.75rem;font-weight:600;">Selected ✓</span>
+            </div>
         </div>
 
         <button class="btn btn-next w-100 btn-lg mt-3" onclick="goStep2()">Next: Choose Campaign Type →</button>
@@ -289,26 +337,84 @@ function goStep(n) {
 }
 
 // ── Step 1 ──
+const today = new Date();
+const thirtyDaysAgo = new Date(today - 30 * 86400000);
+
+function cardMatchesFilter(card, filter) {
+    if (filter === 'all') return true;
+    if (filter === 'vip') return card.dataset.vip === 'true';
+    if (filter === 'new') {
+        const created = new Date(card.dataset.created);
+        return created >= thirtyDaysAgo;
+    }
+    if (filter === 'birthday') {
+        const dob = card.dataset.dob;
+        if (!dob) return false;
+        const parts = dob.split('-');
+        if (parts.length < 3) return false;
+        const month = parseInt(parts[1]), day = parseInt(parts[2]);
+        const now = new Date();
+        const thisYearBday = new Date(now.getFullYear(), month - 1, day);
+        if (thisYearBday < now) thisYearBday.setFullYear(now.getFullYear() + 1);
+        const daysUntil = Math.round((thisYearBday - now) / 86400000);
+        return daysUntil >= 0 && daysUntil <= 14;
+    }
+    return true;
+}
+
+let activeFilter = 'all';
+
+function setTab(btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter = btn.dataset.filter;
+    filterCustomers();
+}
+
 function filterCustomers() {
-    const q = document.getElementById('customerSearch').value.toLowerCase();
-    document.querySelectorAll('.customer-card').forEach(c => {
-        c.style.display = c.dataset.search.includes(q) ? '' : 'none';
+    const q = (document.getElementById('customerSearch') || {value: ''}).value.toLowerCase();
+    let visible = 0;
+    document.querySelectorAll('.customer-card').forEach(card => {
+        const matchSearch = card.dataset.search.includes(q);
+        const matchFilter = cardMatchesFilter(card, activeFilter);
+        const show = matchSearch && matchFilter;
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
     });
 }
+
+// Init tab counts
+window.addEventListener('DOMContentLoaded', () => {
+    const cards = document.querySelectorAll('.customer-card');
+    const counts = { all: 0, vip: 0, birthday: 0, new: 0 };
+    cards.forEach(c => {
+        counts.all++;
+        if (cardMatchesFilter(c, 'vip')) counts.vip++;
+        if (cardMatchesFilter(c, 'birthday')) counts.birthday++;
+        if (cardMatchesFilter(c, 'new')) counts.new++;
+    });
+    for (const [k, v] of Object.entries(counts)) {
+        const el = document.getElementById('cnt-' + k);
+        if (el) el.textContent = v > 0 ? v : '';
+    }
+});
 
 function selectCustomer(card) {
     if (selectedCard) { selectedCard.classList.remove('selected'); selectedCard.querySelector('.check-icon').style.display = 'none'; }
     selectedCard = card;
     card.classList.add('selected');
     card.querySelector('.check-icon').style.display = '';
-    sel.name = card.dataset.name;
+    sel.name = card.dataset.name.trim();
     sel.email = card.dataset.email;
     sel.phone = card.dataset.phone;
+    const initials = sel.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
     document.getElementById('selectedSummary').style.display = '';
+    document.getElementById('summaryInitials').textContent = initials;
     document.getElementById('summaryName').textContent = sel.name;
     document.getElementById('summaryContact').textContent = [sel.email, sel.phone].filter(Boolean).join(' · ') || 'No contact info';
-    // Hide manual entry
     document.getElementById('manualEntry').style.display = 'none';
+    // Scroll selected card into view
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function toggleManual() {
