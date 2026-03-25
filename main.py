@@ -29,7 +29,7 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-12345")
 app.config["SESSION_COOKIE_SECURE"] = IS_PRODUCTION
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["PERMANENT_SESSION_LIFETIME"] = 3600
+app.config["PERMANENT_SESSION_LIFETIME"] = 60 * 60 * 24 * 30  # 30 days
 
 # Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_fake")
