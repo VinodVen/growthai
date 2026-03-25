@@ -5,7 +5,7 @@ import smtplib
 import hmac
 import hashlib
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, url_for, flash, jsonify
 from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
@@ -167,6 +167,17 @@ class Promotion(db.Model):
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class AutomationRule(db.Model):
+    __tablename__ = "automation_rules"
+    id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=False)
+    rule_type = db.Column(db.String(50), nullable=False)  # birthday, reengagement, welcome
+    active = db.Column(db.Boolean, default=False)
+    message_template = db.Column(db.Text)
+    days_threshold = db.Column(db.Integer, default=30)  # days before birthday or days since contact
+    last_run = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class CampaignTypeModel(db.Model):
     __tablename__ = "campaign_type_options"
     id = db.Column(db.Integer, primary_key=True)
@@ -294,6 +305,123 @@ def process_scheduled_campaigns():
             db.session.commit()
     except Exception as e:
         print(f"Scheduler error: {e}")
+
+def _send_auto_campaign(business, customer, campaign_type, message):
+    """Helper: create + send a campaign for an automation rule."""
+    if not customer.email and not customer.phone:
+        return
+    campaign = Campaign(
+        business_id=business.id,
+        customer_name=f"{customer.first_name} {customer.last_name or ''}".strip(),
+        customer_email=customer.email or "",
+        customer_phone=customer.phone or "",
+        campaign_type=campaign_type,
+        message=message,
+        status="draft",
+    )
+    db.session.add(campaign)
+    db.session.flush()
+    if customer.email:
+        token = get_unsubscribe_token(campaign.id)
+        unsub_url = url_for("unsubscribe", token=token, _external=True)
+        pixel_url = url_for("track_open", campaign_id=campaign.id, _external=True)
+        click_url = url_for("track_click", campaign_id=campaign.id, _external=True)
+        success = send_email(
+            customer.email, f"A message from {business.business_name}", message,
+            customer_name=campaign.customer_name,
+            business_name=business.business_name,
+            campaign_type=campaign_type,
+            unsubscribe_url=unsub_url,
+            business_address=business.address or "",
+            business_phone=business.phone or "",
+            business_website=business.website or "",
+            tracking_pixel_url=pixel_url,
+            click_tracking_url=click_url,
+            business_reply_email=business.email,
+        )
+        campaign.status = "sent" if success else "failed"
+    elif customer.phone:
+        success = send_sms(customer.phone, message)
+        campaign.status = "sent" if success else "failed"
+
+def run_automations(business_id):
+    """Run all active automation rules for a business."""
+    try:
+        today = datetime.utcnow()
+        rules = AutomationRule.query.filter_by(business_id=business_id, active=True).all()
+        b = Business.query.get(business_id)
+        if not b:
+            return
+        for rule in rules:
+            # Only run each rule once per day
+            if rule.last_run and (today - rule.last_run).total_seconds() < 82800:
+                continue
+
+            if rule.rule_type == "birthday":
+                customers = Customer.query.filter_by(business_id=business_id).filter(
+                    Customer.dob != None, Customer.dob != "", Customer.unsubscribed == False
+                ).all()
+                for c in customers:
+                    try:
+                        dob = datetime.strptime(c.dob, "%Y-%m-%d")
+                        bday = dob.replace(year=today.year)
+                        if bday < today.replace(hour=0, minute=0, second=0):
+                            bday = bday.replace(year=today.year + 1)
+                        days_until = (bday - today).days
+                        if days_until != rule.days_threshold:
+                            continue
+                        # Check not already sent this year
+                        already_sent = Campaign.query.filter_by(
+                            business_id=business_id,
+                            customer_email=c.email or "",
+                            campaign_type="birthday",
+                        ).filter(Campaign.created_at >= today.replace(month=1, day=1, hour=0, minute=0, second=0)).first()
+                        if already_sent:
+                            continue
+                        msg = rule.message_template or generate_ai_message(c.first_name, b.business_name, "birthday")
+                        msg = msg.replace("{name}", c.first_name).replace("{business}", b.business_name)
+                        _send_auto_campaign(b, c, "birthday", msg)
+                    except Exception:
+                        pass
+
+            elif rule.rule_type == "reengagement":
+                cutoff = datetime(today.year, today.month, today.day) - timedelta(days=rule.days_threshold)
+                customers = Customer.query.filter_by(business_id=business_id, unsubscribed=False).all()
+                for c in customers:
+                    last_campaign = Campaign.query.filter_by(
+                        business_id=business_id,
+                        customer_email=c.email or "",
+                    ).filter(Campaign.status == "sent").order_by(Campaign.created_at.desc()).first()
+                    if last_campaign and last_campaign.created_at > cutoff:
+                        continue
+                    if not last_campaign and c.created_at > cutoff:
+                        continue
+                    msg = rule.message_template or generate_ai_message(c.first_name, b.business_name, "come_back")
+                    msg = msg.replace("{name}", c.first_name).replace("{business}", b.business_name)
+                    _send_auto_campaign(b, c, "come_back", msg)
+
+            elif rule.rule_type == "welcome":
+                # Send welcome to customers added in the last 24h who haven't received one
+                cutoff_welcome = datetime(today.year, today.month, today.day, today.hour, today.minute) - timedelta(hours=24)
+                new_customers = Customer.query.filter_by(business_id=business_id, unsubscribed=False).filter(
+                    Customer.created_at >= cutoff_welcome
+                ).all()
+                for c in new_customers:
+                    already = Campaign.query.filter_by(
+                        business_id=business_id,
+                        customer_email=c.email or "",
+                        campaign_type="loyalty",
+                    ).filter(Campaign.created_at >= c.created_at).first()
+                    if already:
+                        continue
+                    msg = rule.message_template or f"Welcome to {b.business_name}, {c.first_name}! 🎉 We're so glad to have you. Look forward to exclusive offers just for you."
+                    msg = msg.replace("{name}", c.first_name).replace("{business}", b.business_name)
+                    _send_auto_campaign(b, c, "loyalty", msg)
+
+            rule.last_run = today
+        db.session.commit()
+    except Exception as e:
+        print(f"Automation error: {e}")
 
 def build_html_email(business_name, customer_name, message, campaign_type, unsubscribe_url="", business_address="", business_phone="", business_website="", tracking_pixel_url="", click_tracking_url=""):
     unsub_html = ""
@@ -570,6 +698,7 @@ def dashboard():
     if not b:
         return redirect("/login")
     process_scheduled_campaigns()
+    run_automations(b.id)
     total_customers = Customer.query.filter_by(business_id=b.id).count()
     total_campaigns = Campaign.query.filter_by(business_id=b.id).count()
     sent_campaigns = Campaign.query.filter_by(business_id=b.id, status="sent").count()
@@ -1327,6 +1456,64 @@ def api_promotions():
         return jsonify([])
     promos = Promotion.query.filter_by(business_id=b.id, active=True).order_by(Promotion.created_at.desc()).all()
     return jsonify([{"id": p.id, "name": p.name, "description": p.description, "price": p.price, "category": p.category} for p in promos])
+
+AUTOMATION_DEFAULTS = {
+    "birthday": {
+        "label": "Birthday Campaign",
+        "icon": "🎂",
+        "desc": "Automatically sends a birthday message to guests on (or before) their birthday.",
+        "default_msg": "Happy Birthday {name}! 🎉 As our special guest, enjoy a complimentary gift on your next visit to {business}. You deserve to be celebrated!",
+        "default_days": 0,
+        "days_label": "Days before birthday to send",
+    },
+    "reengagement": {
+        "label": "Re-engagement Campaign",
+        "icon": "🔄",
+        "desc": "Automatically reaches out to guests you haven't contacted in a while.",
+        "default_msg": "Hi {name}, we miss you at {business}! 😊 It's been a while — come back and enjoy an exclusive offer just for you. We'd love to see you again!",
+        "default_days": 30,
+        "days_label": "Days since last contact",
+    },
+    "welcome": {
+        "label": "Welcome Message",
+        "icon": "👋",
+        "desc": "Automatically sends a warm welcome to every new guest added to your list.",
+        "default_msg": "Welcome to {business}, {name}! 🎉 We're thrilled to have you. Stay tuned for exclusive offers and updates just for our valued guests.",
+        "default_days": 0,
+        "days_label": "",
+    },
+}
+
+@app.route("/automations", methods=["GET", "POST"])
+def automations():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    if request.method == "POST":
+        rule_type = request.form.get("rule_type")
+        if rule_type not in AUTOMATION_DEFAULTS:
+            flash("Invalid automation type.", "error")
+            return redirect("/automations")
+        active = request.form.get("active") == "on"
+        message_template = request.form.get("message_template", "").strip()
+        days_threshold = int(request.form.get("days_threshold", 0) or 0)
+        rule = AutomationRule.query.filter_by(business_id=b.id, rule_type=rule_type).first()
+        if rule:
+            rule.active = active
+            rule.message_template = message_template
+            rule.days_threshold = days_threshold
+        else:
+            rule = AutomationRule(
+                business_id=b.id, rule_type=rule_type, active=active,
+                message_template=message_template, days_threshold=days_threshold
+            )
+            db.session.add(rule)
+        db.session.commit()
+        status = "enabled" if active else "disabled"
+        flash(f"{AUTOMATION_DEFAULTS[rule_type]['label']} {status}.", "success")
+        return redirect("/automations")
+    rules = {r.rule_type: r for r in AutomationRule.query.filter_by(business_id=b.id).all()}
+    return render_template("automations.html", rules=rules, defaults=AUTOMATION_DEFAULTS)
 
 @app.route("/ai-ideas", methods=["POST"])
 def ai_ideas():
