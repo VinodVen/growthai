@@ -156,6 +156,36 @@
         </div>
     </div>
 
+    <!-- BIRTHDAY RADAR -->
+    {% if birthday_customers %}
+    <div class="card mb-4 border-0" style="background:linear-gradient(135deg,#fff8f0,#fff0f8); border-left:4px solid #fda085 !important; border:1px solid #fda08550;">
+        <div class="card-body p-3">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span style="font-size:1.4rem;">🎂</span>
+                <strong>Birthday Radar</strong>
+                <span class="badge bg-warning text-dark">{{ birthday_customers|length }} this week</span>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                {% for row in birthday_customers %}
+                {% set c = row.customer %}
+                <div class="d-flex align-items-center gap-2 p-2 rounded-3" style="background:white; border:1px solid #fda08560;">
+                    <div>
+                        <strong class="small">{{ c.first_name }} {{ c.last_name or '' }}</strong>
+                        <div class="text-muted" style="font-size:0.72rem;">
+                            {% if row.days == 0 %}Today!{% elif row.days == 1 %}Tomorrow{% else %}In {{ row.days }} days{% endif %}
+                        </div>
+                    </div>
+                    <a href="/create-campaign?type=birthday&name={{ c.first_name }}+{{ c.last_name or '' }}&email={{ c.email or '' }}&phone={{ c.phone or '' }}"
+                       class="btn btn-sm fw-bold" style="background:linear-gradient(135deg,#f6d365,#fda085);color:white;border:none;white-space:nowrap;">
+                        Send Gift
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- QUICK ACTIONS -->
     <div class="row mb-4">
         <div class="col-md-6 mb-3">
@@ -163,7 +193,8 @@
                 <h5 class="mb-3 fw-bold">Quick Actions</h5>
                 <a href="/add-customer" class="btn btn-primary w-100 mb-2 btn-lg">Add Customer</a>
                 <a href="/create-campaign" class="btn btn-success w-100 mb-2 btn-lg">Create Campaign</a>
-                <a href="/bulk-send" class="btn btn-bulk w-100 btn-lg">Send to All Customers</a>
+                <a href="/bulk-send" class="btn btn-bulk w-100 mb-2 btn-lg">Send to All Customers</a>
+                <a href="/quick-sms" class="btn w-100 btn-lg" style="background:linear-gradient(135deg,#11998e,#38ef7d);color:white;border:none;">Quick SMS</a>
             </div>
         </div>
         <div class="col-md-6 mb-3">

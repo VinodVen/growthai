@@ -169,8 +169,25 @@
         </div>
 
         <div id="messageSection" style="display:none;">
+
+            <!-- AI Ideas Panel -->
+            <div class="p-3 mb-3 rounded-3" style="background:#f0eeff; border:1px solid #c5b8ff;">
+                <div class="fw-bold small mb-1" style="color:#5a4fcf;">💡 Describe your promotion</div>
+                <div class="d-flex gap-2">
+                    <input type="text" class="form-control form-control-sm" id="ideaInput"
+                        placeholder="e.g. new spicy chicken burger, 20% off this weekend only">
+                    <button type="button" class="btn btn-sm btn-ai px-3" id="ideasBtn" onclick="getIdeas()" style="white-space:nowrap;">
+                        Get Ideas <span class="spinner-border spinner-border-sm ms-1 d-none" id="ideasSpinner"></span>
+                    </button>
+                </div>
+                <div id="ideasGrid" class="mt-2" style="display:none;">
+                    <div class="small text-muted mb-1">Pick one or edit below:</div>
+                    <div id="ideaCards" class="d-flex flex-column gap-2"></div>
+                </div>
+            </div>
+
             <label class="form-label fw-bold">Message</label>
-            <textarea class="form-control mb-2" id="messageField" rows="5" placeholder="Your message will appear here..."></textarea>
+            <textarea class="form-control mb-2" id="messageField" rows="4" placeholder="Your message will appear here, or type your own..."></textarea>
             <div class="d-flex gap-2 mb-3">
                 <button type="button" class="btn btn-ai flex-fill" id="generateBtn" onclick="generateMessage()">
                     Generate with AI <span class="spinner-border spinner-border-sm ms-1 d-none" id="spinner"></span>
@@ -345,6 +362,42 @@ async function generateMessage() {
 }
 
 function clearMessage() { document.getElementById('messageField').value = ''; }
+
+async function getIdeas() {
+    const desc = document.getElementById('ideaInput').value.trim();
+    if (!desc) { document.getElementById('ideaInput').focus(); return; }
+    const btn = document.getElementById('ideasBtn');
+    const spinner = document.getElementById('ideasSpinner');
+    btn.disabled = true; spinner.classList.remove('d-none');
+    try {
+        const res = await fetch('/ai-ideas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: desc, customer_name: sel.name, campaign_type: sel.type })
+        });
+        const data = await res.json();
+        if (data.success && data.ideas) {
+            const container = document.getElementById('ideaCards');
+            container.innerHTML = '';
+            data.ideas.forEach(idea => {
+                const card = document.createElement('div');
+                card.className = 'idea-card';
+                card.style.cssText = 'background:white;border:1.5px solid #c5b8ff;border-radius:10px;padding:10px 14px;cursor:pointer;font-size:0.88rem;line-height:1.5;transition:border-color 0.15s;';
+                card.textContent = idea;
+                card.onmouseover = () => card.style.borderColor = '#667eea';
+                card.onmouseout = () => card.style.borderColor = '#c5b8ff';
+                card.onclick = () => {
+                    document.getElementById('messageField').value = idea;
+                    document.querySelectorAll('.idea-card').forEach(c => c.style.background = 'white');
+                    card.style.background = '#f0eeff';
+                };
+                container.appendChild(card);
+            });
+            document.getElementById('ideasGrid').style.display = '';
+        } else { alert(data.error || 'Could not get ideas'); }
+    } catch (e) { alert('Error: ' + e.message); }
+    finally { btn.disabled = false; spinner.classList.add('d-none'); }
+}
 
 function goStep3() {
     sel.message = document.getElementById('messageField').value.trim();

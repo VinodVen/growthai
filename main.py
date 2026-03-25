@@ -552,6 +552,22 @@ def dashboard():
     sent_campaigns = Campaign.query.filter_by(business_id=b.id, status="sent").count()
     campaigns = Campaign.query.filter_by(business_id=b.id).order_by(Campaign.created_at.desc()).all()
     customer_limit = get_plan_limit(b.plan, "customers")
+    # Birthday radar — customers with birthdays in the next 7 days
+    today = datetime.utcnow()
+    birthday_customers = []
+    all_customers = Customer.query.filter_by(business_id=b.id).filter(Customer.dob != None, Customer.dob != "").all()
+    for c in all_customers:
+        try:
+            dob = datetime.strptime(c.dob, "%Y-%m-%d")
+            this_year_bday = dob.replace(year=today.year)
+            if this_year_bday < today:
+                this_year_bday = this_year_bday.replace(year=today.year + 1)
+            days_until = (this_year_bday - today).days
+            if 0 <= days_until <= 7:
+                birthday_customers.append({"customer": c, "days": days_until})
+        except Exception:
+            pass
+    birthday_customers.sort(key=lambda x: x["days"])
     return render_template(
         "dashboard.html",
         business_name=b.business_name,
@@ -562,6 +578,7 @@ def dashboard():
         campaigns=campaigns,
         customer_limit=customer_limit,
         campaign_types=get_campaign_types(),
+        birthday_customers=birthday_customers,
     )
 
 @app.route("/customers")
@@ -1219,6 +1236,44 @@ def generate_message():
         message = generate_ai_message(customer_name, b.business_name, campaign_type)
         return jsonify({"success": True, "message": message})
     except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/ai-ideas", methods=["POST"])
+def ai_ideas():
+    b = current_business()
+    if not b:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    try:
+        data = request.get_json()
+        description = data.get("description", "").strip()
+        customer_name = data.get("customer_name", "a valued customer").strip() or "a valued customer"
+        campaign_type = data.get("campaign_type", "promotion").strip()
+        if not description:
+            return jsonify({"success": False, "error": "Description required"})
+        if not client:
+            return jsonify({"success": False, "error": "AI not configured"})
+        prompt = (
+            f"You are a marketing expert for a small business called '{b.business_name}'.\n"
+            f"The business owner wants to promote this: \"{description}\"\n"
+            f"The customer's name is {customer_name}.\n"
+            f"Write 3 different short SMS/email marketing messages (each under 3 sentences, max 160 chars, with emojis, no markdown).\n"
+            f"Return ONLY a JSON array of 3 strings, no explanation. Example: [\"msg1\", \"msg2\", \"msg3\"]"
+        )
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0.8
+        )
+        import json as json_module
+        raw = clean_ai_text(response.choices[0].message.content)
+        # Extract JSON array from response
+        start = raw.find("[")
+        end = raw.rfind("]") + 1
+        ideas = json_module.loads(raw[start:end]) if start >= 0 else [raw]
+        return jsonify({"success": True, "ideas": ideas[:3]})
+    except Exception as e:
+        print(f"AI ideas error: {e}")
         return jsonify({"success": False, "error": str(e)})
 
 @app.route("/load-demo", methods=["POST"])
