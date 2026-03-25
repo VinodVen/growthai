@@ -1634,27 +1634,35 @@ def load_demo():
     if not b:
         return redirect("/login")
 
+    # Birthdays: some within the next 7 days (relative to today) so Birthday Radar shows live
+    _today = datetime.utcnow()
+    def _bday(month, day, year=1988):
+        return f"{year}-{month:02d}-{day:02d}"
+    def _soon(days_ahead, year=1990):
+        d = _today + timedelta(days=days_ahead)
+        return f"{year}-{d.month:02d}-{d.day:02d}"
+
     DEMO_CUSTOMERS = [
-        {"first": "James",    "last": "Martinez",  "email": "james.martinez@demo.com",   "phone": "+12145550101"},
-        {"first": "Priya",    "last": "Sharma",    "email": "priya.sharma@demo.com",     "phone": "+12145550102"},
-        {"first": "Carlos",   "last": "Reyes",     "email": "carlos.reyes@demo.com",     "phone": "+12145550103"},
-        {"first": "Ashley",   "last": "Thompson",  "email": "ashley.t@demo.com",         "phone": "+12145550104"},
-        {"first": "Michael",  "last": "Chen",      "email": "michael.chen@demo.com",     "phone": "+12145550105"},
-        {"first": "Fatima",   "last": "Al-Hassan", "email": "fatima.h@demo.com",         "phone": "+12145550106"},
-        {"first": "David",    "last": "Williams",  "email": "david.w@demo.com",          "phone": "+12145550107"},
-        {"first": "Sofia",    "last": "Nguyen",    "email": "sofia.nguyen@demo.com",     "phone": "+12145550108"},
-        {"first": "Kevin",    "last": "Johnson",   "email": "kevin.j@demo.com",          "phone": "+12145550109"},
-        {"first": "Maria",    "last": "Garcia",    "email": "maria.garcia@demo.com",     "phone": "+12145550110"},
-        {"first": "Tyler",    "last": "Brooks",    "email": "tyler.brooks@demo.com",     "phone": "+12145550111"},
-        {"first": "Aisha",    "last": "Patel",     "email": "aisha.patel@demo.com",      "phone": "+12145550112"},
-        {"first": "Ryan",     "last": "Kim",       "email": "ryan.kim@demo.com",         "phone": "+12145550113"},
-        {"first": "Jessica",  "last": "Davis",     "email": "jessica.d@demo.com",        "phone": "+12145550114"},
-        {"first": "Brandon",  "last": "Lee",       "email": "brandon.lee@demo.com",      "phone": "+12145550115"},
-        {"first": "Natalie",  "last": "Robinson",  "email": "natalie.r@demo.com",        "phone": "+12145550116"},
-        {"first": "Omar",     "last": "Hassan",    "email": "omar.hassan@demo.com",      "phone": "+12145550117"},
-        {"first": "Lauren",   "last": "Mitchell",  "email": "lauren.m@demo.com",         "phone": "+12145550118"},
-        {"first": "Ethan",    "last": "Cooper",    "email": "ethan.c@demo.com",          "phone": "+12145550119"},
-        {"first": "Rachel",   "last": "Torres",    "email": "rachel.t@demo.com",         "phone": "+12145550120"},
+        {"first": "James",    "last": "Martinez",  "email": "james.martinez@demo.com",   "phone": "+12145550101", "dob": _soon(1)},
+        {"first": "Priya",    "last": "Sharma",    "email": "priya.sharma@demo.com",     "phone": "+12145550102", "dob": _soon(3)},
+        {"first": "Carlos",   "last": "Reyes",     "email": "carlos.reyes@demo.com",     "phone": "+12145550103", "dob": _bday(4, 12)},
+        {"first": "Ashley",   "last": "Thompson",  "email": "ashley.t@demo.com",         "phone": "+12145550104", "dob": _bday(6, 22)},
+        {"first": "Michael",  "last": "Chen",      "email": "michael.chen@demo.com",     "phone": "+12145550105", "dob": _bday(8, 5)},
+        {"first": "Fatima",   "last": "Al-Hassan", "email": "fatima.h@demo.com",         "phone": "+12145550106", "dob": _bday(9, 18)},
+        {"first": "David",    "last": "Williams",  "email": "david.w@demo.com",          "phone": "+12145550107", "dob": _bday(11, 30)},
+        {"first": "Sofia",    "last": "Nguyen",    "email": "sofia.nguyen@demo.com",     "phone": "+12145550108", "dob": _soon(5)},
+        {"first": "Kevin",    "last": "Johnson",   "email": "kevin.j@demo.com",          "phone": "+12145550109", "dob": _bday(2, 14)},
+        {"first": "Maria",    "last": "Garcia",    "email": "maria.garcia@demo.com",     "phone": "+12145550110", "dob": _bday(7, 4)},
+        {"first": "Tyler",    "last": "Brooks",    "email": "tyler.brooks@demo.com",     "phone": "+12145550111", "dob": _bday(10, 31)},
+        {"first": "Aisha",    "last": "Patel",     "email": "aisha.patel@demo.com",      "phone": "+12145550112", "dob": _soon(2)},
+        {"first": "Ryan",     "last": "Kim",       "email": "ryan.kim@demo.com",         "phone": "+12145550113", "dob": _bday(5, 20)},
+        {"first": "Jessica",  "last": "Davis",     "email": "jessica.d@demo.com",        "phone": "+12145550114", "dob": _bday(12, 1)},
+        {"first": "Brandon",  "last": "Lee",       "email": "brandon.lee@demo.com",      "phone": "+12145550115", "dob": _bday(3, 8)},
+        {"first": "Natalie",  "last": "Robinson",  "email": "natalie.r@demo.com",        "phone": "+12145550116", "dob": _bday(1, 25)},
+        {"first": "Omar",     "last": "Hassan",    "email": "omar.hassan@demo.com",      "phone": "+12145550117", "dob": _bday(6, 15)},
+        {"first": "Lauren",   "last": "Mitchell",  "email": "lauren.m@demo.com",         "phone": "+12145550118", "dob": _bday(4, 3)},
+        {"first": "Ethan",    "last": "Cooper",    "email": "ethan.c@demo.com",          "phone": "+12145550119", "dob": _bday(8, 27)},
+        {"first": "Rachel",   "last": "Torres",    "email": "rachel.t@demo.com",         "phone": "+12145550120", "dob": _bday(11, 11)},
     ]
 
     DEMO_CAMPAIGNS = [
@@ -1701,6 +1709,7 @@ def load_demo():
             last_name=c["last"],
             email=c["email"],
             phone=c["phone"],
+            dob=c.get("dob"),
         ))
 
     # Add demo campaigns
