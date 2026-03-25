@@ -7,149 +7,363 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 2rem 0; }
-        .card { border: none; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 650px; margin: auto; }
-        .ai-badge { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }
-        .btn-generate { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; }
-        .btn-generate:hover { color: white; opacity: 0.9; }
+        .card { border: none; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); max-width: 680px; margin: auto; }
+
+        /* Step indicator */
+        .steps { display: flex; align-items: center; gap: 0; margin-bottom: 2rem; }
+        .step { flex: 1; text-align: center; position: relative; }
+        .step-circle {
+            width: 36px; height: 36px; border-radius: 50%; display: inline-flex;
+            align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem;
+            border: 2px solid #dee2e6; background: white; color: #adb5bd; transition: all 0.3s;
+        }
+        .step.active .step-circle { border-color: #667eea; background: #667eea; color: white; }
+        .step.done .step-circle { border-color: #198754; background: #198754; color: white; }
+        .step-label { font-size: 0.72rem; color: #adb5bd; margin-top: 4px; }
+        .step.active .step-label { color: #667eea; font-weight: 600; }
+        .step.done .step-label { color: #198754; }
+        .step-line { flex: 1; height: 2px; background: #dee2e6; margin-bottom: 24px; }
+        .step-line.done { background: #198754; }
+
+        /* Panels */
+        .step-panel { display: none; }
+        .step-panel.active { display: block; }
+
+        /* Customer cards */
+        .customer-card {
+            border: 2px solid #e9ecef; border-radius: 12px; padding: 12px 16px;
+            cursor: pointer; transition: all 0.2s; margin-bottom: 8px;
+        }
+        .customer-card:hover { border-color: #667eea; background: #f8f7ff; }
+        .customer-card.selected { border-color: #667eea; background: #f0eeff; }
+        .search-box { position: relative; }
+        .search-box input { border-radius: 10px; padding-left: 2.5rem; }
+        .search-box .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #adb5bd; }
+
+        /* Type cards */
+        .type-card {
+            border: 2px solid #e9ecef; border-radius: 12px; padding: 14px;
+            cursor: pointer; transition: all 0.2s; text-align: center;
+        }
+        .type-card:hover { border-color: #667eea; background: #f8f7ff; }
+        .type-card.selected { border-color: #667eea; background: #f0eeff; }
+        .type-icon { font-size: 1.6rem; margin-bottom: 4px; }
+        .type-label { font-size: 0.8rem; font-weight: 600; color: #444; }
+
+        /* Message */
+        .message-box { background: #f8f9fa; border-radius: 12px; padding: 16px; border-left: 4px solid #667eea; line-height: 1.7; min-height: 80px; }
+        .btn-ai { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 10px; }
+        .btn-ai:hover { color: white; opacity: 0.9; }
+        .btn-next { background: #667eea; color: white; border: none; border-radius: 10px; font-weight: 600; }
+        .btn-next:hover { background: #5a6fd6; color: white; }
+
+        .customer-list-wrap { max-height: 320px; overflow-y: auto; }
+        .manual-toggle { color: #667eea; cursor: pointer; font-size: 0.85rem; text-decoration: underline; }
     </style>
 </head>
 <body>
 <div class="container">
-    <div class="card">
-        <div class="card-body p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2 class="card-title mb-0">Create Campaign</h2>
-                <a href="/dashboard" class="btn btn-outline-secondary btn-sm">← Dashboard</a>
-            </div>
+<div class="card">
+<div class="card-body p-4">
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">Create Campaign</h2>
+        <a href="/campaigns" class="btn btn-outline-secondary btn-sm">← Back</a>
+    </div>
 
-            <form method="POST" id="campaignForm">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}{% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
+            {{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}{% endif %}
+    {% endwith %}
 
-                <!-- Customer selector from existing -->
-                {% if customers %}
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Select Existing Customer</label>
-                    <select class="form-select" id="customerSelect" onchange="fillCustomer(this)">
-                        <option value="">— or fill manually below —</option>
-                        {% for c in customers %}
-                        <option value="{{ c.first_name }} {{ c.last_name }}" data-email="{{ c.email or '' }}" data-phone="{{ c.phone or '' }}">
-                            {{ c.first_name }} {{ c.last_name }}{% if c.email %} — {{ c.email }}{% elif c.phone %} — {{ c.phone }}{% endif %}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <hr>
-                {% endif %}
-
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Customer Name *</label>
-                        <input type="text" class="form-control" id="customerName" name="customer_name" placeholder="e.g., John Doe" required>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Customer Email <span class="text-muted fw-normal">(optional)</span></label>
-                        <input type="email" class="form-control" id="customerEmail" name="customer_email" placeholder="john@example.com">
-                        <small class="text-muted">Required to send email campaigns</small>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Phone Number</label>
-                    <input type="tel" class="form-control" id="customerPhone" name="customer_phone" placeholder="+1 555 123 4567">
-                    <small class="text-muted">Required for SMS sending (Starter/Pro plan)</small>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Campaign Type *</label>
-                    <select class="form-select" id="campaignType" name="campaign_type" required>
-                        {% for key, label in campaign_types.items() %}
-                        <option value="{{ key }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Message</label>
-                    <textarea class="form-control" id="messageField" name="message" rows="5" placeholder="Enter your message or generate with AI below..."></textarea>
-                </div>
-
-                <button type="button" class="btn btn-generate w-100 mb-3" id="generateBtn">
-                    Generate with AI
-                    <span class="spinner-border spinner-border-sm ms-2 d-none" id="spinner"></span>
-                </button>
-
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="useAi" name="use_ai">
-                    <label class="form-check-label" for="useAi">
-                        <span class="ai-badge">Use AI</span> Auto-generate message on submit
-                    </label>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Schedule for Later <span class="text-muted fw-normal">(optional)</span></label>
-                    <input type="datetime-local" class="form-control" name="scheduled_at" id="scheduledAt">
-                    <small class="text-muted">Leave blank to save as draft. Set a time to auto-send.</small>
-                </div>
-
-                <button type="submit" class="btn btn-success w-100 btn-lg mb-2">Create Campaign</button>
-                <a href="/campaigns" class="btn btn-outline-secondary w-100">← Back to Campaigns</a>
-            </form>
+    <!-- Step Indicator -->
+    <div class="steps">
+        <div class="step active" id="si-1">
+            <div class="step-circle">1</div>
+            <div class="step-label">Customer</div>
+        </div>
+        <div class="step-line" id="sl-1"></div>
+        <div class="step" id="si-2">
+            <div class="step-circle">2</div>
+            <div class="step-label">Campaign</div>
+        </div>
+        <div class="step-line" id="sl-2"></div>
+        <div class="step" id="si-3">
+            <div class="step-circle">3</div>
+            <div class="step-label">Send</div>
         </div>
     </div>
+
+    <!-- ── STEP 1: Select Customer ── -->
+    <div class="step-panel active" id="panel-1">
+        {% if customers %}
+        <div class="search-box mb-3">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="form-control" id="customerSearch" placeholder="Search by name, email, or phone..." oninput="filterCustomers()">
+        </div>
+        <div class="customer-list-wrap" id="customerList">
+            {% for c in customers %}
+            <div class="customer-card"
+                 data-name="{{ c.first_name }} {{ c.last_name }}"
+                 data-email="{{ c.email or '' }}"
+                 data-phone="{{ c.phone or '' }}"
+                 data-search="{{ (c.first_name + ' ' + (c.last_name or '') + ' ' + (c.email or '') + ' ' + (c.phone or '')) | lower }}"
+                 onclick="selectCustomer(this)">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>{{ c.first_name }} {{ c.last_name }}</strong>
+                        {% if c.email %}<br><small class="text-muted">{{ c.email }}</small>{% endif %}
+                        {% if c.phone %}<br><small class="text-muted">{{ c.phone }}</small>{% endif %}
+                    </div>
+                    <span class="text-muted fs-5 check-icon" style="display:none;">✓</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="text-center my-2">
+            <span class="manual-toggle" onclick="toggleManual()">+ Enter manually instead</span>
+        </div>
+        {% endif %}
+
+        <div id="manualEntry" {% if customers %}style="display:none;"{% endif %}>
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Name *</label>
+                    <input type="text" class="form-control" id="manualName" placeholder="e.g. John Doe">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Email</label>
+                    <input type="email" class="form-control" id="manualEmail" placeholder="john@example.com">
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold small">Phone</label>
+                    <input type="tel" class="form-control" id="manualPhone" placeholder="+1 214 555 1234">
+                </div>
+            </div>
+        </div>
+
+        <div id="selectedSummary" class="alert alert-primary py-2 mt-3" style="display:none; border-radius:10px;">
+            <strong id="summaryName"></strong> — <span id="summaryContact" class="text-muted small"></span>
+        </div>
+
+        <button class="btn btn-next w-100 btn-lg mt-3" onclick="goStep2()">Next: Choose Campaign Type →</button>
+    </div>
+
+    <!-- ── STEP 2: Campaign Type + Message ── -->
+    <div class="step-panel" id="panel-2">
+        <p class="text-muted small mb-3">Sending to: <strong id="step2Name"></strong></p>
+
+        <label class="form-label fw-bold mb-2">What type of campaign?</label>
+        <div class="row g-2 mb-3" id="typeGrid">
+            {% for key, label in campaign_types.items() %}
+            <div class="col-6 col-md-4">
+                <div class="type-card" data-key="{{ key }}" onclick="selectType(this)">
+                    <div class="type-icon">{{ {'come_back':'🔄','weekend':'🎉','lunch':'🥗','dinner':'🍽','birthday':'🎂','loyalty':'⭐','happy_hour':'🍹','new_item':'✨','promotion':'📣','invitation':'💌','custom':'✏️'}.get(key, '📋') }}</div>
+                    <div class="type-label">{{ label }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div id="messageSection" style="display:none;">
+            <label class="form-label fw-bold">Message</label>
+            <textarea class="form-control mb-2" id="messageField" rows="5" placeholder="Your message will appear here..."></textarea>
+            <div class="d-flex gap-2 mb-3">
+                <button type="button" class="btn btn-ai flex-fill" id="generateBtn" onclick="generateMessage()">
+                    Generate with AI <span class="spinner-border spinner-border-sm ms-1 d-none" id="spinner"></span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="clearMessage()">Clear</button>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" onclick="goStep(1)">← Back</button>
+            <button class="btn btn-next flex-fill btn-lg" onclick="goStep3()">Next: Review & Send →</button>
+        </div>
+    </div>
+
+    <!-- ── STEP 3: Review + Send ── -->
+    <div class="step-panel" id="panel-3">
+        <form method="POST" id="finalForm">
+            <input type="hidden" name="customer_name" id="f_name">
+            <input type="hidden" name="customer_email" id="f_email">
+            <input type="hidden" name="customer_phone" id="f_phone">
+            <input type="hidden" name="campaign_type" id="f_type">
+            <input type="hidden" name="message" id="f_message">
+            <input type="hidden" name="scheduled_at" id="f_scheduled">
+
+            <!-- Summary card -->
+            <div class="card bg-light border-0 mb-3" style="border-radius:12px;">
+                <div class="card-body p-3">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <small class="text-muted fw-bold d-block" style="font-size:0.7rem;">TO</small>
+                            <strong id="r_name"></strong>
+                            <div class="text-muted small" id="r_email"></div>
+                            <div class="text-muted small" id="r_phone"></div>
+                        </div>
+                        <div class="col-6">
+                            <small class="text-muted fw-bold d-block" style="font-size:0.7rem;">TYPE</small>
+                            <span class="badge bg-primary" id="r_type"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold small text-muted">MESSAGE PREVIEW</label>
+                <div class="message-box" id="r_message"></div>
+                <small class="text-muted"><a href="#" onclick="goStep(2); return false;">Edit message</a></small>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold small">Schedule for Later <span class="text-muted fw-normal">(optional)</span></label>
+                <input type="datetime-local" class="form-control" id="schedulePicker" onchange="document.getElementById('f_scheduled').value = this.value">
+                <small class="text-muted">Leave blank to save as draft</small>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-success btn-lg fw-bold">Save as Draft</button>
+                <small class="text-center text-muted">Then open the campaign to Send Email or SMS</small>
+            </div>
+        </form>
+        <button class="btn btn-outline-secondary w-100 mt-2" onclick="goStep(2)">← Back</button>
+    </div>
+
+</div>
+</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    function fillCustomer(select) {
-        const opt = select.options[select.selectedIndex];
-        if (opt.value) {
-            document.getElementById('customerName').value = opt.value;
-            document.getElementById('customerEmail').value = opt.dataset.email;
-            document.getElementById('customerPhone').value = opt.dataset.phone;
-        }
+let sel = { name: '', email: '', phone: '', type: '', typeLabel: '', message: '' };
+let selectedCard = null;
+let selectedTypeCard = null;
+
+// ── Step navigation ──
+function goStep(n) {
+    document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + n).classList.add('active');
+    for (let i = 1; i <= 3; i++) {
+        const si = document.getElementById('si-' + i);
+        si.classList.remove('active', 'done');
+        if (i < n) { si.classList.add('done'); si.querySelector('.step-circle').textContent = '✓'; }
+        else if (i === n) { si.classList.add('active'); si.querySelector('.step-circle').textContent = i; }
+        else { si.querySelector('.step-circle').textContent = i; }
     }
+    for (let i = 1; i <= 2; i++) {
+        const sl = document.getElementById('sl-' + i);
+        sl.classList.toggle('done', i < n);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
-    document.getElementById('generateBtn').addEventListener('click', async function() {
-        const name = document.getElementById('customerName').value.trim();
-        const type = document.getElementById('campaignType').value;
-        if (!name) { alert('Enter customer name first'); return; }
-
-        const btn = this;
-        const spinner = document.getElementById('spinner');
-        btn.disabled = true;
-        spinner.classList.remove('d-none');
-        btn.childNodes[0].textContent = 'Generating... ';
-
-        try {
-            const res = await fetch('/generate-message', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ customer_name: name, campaign_type: type })
-            });
-            const data = await res.json();
-            if (data.success) {
-                document.getElementById('messageField').value = data.message;
-            } else {
-                alert('Error: ' + data.error);
-            }
-        } catch (e) {
-            alert('Failed: ' + e.message);
-        } finally {
-            btn.disabled = false;
-            spinner.classList.add('d-none');
-            btn.childNodes[0].textContent = 'Generate with AI ';
-        }
+// ── Step 1 ──
+function filterCustomers() {
+    const q = document.getElementById('customerSearch').value.toLowerCase();
+    document.querySelectorAll('.customer-card').forEach(c => {
+        c.style.display = c.dataset.search.includes(q) ? '' : 'none';
     });
+}
+
+function selectCustomer(card) {
+    if (selectedCard) { selectedCard.classList.remove('selected'); selectedCard.querySelector('.check-icon').style.display = 'none'; }
+    selectedCard = card;
+    card.classList.add('selected');
+    card.querySelector('.check-icon').style.display = '';
+    sel.name = card.dataset.name;
+    sel.email = card.dataset.email;
+    sel.phone = card.dataset.phone;
+    document.getElementById('selectedSummary').style.display = '';
+    document.getElementById('summaryName').textContent = sel.name;
+    document.getElementById('summaryContact').textContent = [sel.email, sel.phone].filter(Boolean).join(' · ') || 'No contact info';
+    // Hide manual entry
+    document.getElementById('manualEntry').style.display = 'none';
+}
+
+function toggleManual() {
+    const m = document.getElementById('manualEntry');
+    m.style.display = m.style.display === 'none' ? '' : 'none';
+    if (selectedCard) { selectedCard.classList.remove('selected'); selectedCard.querySelector('.check-icon').style.display = 'none'; selectedCard = null; }
+    document.getElementById('selectedSummary').style.display = 'none';
+    sel.name = ''; sel.email = ''; sel.phone = '';
+}
+
+function goStep2() {
+    const manual = document.getElementById('manualEntry');
+    if (manual && manual.style.display !== 'none') {
+        sel.name = document.getElementById('manualName').value.trim();
+        sel.email = document.getElementById('manualEmail').value.trim();
+        sel.phone = document.getElementById('manualPhone').value.trim();
+    }
+    if (!sel.name) { alert('Please select or enter a customer name.'); return; }
+    if (!sel.email && !sel.phone) { alert('Please provide at least a phone number or email.'); return; }
+    document.getElementById('step2Name').textContent = sel.name;
+    goStep(2);
+}
+
+// ── Step 2 ──
+function selectType(card) {
+    if (selectedTypeCard) selectedTypeCard.classList.remove('selected');
+    selectedTypeCard = card;
+    card.classList.add('selected');
+    sel.type = card.dataset.key;
+    sel.typeLabel = card.querySelector('.type-label').textContent;
+    document.getElementById('messageSection').style.display = '';
+    if (sel.type !== 'custom' && !document.getElementById('messageField').value) {
+        generateMessage();
+    }
+}
+
+async function generateMessage() {
+    if (!sel.type || sel.type === 'custom') {
+        document.getElementById('messageField').focus();
+        return;
+    }
+    const btn = document.getElementById('generateBtn');
+    const spinner = document.getElementById('spinner');
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+    try {
+        const res = await fetch('/generate-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customer_name: sel.name, campaign_type: sel.type })
+        });
+        const data = await res.json();
+        if (data.success) document.getElementById('messageField').value = data.message;
+        else alert('Error: ' + data.error);
+    } catch (e) {
+        alert('Failed: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+}
+
+function clearMessage() { document.getElementById('messageField').value = ''; }
+
+function goStep3() {
+    sel.message = document.getElementById('messageField').value.trim();
+    if (!sel.type) { alert('Please select a campaign type.'); return; }
+    if (!sel.message) { alert('Please write or generate a message.'); return; }
+    // Populate review
+    document.getElementById('r_name').textContent = sel.name;
+    document.getElementById('r_email').textContent = sel.email;
+    document.getElementById('r_phone').textContent = sel.phone;
+    document.getElementById('r_type').textContent = sel.typeLabel;
+    document.getElementById('r_message').textContent = sel.message;
+    // Populate hidden fields
+    document.getElementById('f_name').value = sel.name;
+    document.getElementById('f_email').value = sel.email;
+    document.getElementById('f_phone').value = sel.phone;
+    document.getElementById('f_type').value = sel.type;
+    document.getElementById('f_message').value = sel.message;
+    goStep(3);
+}
 </script>
 </body>
 </html>
