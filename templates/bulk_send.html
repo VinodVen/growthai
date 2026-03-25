@@ -273,17 +273,23 @@ document.getElementById('previewAiBtn').addEventListener('click', async function
     }
 });
 
-// Load initial sample for "all" on page load
+// Load initial segment on page load (may be pre-selected from URL param)
 window.addEventListener('DOMContentLoaded', () => {
-    fetch('/api/segment-count?segment=all').then(r => r.json()).then(data => {
-        if (data.sample && data.sample.length > 0) {
-            const pills = data.sample.map(c =>
-                `<span class="preview-pill">${c.name}${c.email ? ' · ' + c.email : (c.phone ? ' · ' + c.phone : '')}</span>`
-            ).join('');
-            const more = data.count > 5 ? `<span class="preview-pill text-muted">+${data.count - 5} more</span>` : '';
-            document.getElementById('previewSampleRow').innerHTML = pills + more;
-        }
-    });
+    const preselect = '{{ preselect_segment | default("all") }}';
+    const card = document.querySelector('.segment-card[data-segment="' + preselect + '"]');
+    if (card && preselect !== 'all') {
+        selectSegment(card);
+    } else {
+        fetch('/api/segment-count?segment=all').then(r => r.json()).then(data => {
+            if (data.sample && data.sample.length > 0) {
+                const pills = data.sample.map(c =>
+                    `<span class="preview-pill">${c.name}${c.email ? ' · ' + c.email : (c.phone ? ' · ' + c.phone : '')}</span>`
+                ).join('');
+                const more = data.count > 5 ? `<span class="preview-pill text-muted">+${data.count - 5} more</span>` : '';
+                document.getElementById('previewSampleRow').innerHTML = pills + more;
+            }
+        });
+    }
 });
 </script>
 </body>

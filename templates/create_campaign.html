@@ -122,11 +122,19 @@
         </div>
 
         <!-- Filter Tabs -->
-        <div class="d-flex gap-1 mb-3 flex-wrap" id="filterTabs">
-            <button class="tab-btn active" data-filter="all" onclick="setTab(this)">All <span class="tab-count" id="cnt-all"></span></button>
-            <button class="tab-btn" data-filter="vip" onclick="setTab(this)">⭐ VIP <span class="tab-count" id="cnt-vip"></span></button>
-            <button class="tab-btn" data-filter="birthday" onclick="setTab(this)">🎂 Birthday Soon <span class="tab-count" id="cnt-birthday"></span></button>
-            <button class="tab-btn" data-filter="new" onclick="setTab(this)">🌱 New Guests <span class="tab-count" id="cnt-new"></span></button>
+        <div class="d-flex gap-1 mb-2 flex-wrap" id="filterTabs">
+            <button class="tab-btn active" data-filter="all" data-segment="all" onclick="setTab(this)">All <span class="tab-count" id="cnt-all"></span></button>
+            <button class="tab-btn" data-filter="vip" data-segment="vip" onclick="setTab(this)">⭐ VIP <span class="tab-count" id="cnt-vip"></span></button>
+            <button class="tab-btn" data-filter="birthday" data-segment="birthday_month" onclick="setTab(this)">🎂 Birthday Soon <span class="tab-count" id="cnt-birthday"></span></button>
+            <button class="tab-btn" data-filter="new" data-segment="new" onclick="setTab(this)">🌱 New Guests <span class="tab-count" id="cnt-new"></span></button>
+        </div>
+
+        <!-- Send-All shortcut banner -->
+        <div id="sendAllBanner" class="mb-3 p-2 rounded-3 d-flex align-items-center justify-content-between" style="background:#f0eeff;border:1.5px solid #c5b8ff;">
+            <span style="font-size:0.82rem;color:#555;">Want to message <strong id="sendAllCount">everyone</strong> at once?</span>
+            <a id="sendAllLink" href="/bulk-send" class="btn btn-sm fw-bold" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:8px;font-size:0.78rem;white-space:nowrap;">
+                Send to All →
+            </a>
         </div>
 
         <div class="customer-list-wrap" id="customerList">
@@ -364,11 +372,19 @@ function cardMatchesFilter(card, filter) {
 
 let activeFilter = 'all';
 
+const SEGMENT_LABELS = { all: 'all customers', vip: 'VIP guests', birthday: 'birthday guests', new: 'new guests' };
+
 function setTab(btn) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     activeFilter = btn.dataset.filter;
     filterCustomers();
+    // Update send-all banner
+    const countEl = document.getElementById('cnt-' + activeFilter);
+    const count = countEl ? (countEl.textContent || '?') : '?';
+    document.getElementById('sendAllCount').textContent = count + ' ' + (SEGMENT_LABELS[activeFilter] || 'customers');
+    const segment = btn.dataset.segment || 'all';
+    document.getElementById('sendAllLink').href = '/bulk-send?segment=' + segment;
 }
 
 function filterCustomers() {

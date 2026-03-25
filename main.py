@@ -1235,7 +1235,8 @@ def bulk_send():
             flash(f"Bulk send complete! Sent to {sent_count}/{len(customers_list)} customers{note_str}.", "success")
         return redirect("/campaigns")
     customers_count = Customer.query.filter_by(business_id=b.id, unsubscribed=False).count()
-    return render_template("bulk_send.html", campaign_types=get_campaign_types(), customers_count=customers_count)
+    preselect_segment = request.args.get("segment", "all")
+    return render_template("bulk_send.html", campaign_types=get_campaign_types(), customers_count=customers_count, preselect_segment=preselect_segment)
 
 @app.route("/edit-campaign/<int:campaign_id>", methods=["POST"])
 def edit_campaign(campaign_id):
