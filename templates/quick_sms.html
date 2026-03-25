@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick SMS - Revvio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 2rem 0; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 600px; margin: auto; }
+        .btn-sms { background: linear-gradient(135deg, #11998e, #38ef7d); color: white; border: none; font-weight: 600; }
+        .btn-sms:hover { color: white; opacity: 0.9; }
+        .btn-generate { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; }
+        .btn-generate:hover { color: white; opacity: 0.9; }
+        .char-counter { font-size: 0.8rem; }
+        .char-counter.over { color: #dc3545; }
+        .char-counter.warn { color: #fd7e14; }
+        .char-counter.ok { color: #198754; }
+        .phone-pill { cursor: pointer; transition: background 0.15s; }
+        .phone-pill:hover { background: #e9ecef !important; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="card-title mb-0 fw-bold">Quick SMS</h2>
+                    <small class="text-muted">Send a text directly to any phone number</small>
+                </div>
+                <a href="/campaigns" class="btn btn-outline-secondary btn-sm">← Back</a>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Quick-pick from existing customers with phones -->
+            {% if customers %}
+            <div class="mb-3">
+                <label class="form-label fw-bold small text-muted">QUICK-PICK FROM YOUR CUSTOMERS</label>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for c in customers %}
+                    <span class="badge bg-light text-dark border phone-pill px-3 py-2"
+                          onclick="fillPhone('{{ c.first_name }} {{ c.last_name }}', '{{ c.phone or '' }}')">
+                        {{ c.first_name }} {{ c.last_name }}<br>
+                        <small class="text-muted">{{ c.phone }}</small>
+                    </span>
+                    {% endfor %}
+                </div>
+                <small class="text-muted">Tap a name to fill in below, or enter any number manually.</small>
+            </div>
+            <hr>
+            {% endif %}
+
+            <form method="POST" id="smsForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Recipient Name <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="text" class="form-control" id="recipientName" name="recipient_name" placeholder="e.g. John">
+                        <small class="text-muted">Used for AI message personalisation</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Phone Number <span class="text-danger">*</span></label>
+                        <input type="tel" class="form-control" id="phoneField" name="phone" placeholder="+1 214 555 1234" required>
+                        <small class="text-muted">Include country code, e.g. +1</small>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Message Type</label>
+                    <select class="form-select" id="campaignType" name="campaign_type">
+                        {% for key, label in campaign_types.items() %}
+                        <option value="{{ key }}" {% if key == 'custom' %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-1">
+                    <label class="form-label fw-bold">Message <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="messageField" name="message" rows="5"
+                        placeholder="Type your message here, or tap Generate with AI below..."
+                        oninput="updateCounter()"></textarea>
+                </div>
+                <div class="d-flex justify-content-between mb-3">
+                    <small class="text-muted">Keep it short and friendly</small>
+                    <span id="charCounter" class="char-counter ok">0 / 160</span>
+                </div>
+
+                <button type="button" class="btn btn-generate w-100 mb-3" id="generateBtn">
+                    Generate with AI
+                    <span class="spinner-border spinner-border-sm ms-2 d-none" id="spinner"></span>
+                </button>
+
+                <div class="mb-3 form-check">
+                    <input type="checkbox" class="form-check-input" id="useAi" name="use_ai">
+                    <label class="form-check-label" for="useAi">
+                        Auto-generate message with AI on send
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-sms w-100 btn-lg mb-2">Send SMS Now</button>
+                <a href="/campaigns" class="btn btn-outline-secondary w-100">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function fillPhone(name, phone) {
+        document.getElementById('recipientName').value = name;
+        document.getElementById('phoneField').value = phone;
+        document.getElementById('phoneField').focus();
+    }
+
+    function updateCounter() {
+        const len = document.getElementById('messageField').value.length;
+        const counter = document.getElementById('charCounter');
+        counter.textContent = len + ' / 160';
+        counter.className = 'char-counter ' + (len > 160 ? 'over' : len > 140 ? 'warn' : 'ok');
+    }
+
+    document.getElementById('generateBtn').addEventListener('click', async function() {
+        const name = document.getElementById('recipientName').value.trim() || 'Customer';
+        const type = document.getElementById('campaignType').value;
+        if (type === 'custom') {
+            alert('Select a campaign type for AI to generate a message, or type your own.');
+            return;
+        }
+        const btn = this;
+        const spinner = document.getElementById('spinner');
+        btn.disabled = true;
+        spinner.classList.remove('d-none');
+        btn.childNodes[0].textContent = 'Generating... ';
+        try {
+            const res = await fetch('/generate-message', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ customer_name: name, campaign_type: type })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('messageField').value = data.message;
+                updateCounter();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (e) {
+            alert('Failed: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            spinner.classList.add('d-none');
+            btn.childNodes[0].textContent = 'Generate with AI ';
+        }
+    });
+</script>
+</body>
+</html>

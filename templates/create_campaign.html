@@ -42,8 +42,8 @@
                     <select class="form-select" id="customerSelect" onchange="fillCustomer(this)">
                         <option value="">— or fill manually below —</option>
                         {% for c in customers %}
-                        <option value="{{ c.first_name }} {{ c.last_name }}" data-email="{{ c.email }}" data-phone="{{ c.phone or '' }}">
-                            {{ c.first_name }} {{ c.last_name }} — {{ c.email }}
+                        <option value="{{ c.first_name }} {{ c.last_name }}" data-email="{{ c.email or '' }}" data-phone="{{ c.phone or '' }}">
+                            {{ c.first_name }} {{ c.last_name }}{% if c.email %} — {{ c.email }}{% elif c.phone %} — {{ c.phone }}{% endif %}
                         </option>
                         {% endfor %}
                     </select>
@@ -57,8 +57,9 @@
                         <input type="text" class="form-control" id="customerName" name="customer_name" placeholder="e.g., John Doe" required>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="form-label fw-bold">Customer Email *</label>
-                        <input type="email" class="form-control" id="customerEmail" name="customer_email" placeholder="john@example.com" required>
+                        <label class="form-label fw-bold">Customer Email <span class="text-muted fw-normal">(optional)</span></label>
+                        <input type="email" class="form-control" id="customerEmail" name="customer_email" placeholder="john@example.com">
+                        <small class="text-muted">Required to send email campaigns</small>
                     </div>
                 </div>
 

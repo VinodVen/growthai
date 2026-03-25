@@ -72,15 +72,17 @@ PLAN_LIMITS = {
 }
 
 CAMPAIGN_TYPES = {
-    "come_back":  "Come Back Offer",
-    "weekend":    "Weekend Special",
-    "lunch":      "Lunch Deal",
-    "dinner":     "Dinner Special",
-    "birthday":   "Birthday Special",
-    "loyalty":    "Loyalty Reward",
-    "happy_hour": "Happy Hour",
-    "new_item":   "New Item Launch",
-    "promotion":  "General Promotion",
+    "come_back":   "Come Back Offer",
+    "weekend":     "Weekend Special",
+    "lunch":       "Lunch Deal",
+    "dinner":      "Dinner Special",
+    "birthday":    "Birthday Special",
+    "loyalty":     "Loyalty Reward",
+    "happy_hour":  "Happy Hour",
+    "new_item":    "New Item Launch",
+    "promotion":   "General Promotion",
+    "invitation":  "Business Invitation",
+    "custom":      "Custom Message",
 }
 
 # Database
@@ -134,7 +136,7 @@ class Campaign(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=False)
     customer_name = db.Column(db.String(200), nullable=False)
-    customer_email = db.Column(db.String(200), nullable=False)
+    customer_email = db.Column(db.String(200), nullable=True)
     customer_phone = db.Column(db.String(50))
     campaign_type = db.Column(db.String(50), nullable=False)
     message = db.Column(db.Text, nullable=False)
@@ -169,6 +171,7 @@ with app.app_context():
         "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS click_count INTEGER DEFAULT 0",
         "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS clicked_at TIMESTAMP",
         "ALTER TABLE customers ALTER COLUMN email DROP NOT NULL",
+        "ALTER TABLE campaigns ALTER COLUMN customer_email DROP NOT NULL",
     ]
     for sql in migrations:
         try:
@@ -636,8 +639,11 @@ def create_campaign():
         use_ai = request.form.get("use_ai") == "on"
         message = request.form.get("message", "").strip()
         scheduled_at_str = request.form.get("scheduled_at", "").strip()
-        if not customer_name or not customer_email:
-            flash("Name and email required.", "error")
+        if not customer_name:
+            flash("Customer name is required.", "error")
+            return redirect("/create-campaign")
+        if not customer_email and not customer_phone:
+            flash("Please provide at least an email or phone number.", "error")
             return redirect("/create-campaign")
         if use_ai and not message:
             message = generate_ai_message(customer_name, b.business_name, campaign_type)
@@ -805,6 +811,52 @@ def send_sms_campaign(campaign_id):
     else:
         flash("SMS not sent. Check Twilio configuration in Render environment.", "error")
     return redirect(f"/campaign/{campaign.id}")
+
+@app.route("/quick-sms", methods=["GET", "POST"])
+def quick_sms():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    if b.plan == "free":
+        flash("Quick SMS requires Starter or Pro plan.", "error")
+        return redirect("/upgrade")
+    if request.method == "POST":
+        recipient_name = request.form.get("recipient_name", "").strip() or "Customer"
+        phone = request.form.get("phone", "").strip()
+        message = request.form.get("message", "").strip()
+        use_ai = request.form.get("use_ai") == "on"
+        campaign_type = request.form.get("campaign_type", "promotion")
+        if not phone:
+            flash("Phone number is required.", "error")
+            return redirect("/quick-sms")
+        if use_ai and not message:
+            message = generate_ai_message(recipient_name, b.business_name, campaign_type)
+        if not message:
+            flash("Enter a message or enable AI generation.", "error")
+            return redirect("/quick-sms")
+        success = send_sms(phone, message)
+        # Save as a campaign record for tracking
+        campaign = Campaign(
+            business_id=b.id,
+            customer_name=recipient_name,
+            customer_email="",
+            customer_phone=phone,
+            campaign_type=campaign_type,
+            message=message,
+            status="sent" if success else "failed",
+        )
+        try:
+            db.session.add(campaign)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        if success:
+            flash(f"SMS sent to {phone}!", "success")
+        else:
+            flash("SMS not sent. Check Twilio configuration.", "error")
+        return redirect("/quick-sms")
+    customers_list = Customer.query.filter_by(business_id=b.id).filter(Customer.phone != None).filter(Customer.phone != "").order_by(Customer.first_name).all()
+    return render_template("quick_sms.html", campaign_types=CAMPAIGN_TYPES, customers=customers_list, plan=b.plan)
 
 @app.route("/bulk-send", methods=["GET", "POST"])
 def bulk_send():
@@ -1492,6 +1544,10 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 
 def admin_required():
     return session.get("is_admin") is True
+
+@app.route("/admin")
+def admin_index():
+    return redirect("/admin/login")
 
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
