@@ -1760,14 +1760,8 @@ def ai_ideas():
             f"Write 3 different short SMS/email marketing messages (each under 3 sentences, max 160 chars, with emojis, no markdown).\n"
             f"Return ONLY a JSON array of 3 strings, no explanation. Example: [\"msg1\", \"msg2\", \"msg3\"]"
         )
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=400,
-            temperature=0.8
-        )
         import json as json_module
-        raw = clean_ai_text(response.choices[0].message.content)
+        raw = clean_ai_text(_call_openai(prompt, max_tokens=400))
         # Extract JSON array from response
         start = raw.find("[")
         end = raw.rfind("]") + 1
