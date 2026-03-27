@@ -561,6 +561,8 @@ def build_html_email(business_name, customer_name, message, campaign_type, unsub
         <div style="text-align:center;margin-top:25px;">
             {'<a href="' + click_tracking_url + '" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:14px 30px;border-radius:8px;display:inline-block;font-size:16px;font-weight:bold;text-decoration:none;">' + cta_text + '</a>' if click_tracking_url else '<p style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:14px 30px;border-radius:8px;display:inline-block;font-size:16px;font-weight:bold;">' + cta_text + '</p>'}
         </div>
+        {f'<p style="text-align:center;color:#888;font-size:13px;margin-top:20px;">📍 {business_address}</p>' if business_address else ''}
+        {f'<p style="text-align:center;color:#888;font-size:13px;margin:4px 0;">📞 {business_phone}</p>' if business_phone else ''}
     </div>
     <p style="text-align:center;color:#999;font-size:12px;">
         You received this because you're a valued customer of {business_name}.<br>
@@ -1157,6 +1159,8 @@ def track_click(campaign_id):
         b = Business.query.get(campaign.business_id)
         if b and b.website:
             destination = b.website if b.website.startswith("http") else f"https://{b.website}"
+        elif b and b.address:
+            destination = f"https://www.google.com/maps/search/?api=1&query={b.address.replace(' ', '+')}"
     return redirect(destination)
 
 @app.route("/send-campaign/<int:campaign_id>", methods=["POST"])
