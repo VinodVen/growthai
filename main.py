@@ -1,6 +1,7 @@
 import os
 import bcrypt
 import stripe
+import stripe.checkout
 import smtplib
 import hmac
 import hashlib
@@ -128,6 +129,9 @@ class Customer(db.Model):
     email = db.Column(db.String(200), nullable=True)
     phone = db.Column(db.String(50))
     dob = db.Column(db.String(50))
+    notes = db.Column(db.Text)
+    tags = db.Column(db.String(300))  # comma-separated: VIP,Regular,Corporate
+    visit_count = db.Column(db.Integer, default=0)
     unsubscribed = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -203,6 +207,9 @@ with app.app_context():
         "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS clicked_at TIMESTAMP",
         "ALTER TABLE customers ALTER COLUMN email DROP NOT NULL",
         "ALTER TABLE campaigns ALTER COLUMN customer_email DROP NOT NULL",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS notes TEXT",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS tags VARCHAR(300)",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS visit_count INTEGER DEFAULT 0",
     ]
     for sql in migrations:
         try:
@@ -611,7 +618,7 @@ def send_sms(to_phone, message):
         print(f"SMS error: {e}")
         return False
 
-def generate_ai_message(customer_name, business_name, campaign_type):
+def generate_ai_message(customer_name, business_name, campaign_type, raise_on_error=False):
     fallbacks = {
         "come_back":  f"We miss you, {customer_name}! Come back to {business_name} and enjoy 15% off your next visit. We'd love to see you again!",
         "weekend":    f"Hi {customer_name}! Weekend special at {business_name} — amazing food and great deals this weekend only!",
@@ -651,7 +658,7 @@ def generate_ai_message(customer_name, business_name, campaign_type):
 
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=150,
             temperature=0.7
@@ -659,6 +666,8 @@ def generate_ai_message(customer_name, business_name, campaign_type):
         return clean_ai_text(response.choices[0].message.content)
     except Exception as e:
         print(f"AI error: {e}")
+        if raise_on_error:
+            raise
         return fallbacks.get(campaign_type, fallbacks["promotion"])
 
 # ============================================
@@ -668,6 +677,26 @@ def generate_ai_message(customer_name, business_name, campaign_type):
 @app.route("/test")
 def test():
     return f"<h1>Flask is working!</h1><p>Environment: {ENV}</p>"
+
+@app.route("/test-ai")
+def test_ai():
+    key = os.getenv("OPENAI_API_KEY", "")
+    if not key:
+        return "<h2>❌ OPENAI_API_KEY is not set in environment variables.</h2>"
+    if not key.startswith("sk-"):
+        return f"<h2>❌ Key looks wrong — starts with '{key[:6]}...' (should start with 'sk-')</h2>"
+    if not client:
+        return "<h2>❌ OpenAI client failed to initialize. Check your key format.</h2>"
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": "Say hello in one word."}],
+            max_tokens=10
+        )
+        result = response.choices[0].message.content
+        return f"<h2>✅ OpenAI is working!</h2><p>Response: <strong>{result}</strong></p><p>Key starts with: {key[:8]}...</p>"
+    except Exception as e:
+        return f"<h2>❌ OpenAI call failed</h2><pre>{str(e)}</pre><p>Key starts with: {key[:8]}...</p>"
 
 @app.route("/", methods=["GET"])
 def landing():
@@ -813,6 +842,82 @@ def dashboard():
         c = Customer.query.filter_by(business_id=b.id, email=email).first()
         if c:
             top_customers.append({"customer": c, "count": email_counter[email]})
+
+    # Smart Insights — actionable suggestions based on data
+    insights = []
+    # 1. Inactive customers
+    cutoff_60 = today - timedelta(days=60)
+    all_active = Customer.query.filter_by(business_id=b.id, unsubscribed=False).all()
+    inactive_count = 0
+    for c in all_active:
+        last = Campaign.query.filter_by(business_id=b.id, customer_email=c.email or "").filter(
+            Campaign.status == "sent"
+        ).order_by(Campaign.created_at.desc()).first()
+        if not last or last.created_at < cutoff_60:
+            inactive_count += 1
+    if inactive_count > 0:
+        insights.append({
+            "icon": "😴", "color": "#f59e0b",
+            "title": f"{inactive_count} guests haven't heard from you in 60+ days",
+            "body": "Send a 'We miss you' offer to bring them back.",
+            "action": "Re-engage Now", "url": "/bulk-send?segment=inactive"
+        })
+    # 2. Uncontacted customers (never received a campaign)
+    never_contacted = sum(1 for c in all_active if not Campaign.query.filter_by(
+        business_id=b.id, customer_email=c.email or ""
+    ).first())
+    if never_contacted > 0:
+        insights.append({
+            "icon": "👋", "color": "#667eea",
+            "title": f"{never_contacted} guests have never received a message",
+            "body": "Welcome them with an intro offer.",
+            "action": "Send Welcome", "url": "/bulk-send?segment=new"
+        })
+    # 3. Best performing campaign type
+    type_opens = {}
+    type_sent_count = {}
+    for c in campaigns:
+        if c.status == "sent":
+            type_sent_count[c.campaign_type] = type_sent_count.get(c.campaign_type, 0) + 1
+            type_opens[c.campaign_type] = type_opens.get(c.campaign_type, 0) + (c.open_count or 0)
+    best_type = None
+    best_rate = 0
+    for t, opens in type_opens.items():
+        sent = type_sent_count.get(t, 0)
+        rate = round(opens / sent * 100) if sent >= 3 else 0
+        if rate > best_rate:
+            best_rate = rate
+            best_type = t
+    if best_type and best_rate >= 20:
+        insights.append({
+            "icon": "🏆", "color": "#10b981",
+            "title": f"Your '{ct.get(best_type, best_type)}' campaigns get {best_rate}% open rate",
+            "body": "That's above average! Send more of what's working.",
+            "action": "Create One Now", "url": f"/create-campaign"
+        })
+    # 4. Customers with no email (SMS only)
+    sms_only = Customer.query.filter_by(business_id=b.id).filter(
+        Customer.phone.isnot(None), Customer.phone != "",
+        (Customer.email.is_(None)) | (Customer.email == "")
+    ).count()
+    if sms_only > 0:
+        insights.append({
+            "icon": "📱", "color": "#8b5cf6",
+            "title": f"{sms_only} guests only have a phone number",
+            "body": "Reach them via SMS — email won't work for these guests.",
+            "action": "Send SMS", "url": "/quick-sms"
+        })
+    # 5. Customers missing birthday
+    no_dob = Customer.query.filter_by(business_id=b.id).filter(
+        (Customer.dob.is_(None)) | (Customer.dob == "")
+    ).count()
+    if no_dob > 0 and total_customers > 0:
+        insights.append({
+            "icon": "🎂", "color": "#ec4899",
+            "title": f"{no_dob} guests are missing a birthday date",
+            "body": "Add birthdays to unlock birthday automation and radar.",
+            "action": "View Customers", "url": "/customers"
+        })
 
     return render_template(
         "dashboard.html",
@@ -1493,10 +1598,11 @@ def generate_message():
         campaign_type = data.get("campaign_type", "promotion").strip()
         if not customer_name:
             return jsonify({"success": False, "error": "Customer name required"})
-        message = generate_ai_message(customer_name, b.business_name, campaign_type)
+        message = generate_ai_message(customer_name, b.business_name, campaign_type, raise_on_error=True)
         return jsonify({"success": True, "message": message})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+        print(f"Generate message error: {e}")
+        return jsonify({"success": False, "error": f"AI error: {str(e)}"})
 
 @app.route("/promotions", methods=["GET", "POST"])
 def promotions():
