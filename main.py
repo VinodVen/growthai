@@ -38,16 +38,19 @@ STRIPE_PRICE_STARTER = os.getenv("STRIPE_PRICE_ID_STARTER") or os.getenv("STRIPE
 STRIPE_PRICE_PRO = os.getenv("STRIPE_PRICE_ID_PRO") or os.getenv("STRIPE_PRICE_ID")
 
 # OpenAI
+openai_init_error = None
 try:
     from openai import OpenAI
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
     if api_key:
         client = OpenAI(api_key=api_key)
     else:
         client = None
+        openai_init_error = "OPENAI_API_KEY not set"
         print("Warning: OPENAI_API_KEY not set.")
 except Exception as e:
     client = None
+    openai_init_error = str(e)
     print(f"Warning: OpenAI initialization failed: {e}")
 
 # Twilio SMS
@@ -686,7 +689,7 @@ def test_ai():
     if not key.startswith("sk-"):
         return f"<h2>❌ Key looks wrong — starts with '{key[:6]}...' (should start with 'sk-')</h2>"
     if not client:
-        return "<h2>❌ OpenAI client failed to initialize. Check your key format.</h2>"
+        return f"<h2>❌ OpenAI client failed to initialize.</h2><pre>Error: {openai_init_error}</pre><p>Key starts with: {key[:12]}...</p><p>Key length: {len(key)} chars</p>"
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
