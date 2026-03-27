@@ -105,6 +105,43 @@
         </div>
     </div>
 
+    <!-- Add Business -->
+    <div class="mb-2"><small class="section-title">Add Business Manually</small></div>
+    <div class="card-dark p-3 mb-4">
+        <form method="POST" action="/admin/add-business">
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" name="business_name" placeholder="Business name *" required>
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" name="owner_name" placeholder="Owner name *" required>
+                </div>
+                <div class="col-md-2">
+                    <input type="email" class="form-control form-control-sm bg-dark text-white border-secondary" name="email" placeholder="Email *" required>
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" name="password" placeholder="Password *" required>
+                </div>
+                <div class="col-md-1">
+                    <select name="plan" class="form-select form-select-sm bg-dark text-white border-secondary">
+                        <option value="free">Free</option>
+                        <option value="starter">Starter</option>
+                        <option value="pro">Pro</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" name="phone" placeholder="Phone (optional)">
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control form-control-sm bg-dark text-white border-secondary" name="address" placeholder="Address (optional)">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-sm btn-success w-100">+ Add Business</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
     <!-- All Businesses -->
     <div class="d-flex align-items-center justify-content-between mb-2">
         <small class="section-title">All Businesses</small>

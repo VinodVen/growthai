@@ -2255,6 +2255,42 @@ def admin_dashboard():
         campaign_types=all_campaign_types,
     )
 
+@app.route("/admin/add-business", methods=["POST"])
+def admin_add_business():
+    if not admin_required():
+        return redirect("/admin/login")
+    business_name = request.form.get("business_name", "").strip()
+    owner_name = request.form.get("owner_name", "").strip()
+    email = request.form.get("email", "").strip()
+    password = request.form.get("password", "").strip()
+    plan = request.form.get("plan", "free")
+    phone = request.form.get("phone", "").strip()
+    address = request.form.get("address", "").strip()
+    if not all([business_name, owner_name, email, password]):
+        flash("Business name, owner name, email, and password are required.", "error")
+        return redirect("/admin/dashboard")
+    if Business.query.filter_by(email=email).first():
+        flash(f"Email {email} is already registered.", "error")
+        return redirect("/admin/dashboard")
+    hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    b = Business(
+        business_name=business_name,
+        owner_name=owner_name,
+        email=email,
+        password=hashed,
+        plan=plan,
+        phone=phone or None,
+        address=address or None,
+    )
+    try:
+        db.session.add(b)
+        db.session.commit()
+        flash(f"Business '{business_name}' created successfully!", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error creating business: {e}", "error")
+    return redirect("/admin/dashboard")
+
 @app.route("/admin/change-plan/<int:business_id>", methods=["POST"])
 def admin_change_plan(business_id):
     if not admin_required():
