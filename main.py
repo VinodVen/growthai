@@ -2242,6 +2242,7 @@ def admin_dashboard():
         "starter": sum(1 for b in businesses if b.plan == "starter"),
         "pro": sum(1 for b in businesses if b.plan == "pro"),
     }
+    mrr = plan_counts["starter"] * 19 + plan_counts["pro"] * 50
     all_campaign_types = CampaignTypeModel.query.order_by(CampaignTypeModel.sort_order, CampaignTypeModel.label).all()
     return render_template("admin_dashboard.html",
         stats=stats,
@@ -2250,8 +2251,43 @@ def admin_dashboard():
         total_sent=total_sent,
         total_opens=total_opens,
         plan_counts=plan_counts,
+        mrr=mrr,
         campaign_types=all_campaign_types,
     )
+
+@app.route("/admin/change-plan/<int:business_id>", methods=["POST"])
+def admin_change_plan(business_id):
+    if not admin_required():
+        return redirect("/admin/login")
+    b = Business.query.get(business_id)
+    if b:
+        b.plan = request.form.get("plan", b.plan)
+        db.session.commit()
+    return redirect("/admin/dashboard")
+
+@app.route("/admin/login-as/<int:business_id>", methods=["POST"])
+def admin_login_as(business_id):
+    if not admin_required():
+        return redirect("/admin/login")
+    b = Business.query.get(business_id)
+    if b:
+        session["user_id"] = b.id
+        session["admin_impersonating"] = True
+    return redirect("/dashboard")
+
+@app.route("/admin/delete-business/<int:business_id>", methods=["POST"])
+def admin_delete_business(business_id):
+    if not admin_required():
+        return redirect("/admin/login")
+    b = Business.query.get(business_id)
+    if b:
+        Campaign.query.filter_by(business_id=b.id).delete()
+        Customer.query.filter_by(business_id=b.id).delete()
+        AutomationRule.query.filter_by(business_id=b.id).delete()
+        Promotion.query.filter_by(business_id=b.id).delete()
+        db.session.delete(b)
+        db.session.commit()
+    return redirect("/admin/dashboard")
 
 @app.route("/admin/campaign-types/add", methods=["POST"])
 def admin_add_campaign_type():
