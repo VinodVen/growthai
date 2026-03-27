@@ -41,9 +41,14 @@ STRIPE_PRICE_PRO = os.getenv("STRIPE_PRICE_ID_PRO") or os.getenv("STRIPE_PRICE_I
 openai_init_error = None
 try:
     from openai import OpenAI
+    import httpx
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     if api_key:
-        client = OpenAI(api_key=api_key)
+        try:
+            # Use explicit httpx client to avoid proxies conflict
+            client = OpenAI(api_key=api_key, http_client=httpx.Client())
+        except Exception:
+            client = OpenAI(api_key=api_key)
     else:
         client = None
         openai_init_error = "OPENAI_API_KEY not set"
