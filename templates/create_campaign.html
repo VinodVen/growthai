@@ -243,7 +243,11 @@
             </div>
 
             <label class="form-label fw-bold">Message</label>
-            <textarea class="form-control mb-2" id="messageField" rows="4" placeholder="Your message will appear here, or type your own..."></textarea>
+            <textarea class="form-control mb-1" id="messageField" rows="4" placeholder="Your message will appear here, or type your own..." oninput="updateCharCount()"></textarea>
+            <div class="d-flex justify-content-end mb-1">
+                <small id="charCount" style="color:#888;">0 chars</small>
+            </div>
+            <div id="aiWarning" class="alert alert-warning py-1 px-2 mb-2" style="font-size:0.8rem;display:none;"></div>
             <div class="d-flex gap-2 mb-3">
                 <button type="button" class="btn btn-ai flex-fill" id="generateBtn" onclick="generateMessage()">
                     Generate with AI <span class="spinner-border spinner-border-sm ms-1 d-none" id="spinner"></span>
@@ -483,8 +487,17 @@ async function generateMessage() {
             body: JSON.stringify({ customer_name: sel.name, campaign_type: sel.type })
         });
         const data = await res.json();
-        if (data.success) document.getElementById('messageField').value = data.message;
-        else alert('Error: ' + data.error);
+        if (data.success) {
+            document.getElementById('messageField').value = data.message;
+            updateCharCount();
+            if (data.warning) {
+                const warn = document.getElementById('aiWarning');
+                if (warn) { warn.textContent = '⚠️ ' + data.warning; warn.style.display = 'block'; }
+            } else {
+                const warn = document.getElementById('aiWarning');
+                if (warn) warn.style.display = 'none';
+            }
+        } else alert('Error: ' + data.error);
     } catch (e) {
         alert('Failed: ' + e.message);
     } finally {
@@ -493,7 +506,21 @@ async function generateMessage() {
     }
 }
 
-function clearMessage() { document.getElementById('messageField').value = ''; }
+function clearMessage() { document.getElementById('messageField').value = ''; updateCharCount(); }
+
+function updateCharCount() {
+    const len = document.getElementById('messageField').value.length;
+    const el = document.getElementById('charCount');
+    const smsLimit = 160;
+    if (len === 0) { el.textContent = '0 chars'; el.style.color = '#888'; return; }
+    if (len > smsLimit) {
+        el.textContent = `${len} chars — ⚠️ over SMS limit (${len - smsLimit} extra chars, will use ${Math.ceil(len/153)} SMS parts)`;
+        el.style.color = '#e85d04';
+    } else {
+        el.textContent = `${len} / ${smsLimit} chars`;
+        el.style.color = len > 130 ? '#f4a261' : '#888';
+    }
+}
 
 async function getIdeas() {
     const desc = document.getElementById('ideaInput').value.trim();

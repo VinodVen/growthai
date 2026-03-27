@@ -360,10 +360,18 @@ def verify_unsubscribe_token(token):
         pass
     return None
 
+# Module-level throttle: track last time background tasks ran (per process)
+_last_scheduled_run = {}
+_last_automation_run = {}
+
 def process_scheduled_campaigns():
     """Send any campaigns whose scheduled_at time has passed."""
+    now = datetime.utcnow()
+    last = _last_scheduled_run.get("t")
+    if last and (now - last).total_seconds() < 300:  # throttle to once per 5 min
+        return
+    _last_scheduled_run["t"] = now
     try:
-        now = datetime.utcnow()
         pending = Campaign.query.filter(
             Campaign.status == "scheduled",
             Campaign.scheduled_at <= now
@@ -399,6 +407,8 @@ def process_scheduled_campaigns():
 def _send_auto_campaign(business, customer, campaign_type, message):
     """Helper: create + send a campaign for an automation rule."""
     if not customer.email and not customer.phone:
+        return
+    if customer.unsubscribed:
         return
     campaign = Campaign(
         business_id=business.id,
@@ -436,8 +446,13 @@ def _send_auto_campaign(business, customer, campaign_type, message):
 
 def run_automations(business_id):
     """Run all active automation rules for a business."""
+    now = datetime.utcnow()
+    last = _last_automation_run.get(business_id)
+    if last and (now - last).total_seconds() < 3600:  # throttle to once per hour per business
+        return
+    _last_automation_run[business_id] = now
     try:
-        today = datetime.utcnow()
+        today = now
         rules = AutomationRule.query.filter_by(business_id=business_id, active=True).all()
         b = Business.query.get(business_id)
         if not b:
@@ -517,8 +532,9 @@ def build_html_email(business_name, customer_name, message, campaign_type, unsub
     unsub_html = ""
     if unsubscribe_url:
         unsub_html = f' · <a href="{unsubscribe_url}" style="color:#aaa;font-size:11px;">Unsubscribe</a>'
-    address_line = business_address if business_address else "8105 Rasor Blvd Suite 280 · Plano, TX 75024"
-    contact_parts = [address_line]
+    contact_parts = []
+    if business_address:
+        contact_parts.append(business_address)
     if business_phone:
         contact_parts.append(business_phone)
     if business_website:
@@ -809,6 +825,9 @@ def dashboard():
     sent_campaigns = Campaign.query.filter_by(business_id=b.id, status="sent").count()
     campaigns = Campaign.query.filter_by(business_id=b.id).order_by(Campaign.created_at.desc()).all()
     customer_limit = get_plan_limit(b.plan, "customers")
+    campaign_limit = get_plan_limit(b.plan, "campaigns_month")
+    month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    campaigns_this_month = Campaign.query.filter_by(business_id=b.id).filter(Campaign.created_at >= month_start).count()
 
     # New customers this week
     week_ago = today - timedelta(days=7)
@@ -940,6 +959,8 @@ def dashboard():
         plan=b.plan,
         campaigns=campaigns,
         customer_limit=customer_limit,
+        campaign_limit=campaign_limit,
+        campaigns_this_month=campaigns_this_month,
         campaign_types=ct,
         birthday_customers=birthday_customers,
         top_customers=top_customers,
@@ -1037,8 +1058,10 @@ def campaigns():
     b = current_business()
     if not b:
         return redirect("/login")
-    campaigns_list = Campaign.query.filter_by(business_id=b.id).order_by(Campaign.created_at.desc()).all()
-    return render_template("campaigns.html", campaigns=campaigns_list, campaign_types=get_campaign_types())
+    page = request.args.get("page", 1, type=int)
+    per_page = 20
+    pagination = Campaign.query.filter_by(business_id=b.id).order_by(Campaign.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    return render_template("campaigns.html", campaigns=pagination.items, pagination=pagination, campaign_types=get_campaign_types())
 
 @app.route("/create-campaign", methods=["GET", "POST"])
 def create_campaign():
@@ -1068,8 +1091,12 @@ def create_campaign():
         if scheduled_at_str:
             try:
                 scheduled_at = datetime.strptime(scheduled_at_str, "%Y-%m-%dT%H:%M")
+                if scheduled_at <= datetime.utcnow():
+                    flash("Scheduled time must be in the future.", "error")
+                    return redirect("/create-campaign")
             except ValueError:
-                pass
+                flash("Invalid schedule date. Please use the date picker.", "error")
+                return redirect("/create-campaign")
         campaign_status = "scheduled" if scheduled_at else "draft"
         campaign = Campaign(
             business_id=b.id,
@@ -1610,11 +1637,16 @@ def generate_message():
         campaign_type = data.get("campaign_type", "promotion").strip()
         if not customer_name:
             return jsonify({"success": False, "error": "Customer name required"})
-        message = generate_ai_message(customer_name, b.business_name, campaign_type, raise_on_error=True)
-        return jsonify({"success": True, "message": message})
+        try:
+            message = generate_ai_message(customer_name, b.business_name, campaign_type, raise_on_error=True)
+            return jsonify({"success": True, "message": message, "ai": True})
+        except Exception as ai_err:
+            print(f"AI error, using fallback: {ai_err}")
+            message = generate_ai_message(customer_name, b.business_name, campaign_type, raise_on_error=False)
+            return jsonify({"success": True, "message": message, "ai": False, "warning": "AI unavailable — using a template message. Feel free to edit it."})
     except Exception as e:
         print(f"Generate message error: {e}")
-        return jsonify({"success": False, "error": f"AI error: {str(e)}"})
+        return jsonify({"success": False, "error": f"Error: {str(e)}"})
 
 @app.route("/promotions", methods=["GET", "POST"])
 def promotions():
@@ -2081,7 +2113,7 @@ def upgrade_starter():
             payment_method_types=["card"],
             mode="subscription",
             line_items=[{"price": STRIPE_PRICE_STARTER, "quantity": 1}],
-            success_url=url_for("upgrade_success", plan="starter", _external=True),
+            success_url=url_for("upgrade_success", _external=True) + "?session_id={CHECKOUT_SESSION_ID}",
             cancel_url=url_for("upgrade", _external=True),
             customer_email=b.email
         )
@@ -2100,7 +2132,7 @@ def upgrade_pro():
             payment_method_types=["card"],
             mode="subscription",
             line_items=[{"price": STRIPE_PRICE_PRO, "quantity": 1}],
-            success_url=url_for("upgrade_success", plan="pro", _external=True),
+            success_url=url_for("upgrade_success", _external=True) + "?session_id={CHECKOUT_SESSION_ID}",
             cancel_url=url_for("upgrade", _external=True),
             customer_email=b.email
         )
@@ -2112,7 +2144,29 @@ def upgrade_pro():
 @app.route("/upgrade/success")
 def upgrade_success():
     b = current_business()
-    plan = request.args.get("plan", "pro")
+    if not b:
+        return redirect("/login")
+    session_id = request.args.get("session_id", "")
+    if not session_id:
+        flash("Invalid upgrade link.", "error")
+        return redirect("/upgrade")
+    try:
+        checkout_session = stripe.checkout.Session.retrieve(session_id)
+        if checkout_session.payment_status not in ("paid", "no_payment_required"):
+            flash("Payment not completed. Please try again.", "error")
+            return redirect("/upgrade")
+        price_id = checkout_session.line_items.data[0].price.id if checkout_session.line_items else None
+        if price_id == STRIPE_PRICE_PRO:
+            plan = "pro"
+        elif price_id == STRIPE_PRICE_STARTER:
+            plan = "starter"
+        else:
+            # Fallback: derive from amount
+            plan = "pro" if checkout_session.amount_total and checkout_session.amount_total > 1900 else "starter"
+    except Exception as e:
+        print(f"Stripe session verify error: {e}")
+        flash("Could not verify payment. Contact support.", "error")
+        return redirect("/upgrade")
     if b:
         b.plan = plan
         db.session.commit()

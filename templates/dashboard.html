@@ -307,10 +307,11 @@
                     <div class="stat-icon green"><i class="bi bi-send-check-fill"></i></div>
                     <div class="stat-number">{{ sent_campaigns }}</div>
                     <div class="stat-label">Campaigns Sent</div>
-                    {% if sent_campaigns > 0 %}
-                    <div class="stat-trend trend-up"><i class="bi bi-check-circle-fill"></i> {{ total_campaigns }} total created</div>
+                    {% if campaign_limit %}
+                    <div class="limit-bar mt-2"><div class="limit-bar-fill" style="width:{{ [(campaigns_this_month / campaign_limit * 100)|int, 100]|min }}%;{% if campaigns_this_month >= campaign_limit %}background:#ef4444;{% endif %}"></div></div>
+                    <div class="stat-trend trend-neutral" style="margin-top:4px;">{{ campaigns_this_month }}/{{ campaign_limit }} this month</div>
                     {% else %}
-                    <div class="stat-trend trend-neutral">No campaigns yet</div>
+                    <div class="stat-trend trend-up"><i class="bi bi-check-circle-fill"></i> {{ campaigns_this_month }} this month</div>
                     {% endif %}
                     <a href="/campaigns" class="btn btn-sm mt-3 w-100" style="background:#ecfdf5;color:#059669;font-weight:600;border-radius:8px;">View Campaigns</a>
                 </div>
