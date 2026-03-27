@@ -211,7 +211,7 @@ class CampaignTypeModel(db.Model):
 
 with app.app_context():
     db.create_all()
-    # Safely add columns that may be missing from existing PostgreSQL databases
+    # Safely add columns that may be missing from existing PostgreSQL databases (skip for SQLite)
     from sqlalchemy import text
     migrations = [
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS address VARCHAR(300)",
@@ -229,12 +229,13 @@ with app.app_context():
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS tags VARCHAR(300)",
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS visit_count INTEGER DEFAULT 0",
     ]
-    for sql in migrations:
-        try:
-            with db.engine.begin() as conn:
-                conn.execute(text(sql))
-        except Exception as e:
-            print(f"Migration skipped: {e}")
+    if not db_url.startswith("sqlite"):
+        for sql in migrations:
+            try:
+                with db.engine.begin() as conn:
+                    conn.execute(text(sql))
+            except Exception as e:
+                print(f"Migration skipped: {e}")
     # Seed default campaign types if table is empty
     if CampaignTypeModel.query.count() == 0:
         defaults = [
