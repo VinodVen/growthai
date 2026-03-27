@@ -37,26 +37,35 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "sk_test_fake")
 STRIPE_PRICE_STARTER = os.getenv("STRIPE_PRICE_ID_STARTER") or os.getenv("STRIPE_PRICE_ID")
 STRIPE_PRICE_PRO = os.getenv("STRIPE_PRICE_ID_PRO") or os.getenv("STRIPE_PRICE_ID")
 
-# OpenAI
+# OpenAI — use requests directly to avoid httpx/proxies version conflicts
+import requests as _requests
 openai_init_error = None
-try:
-    from openai import OpenAI
-    import httpx
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    if api_key:
-        try:
-            # Use explicit httpx client to avoid proxies conflict
-            client = OpenAI(api_key=api_key, http_client=httpx.Client())
-        except Exception:
-            client = OpenAI(api_key=api_key)
-    else:
-        client = None
-        openai_init_error = "OPENAI_API_KEY not set"
-        print("Warning: OPENAI_API_KEY not set.")
-except Exception as e:
-    client = None
-    openai_init_error = str(e)
-    print(f"Warning: OpenAI initialization failed: {e}")
+_openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
+client = True if _openai_api_key else None  # just a flag
+if not _openai_api_key:
+    openai_init_error = "OPENAI_API_KEY not set"
+    print("Warning: OPENAI_API_KEY not set.")
+
+def _call_openai(prompt, max_tokens=150):
+    """Call OpenAI API directly via requests, avoiding httpx version conflicts."""
+    response = _requests.post(
+        "https://api.openai.com/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {_openai_api_key}",
+            "Content-Type": "application/json"
+        },
+        json={
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "temperature": 0.7
+        },
+        timeout=15
+    )
+    data = response.json()
+    if "error" in data:
+        raise Exception(data["error"]["message"])
+    return data["choices"][0]["message"]["content"]
 
 # Twilio SMS
 try:
@@ -101,11 +110,12 @@ if db_url.startswith("postgres://"):
 
 app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_size": 10,
-    "pool_recycle": 3600,
-    "pool_pre_ping": True,
-}
+if not db_url.startswith("sqlite"):
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_size": 10,
+        "pool_recycle": 3600,
+        "pool_pre_ping": True,
+    }
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -665,13 +675,7 @@ def generate_ai_message(customer_name, business_name, campaign_type, raise_on_er
     prompt = prompts.get(campaign_type, prompts["promotion"]) + " Keep it under 3 sentences. No markdown. Include emojis."
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=150,
-            temperature=0.7
-        )
-        return clean_ai_text(response.choices[0].message.content)
+        return clean_ai_text(_call_openai(prompt))
     except Exception as e:
         print(f"AI error: {e}")
         if raise_on_error:
@@ -696,12 +700,7 @@ def test_ai():
     if not client:
         return f"<h2>❌ OpenAI client failed to initialize.</h2><pre>Error: {openai_init_error}</pre><p>Key starts with: {key[:12]}...</p><p>Key length: {len(key)} chars</p>"
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": "Say hello in one word."}],
-            max_tokens=10
-        )
-        result = response.choices[0].message.content
+        result = _call_openai("Say hello in one word.", max_tokens=10)
         return f"<h2>✅ OpenAI is working!</h2><p>Response: <strong>{result}</strong></p><p>Key starts with: {key[:8]}...</p>"
     except Exception as e:
         return f"<h2>❌ OpenAI call failed</h2><pre>{str(e)}</pre><p>Key starts with: {key[:8]}...</p>"
