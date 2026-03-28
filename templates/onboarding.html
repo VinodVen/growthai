@@ -150,7 +150,7 @@
             <p class="step-sub">This takes 2 minutes. AI handles everything after.</p>
             <div class="field">
                 <label>Restaurant Name</label>
-                <input type="text" value="{{ business.business_name }}" disabled style="opacity:0.5;">
+                <input type="text" name="business_name" value="{{ business.business_name }}" placeholder="Your restaurant name" required>
             </div>
             <div class="row2">
                 <div class="field">
@@ -176,7 +176,7 @@
             <p class="step-sub">AI uses this to write authentic messages for your restaurant.</p>
             <div class="field">
                 <label>Type of Cuisine</label>
-                <input type="text" name="cuisine_type" value="{{ profile.cuisine_type or '' }}" placeholder="e.g. Italian, Mexican, Indian, BBQ…" required>
+                <input type="text" name="cuisine_type" value="{{ profile.cuisine_type or '' }}" placeholder="e.g. Italian, Mexican, Indian, BBQ…">
             </div>
             <div class="field">
                 <label>Signature Dish / Best Seller</label>

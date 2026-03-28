@@ -2507,6 +2507,9 @@ def onboarding():
 
     if request.method == "POST":
         # Save all onboarding fields
+        new_name = request.form.get("business_name", "").strip()
+        if new_name:
+            b.business_name = new_name
         b.phone   = request.form.get("phone", b.phone or "").strip() or b.phone
         b.address = request.form.get("address", b.address or "").strip() or b.address
         b.website = request.form.get("website", b.website or "").strip() or b.website
