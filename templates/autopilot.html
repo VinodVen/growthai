@@ -69,7 +69,14 @@
             <div class="page-title">🤖 AI Auto-Pilot</div>
             <p class="page-sub">Your marketing runs 24/7 while you run your restaurant</p>
         </div>
-        <a href="/setup" class="btn-setup"><i class="bi bi-gear"></i> Edit Setup</a>
+        <div class="d-flex gap-2">
+            <form method="POST" action="/autopilot/test" onsubmit="this.querySelector('button').disabled=true; this.querySelector('button').innerHTML='<i class=\'bi bi-hourglass-split\'></i> Sending...'">
+                <button type="submit" class="btn-setup" style="background: linear-gradient(135deg,#22c55e,#16a34a);">
+                    <i class="bi bi-send-check"></i> Send Test to My Email
+                </button>
+            </form>
+            <a href="/setup" class="btn-setup"><i class="bi bi-gear"></i> Edit Setup</a>
+        </div>
     </div>
 
     <!-- KPIs -->

@@ -2407,6 +2407,77 @@ def admin_delete_campaign_type(type_id):
     return redirect("/admin/dashboard")
 
 # ============================================
+# AUTOPILOT TEST SEND  /autopilot/test
+# ============================================
+
+@app.route("/autopilot/test", methods=["POST"])
+def autopilot_test():
+    """Send a sample of each active automation to the business owner's own email."""
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    if b.plan == "free":
+        flash("Auto-pilot requires Starter or Pro plan.", "error")
+        return redirect("/upgrade")
+
+    profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+    offer = (profile.special_offer if profile and profile.special_offer else "a special offer")
+    dish  = (profile.signature_dish if profile and profile.signature_dish else "our signature dish")
+    tone_hint = f" Use a {profile.tone} tone." if profile and profile.tone else ""
+
+    results = []
+
+    def _test_send(label, campaign_type, prompt_extra=""):
+        prompt = (
+            f"Write a short marketing SMS/email for {b.owner_name} from {b.business_name}. "
+            f"Campaign type: {label}. Mention: {offer}.{tone_hint} {prompt_extra} "
+            f"Keep it under 3 sentences, no markdown, include 1-2 emojis."
+        )
+        try:
+            msg = clean_ai_text(_call_openai(prompt)) if client else f"Hi {b.owner_name}! Test message for '{label}' from {b.business_name}. {offer}."
+        except Exception:
+            msg = f"Hi {b.owner_name}! Test message for '{label}' from {b.business_name}. {offer}."
+
+        # Send to business owner email
+        ok = send_email(
+            b.email,
+            f"[TEST] {label} — {b.business_name}",
+            msg,
+            customer_name=b.owner_name,
+            business_name=b.business_name,
+            campaign_type=campaign_type,
+            business_address=b.address or "",
+            business_phone=b.phone or "",
+            business_website=b.website or "",
+            business_reply_email=b.email,
+        )
+        results.append({"label": label, "msg": msg, "ok": ok})
+
+    if not profile or not profile.setup_complete:
+        flash("Please complete your AI Setup first before testing.", "error")
+        return redirect("/setup")
+
+    if profile.auto_welcome:
+        _test_send("Welcome Message", "loyalty", "This is sent when a new customer signs up.")
+    if profile.auto_weekly:
+        _test_send("Weekly Special", "weekend", f"Feature {dish}.")
+    if profile.auto_flash:
+        _test_send("Flash Deal", "promotion", f"Slow day deal — urgent, limited time.")
+    if profile.auto_birthday:
+        _test_send("Birthday Offer", "birthday", "Include a birthday discount.")
+    if profile.auto_winback:
+        _test_send("Win-Back (30 days)", "come_back", "Customer hasn't visited in 30 days.")
+
+    if not results:
+        flash("No automations are turned on. Enable some in AI Setup first.", "error")
+        return redirect("/autopilot")
+
+    sent_count = sum(1 for r in results if r["ok"])
+    flash(f"✅ Test sent! {sent_count}/{len(results)} automation previews sent to {b.email}. Check your inbox.", "success")
+    return redirect("/autopilot")
+
+
+# ============================================
 # PUBLIC OPT-IN PAGE  /join/<slug>
 # ============================================
 
