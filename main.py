@@ -859,8 +859,8 @@ def contact():
         try:
             db.session.add(ContactMessage(name=name, email=email, message=message))
             db.session.commit()
-            flash("Message sent!", "success")
-            return redirect("/")
+            flash("Message sent! We'll get back to you within a few hours.", "success")
+            return redirect("/contact")
         except:
             db.session.rollback()
             flash("Error saving message.", "error")

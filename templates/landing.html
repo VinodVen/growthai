@@ -165,6 +165,56 @@
         .stat-num span { background: linear-gradient(135deg, #a78bfa, #7c6fff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
         .stat-label { font-size: 0.85rem; color: var(--muted); margin-top: 6px; }
 
+        /* ── VIDEO DEMO ── */
+        .video-section { padding: 90px 0; }
+        .video-wrap {
+            position: relative; border-radius: 22px; overflow: hidden;
+            background: var(--bg2); border: 1px solid rgba(124,111,255,0.25);
+            box-shadow: 0 0 0 1px rgba(124,111,255,0.1), 0 30px 80px rgba(0,0,0,0.6);
+            cursor: pointer;
+        }
+        .video-wrap iframe {
+            width: 100%; aspect-ratio: 16/9; display: block; border: none;
+        }
+        .video-thumb {
+            width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block;
+            filter: brightness(0.55);
+        }
+        .play-btn {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            width: 76px; height: 76px; border-radius: 50%;
+            background: linear-gradient(135deg, #7c6fff, #a855f7);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.8rem; color: white;
+            box-shadow: 0 0 0 12px rgba(124,111,255,0.2), 0 8px 32px rgba(124,111,255,0.5);
+            transition: all 0.2s;
+        }
+        .video-wrap:hover .play-btn {
+            transform: translate(-50%,-50%) scale(1.1);
+            box-shadow: 0 0 0 16px rgba(124,111,255,0.25), 0 12px 40px rgba(124,111,255,0.6);
+        }
+        .video-caption {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: linear-gradient(to top, rgba(6,6,15,0.95) 0%, transparent 100%);
+            padding: 28px 28px 22px; pointer-events: none;
+        }
+        .video-caption-title { font-size: 1rem; font-weight: 700; color: #fff; }
+        .video-caption-sub { font-size: 0.8rem; color: var(--muted); margin-top: 3px; }
+        /* Modal */
+        .vid-modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88);
+            z-index: 9999; align-items: center; justify-content: center; padding: 20px;
+            backdrop-filter: blur(8px);
+        }
+        .vid-modal-overlay.open { display: flex; }
+        .vid-modal-inner { position: relative; width: 100%; max-width: 900px; }
+        .vid-modal-inner iframe { width: 100%; aspect-ratio: 16/9; border: none; border-radius: 14px; }
+        .vid-close {
+            position: absolute; top: -44px; right: 0; background: none; border: none;
+            color: white; font-size: 1.5rem; cursor: pointer; opacity: 0.7;
+        }
+        .vid-close:hover { opacity: 1; }
+
         /* ── HOW IT WORKS ── */
         .how-section { padding: 90px 0; }
         .section-chip {
@@ -460,6 +510,58 @@
         </div>
     </div>
 </section>
+
+<!-- VIDEO DEMO -->
+<section class="video-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <div class="section-chip">See It In Action</div>
+            <h2 class="section-title">Watch how it works</h2>
+            <p class="section-sub">See the full setup and AI auto-pilot in under 3 minutes</p>
+        </div>
+        <div class="video-wrap" onclick="openVideo()">
+            <!-- Thumbnail background -->
+            <div style="width:100%; aspect-ratio:16/9; background: linear-gradient(135deg, #0e0e1c 0%, #1a1a3e 50%, #0e0e1c 100%); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px;">
+                <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; padding:0 40px;">
+                    <div style="background:rgba(124,111,255,0.15); border:1px solid rgba(124,111,255,0.3); border-radius:12px; padding:16px 24px; text-align:center;">
+                        <div style="font-size:1.6rem; margin-bottom:6px;">👋</div>
+                        <div style="font-size:0.78rem; color:#a78bfa; font-weight:600;">Welcome sent</div>
+                    </div>
+                    <div style="background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.25); border-radius:12px; padding:16px 24px; text-align:center;">
+                        <div style="font-size:1.6rem; margin-bottom:6px;">🎂</div>
+                        <div style="font-size:0.78rem; color:#4ade80; font-weight:600;">Birthday offer</div>
+                    </div>
+                    <div style="background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.25); border-radius:12px; padding:16px 24px; text-align:center;">
+                        <div style="font-size:1.6rem; margin-bottom:6px;">💔</div>
+                        <div style="font-size:0.78rem; color:#f87171; font-weight:600;">Win-back</div>
+                    </div>
+                    <div style="background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.25); border-radius:12px; padding:16px 24px; text-align:center;">
+                        <div style="font-size:1.6rem; margin-bottom:6px;">⚡</div>
+                        <div style="font-size:0.78rem; color:#fbbf24; font-weight:600;">Flash deal</div>
+                    </div>
+                </div>
+            </div>
+            <div class="play-btn"><i class="bi bi-play-fill" style="margin-left:4px;"></i></div>
+            <div class="video-caption">
+                <div class="video-caption-title">🤖 Revvio AI Auto-Pilot — Full Demo</div>
+                <div class="video-caption-sub">Setup to first automated campaign in under 3 minutes</div>
+            </div>
+        </div>
+        <div class="text-center mt-4">
+            <a href="/demo-login" class="btn-cta-secondary" style="display:inline-flex;">
+                <i class="bi bi-cursor-fill"></i> Or try the live interactive demo →
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Video Modal -->
+<div class="vid-modal-overlay" id="vidModal" onclick="closeVideo(event)">
+    <div class="vid-modal-inner">
+        <button class="vid-close" onclick="closeVideo()"><i class="bi bi-x-lg"></i></button>
+        <iframe id="vidFrame" src="" allow="autoplay; fullscreen" allowfullscreen></iframe>
+    </div>
+</div>
 
 <!-- HOW IT WORKS -->
 <section class="how-section">
@@ -768,6 +870,10 @@
                 <a href="/terms">Terms</a>
                 <a href="/contact">Contact</a>
             </div>
+            <div class="d-flex flex-wrap gap-4 justify-content-center justify-content-md-end mt-3 mt-md-0">
+                <a href="mailto:hello@revvio.ai" style="display:flex; align-items:center; gap:6px;"><i class="bi bi-envelope-fill" style="color:#7c6fff;"></i> hello@revvio.ai</a>
+                <span style="display:flex; align-items:center; gap:6px; color:var(--muted); font-size:0.85rem;"><i class="bi bi-geo-alt-fill" style="color:#7c6fff;"></i> Plano, TX</span>
+            </div>
         </div>
         <div style="border-top:1px solid var(--border); margin-top:32px; padding-top:24px; text-align:center;">
             <p style="font-size:0.78rem; color:var(--muted);">© 2025 Revvio. All rights reserved. · 8105 Rasor Blvd Suite 280, Plano, TX 75024</p>
@@ -776,5 +882,31 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── Replace this with your YouTube video ID once you upload a demo video ──
+// e.g. for https://www.youtube.com/watch?v=dQw4w9WgXcQ  →  VIDEO_ID = "dQw4w9WgXcQ"
+const VIDEO_ID = ""; // ← PASTE YOUR YOUTUBE VIDEO ID HERE
+
+function openVideo() {
+    if (!VIDEO_ID) {
+        // No video yet — send them to the live demo instead
+        window.location.href = "/demo-login";
+        return;
+    }
+    const frame = document.getElementById("vidFrame");
+    frame.src = `https://www.youtube.com/embed/${VIDEO_ID}?autoplay=1&rel=0`;
+    document.getElementById("vidModal").classList.add("open");
+    document.body.style.overflow = "hidden";
+}
+
+function closeVideo(e) {
+    if (e && e.target !== document.getElementById("vidModal") && !e.target.closest(".vid-close")) return;
+    document.getElementById("vidFrame").src = "";
+    document.getElementById("vidModal").classList.remove("open");
+    document.body.style.overflow = "";
+}
+
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeVideo({}); });
+</script>
 </body>
 </html>
