@@ -164,6 +164,7 @@ class BusinessProfile(db.Model):
     auto_winback = db.Column(db.Boolean, default=True)
     weekly_send_day = db.Column(db.String(20), default="Tuesday")
     setup_complete = db.Column(db.Boolean, default=False)
+    last_weekly_summary = db.Column(db.DateTime, nullable=True)  # track when summary last sent
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class Customer(db.Model):
@@ -263,6 +264,7 @@ with app.app_context():
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS notes TEXT",
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS tags VARCHAR(300)",
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS visit_count INTEGER DEFAULT 0",
+        "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS last_weekly_summary TIMESTAMP",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -563,6 +565,74 @@ def run_automations(business_id):
     except Exception as e:
         print(f"Automation error: {e}")
 
+def _maybe_send_weekly_summary(b, profile, today):
+    """Send a weekly summary email to the business owner every Monday, once per week."""
+    if today.weekday() != 0:   # 0 = Monday
+        return
+    if profile.last_weekly_summary:
+        days_since = (today - profile.last_weekly_summary).days
+        if days_since < 6:
+            return
+    week_ago = today - timedelta(days=7)
+    sent_week   = Campaign.query.filter_by(business_id=b.id, status="sent").filter(Campaign.created_at >= week_ago).count()
+    opens_week  = sum(c.open_count or 0 for c in Campaign.query.filter_by(business_id=b.id, status="sent").filter(Campaign.created_at >= week_ago).all())
+    new_customers = Customer.query.filter_by(business_id=b.id).filter(Customer.created_at >= week_ago).count()
+    total_customers = Customer.query.filter_by(business_id=b.id).count()
+
+    active_autos = []
+    if profile.auto_welcome:  active_autos.append("Welcome Message")
+    if profile.auto_weekly:   active_autos.append("Weekly Special")
+    if profile.auto_flash:    active_autos.append("Flash Deal")
+    if profile.auto_birthday: active_autos.append("Birthday Offer")
+    if profile.auto_winback:  active_autos.append("Win-Back")
+    auto_list = ", ".join(active_autos) if active_autos else "None active"
+
+    subject = f"📊 Your weekly Revvio report — {b.business_name}"
+    body = (
+        f"Hi {b.owner_name},\n\n"
+        f"Here's what your AI did for {b.business_name} this week:\n\n"
+        f"  📨 Messages sent:     {sent_week}\n"
+        f"  👁 Emails opened:     {opens_week}\n"
+        f"  🆕 New customers:     {new_customers}\n"
+        f"  👥 Total customers:   {total_customers}\n\n"
+        f"Active automations: {auto_list}\n\n"
+        f"Your AI is working 24/7 so you don't have to. 🚀\n\n"
+        f"— The Revvio Team\n"
+        f"View your dashboard: https://revvio.ai/dashboard"
+    )
+    html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#f9f9f9;">
+      <div style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:14px;padding:28px;text-align:center;margin-bottom:20px;">
+        <h1 style="color:#fff;margin:0;font-size:22px;">Weekly Report 📊</h1>
+        <p style="color:rgba(255,255,255,0.85);margin:6px 0 0;">{b.business_name}</p>
+      </div>
+      <div style="background:#fff;border-radius:14px;padding:24px;margin-bottom:16px;">
+        <p style="color:#555;margin-top:0;">Hi <strong>{b.owner_name}</strong>, here's what your AI did this week:</p>
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="padding:10px 0;border-bottom:1px solid #f0f0f0;color:#888;font-size:14px;">📨 Messages sent</td><td style="text-align:right;font-size:20px;font-weight:800;color:#667eea;">{sent_week}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #f0f0f0;color:#888;font-size:14px;">👁 Emails opened</td><td style="text-align:right;font-size:20px;font-weight:800;color:#22c55e;">{opens_week}</td></tr>
+          <tr><td style="padding:10px 0;border-bottom:1px solid #f0f0f0;color:#888;font-size:14px;">🆕 New customers</td><td style="text-align:right;font-size:20px;font-weight:800;color:#f59e0b;">{new_customers}</td></tr>
+          <tr><td style="padding:10px 0;color:#888;font-size:14px;">👥 Total customers</td><td style="text-align:right;font-size:20px;font-weight:800;color:#333;">{total_customers}</td></tr>
+        </table>
+      </div>
+      <div style="background:#fff;border-radius:14px;padding:18px 24px;margin-bottom:16px;">
+        <p style="color:#888;font-size:13px;margin:0;">🤖 Active automations: <strong style="color:#667eea;">{auto_list}</strong></p>
+      </div>
+      <div style="text-align:center;margin-top:20px;">
+        <a href="https://revvio.ai/dashboard" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:13px 28px;border-radius:10px;display:inline-block;font-weight:700;text-decoration:none;font-size:15px;">View Dashboard →</a>
+      </div>
+      <p style="text-align:center;color:#bbb;font-size:11px;margin-top:20px;">Revvio · Your AI is working 24/7 so you don't have to.</p>
+    </div>
+    """
+    try:
+        send_email(b.email, subject, body, customer_name=b.owner_name,
+                   business_name="Revvio", campaign_type="promotion", html_override=html)
+        profile.last_weekly_summary = today
+        db.session.commit()
+    except Exception as e:
+        print(f"Weekly summary error: {e}")
+
+
 def build_html_email(business_name, customer_name, message, campaign_type, unsubscribe_url="", business_address="", business_phone="", business_website="", tracking_pixel_url="", click_tracking_url=""):
     unsub_html = ""
     if unsubscribe_url:
@@ -623,9 +693,9 @@ def build_html_email(business_name, customer_name, message, campaign_type, unsub
     </body></html>
     """
 
-def send_email(to_email, subject, body, customer_name="", business_name="", campaign_type="promotion", unsubscribe_url="", business_address="", business_phone="", business_website="", tracking_pixel_url="", click_tracking_url="", business_reply_email=""):
+def send_email(to_email, subject, body, customer_name="", business_name="", campaign_type="promotion", unsubscribe_url="", business_address="", business_phone="", business_website="", tracking_pixel_url="", click_tracking_url="", business_reply_email="", html_override=None):
     from_name = business_name or "Revvio"
-    html_body = build_html_email(from_name, customer_name or "Valued Customer", body, campaign_type, unsubscribe_url, business_address, business_phone, business_website, tracking_pixel_url, click_tracking_url)
+    html_body = html_override if html_override else build_html_email(from_name, customer_name or "Valued Customer", body, campaign_type, unsubscribe_url, business_address, business_phone, business_website, tracking_pixel_url, click_tracking_url)
 
     sendgrid_key = os.getenv("SENDGRID_API_KEY")
     if sendgrid_key:
@@ -821,8 +891,8 @@ def register():
             db.session.commit()
             session["user_id"] = b.id
             session.permanent = True
-            flash(f"Welcome {owner_name}!", "success")
-            return redirect("/dashboard")
+            flash(f"Welcome {owner_name}! Let's get your AI set up in 2 minutes. 🚀", "success")
+            return redirect("/onboarding")
         except:
             db.session.rollback()
             flash("Error creating account.", "error")
@@ -857,6 +927,14 @@ def dashboard():
     process_scheduled_campaigns()
     run_automations(b.id)
     today = datetime.utcnow()
+
+    # Redirect new businesses that haven't completed onboarding
+    profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+    if not profile or not profile.setup_complete:
+        return redirect("/onboarding")
+
+    # Send weekly summary every Monday (throttled — once per week)
+    _maybe_send_weekly_summary(b, profile, today)
 
     total_customers = Customer.query.filter_by(business_id=b.id).count()
     total_campaigns = Campaign.query.filter_by(business_id=b.id).count()
@@ -2405,6 +2483,58 @@ def admin_delete_campaign_type(type_id):
         db.session.commit()
         flash(f"Deleted '{ct.label}'.", "success")
     return redirect("/admin/dashboard")
+
+# ============================================
+# ONBOARDING WIZARD  /onboarding
+# ============================================
+
+@app.route("/onboarding", methods=["GET", "POST"])
+def onboarding():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+
+    _ensure_slug(b)
+    profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+    if not profile:
+        profile = BusinessProfile(business_id=b.id)
+        db.session.add(profile)
+        db.session.commit()
+
+    # Already set up — go to dashboard
+    if profile.setup_complete and request.method == "GET" and not request.args.get("redo"):
+        return redirect("/dashboard")
+
+    if request.method == "POST":
+        # Save all onboarding fields
+        b.phone   = request.form.get("phone", b.phone or "").strip() or b.phone
+        b.address = request.form.get("address", b.address or "").strip() or b.address
+        b.website = request.form.get("website", b.website or "").strip() or b.website
+
+        profile.cuisine_type    = request.form.get("cuisine_type", "").strip()
+        profile.signature_dish  = request.form.get("signature_dish", "").strip()
+        profile.special_offer   = request.form.get("special_offer", "").strip()
+        profile.slow_days       = request.form.get("slow_days", "").strip()
+        profile.tone            = request.form.get("tone", "friendly")
+        profile.auto_welcome    = True
+        profile.auto_birthday   = True
+        profile.auto_winback    = True
+        profile.auto_weekly     = request.form.get("auto_weekly") == "on"
+        profile.auto_flash      = bool(profile.slow_days)
+        profile.setup_complete  = True
+
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error saving: {e}", "error")
+            return redirect("/onboarding")
+
+        join_url = request.host_url.rstrip("/") + f"/join/{b.slug}"
+        return render_template("onboarding_done.html", business=b, join_url=join_url)
+
+    return render_template("onboarding.html", business=b, profile=profile)
+
 
 # ============================================
 # AUTOPILOT TEST SEND  /autopilot/test

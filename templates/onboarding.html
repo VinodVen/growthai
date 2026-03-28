@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup — Revvio</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .wrap { width: 100%; max-width: 520px; }
+
+        /* Progress bar */
+        .progress-bar { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+        .step-dot {
+            width: 32px; height: 32px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.75rem; font-weight: 700; flex-shrink: 0;
+            transition: all 0.3s;
+        }
+        .step-dot.done  { background: #22c55e; color: #fff; }
+        .step-dot.active{ background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; box-shadow: 0 0 0 4px rgba(102,126,234,0.25); }
+        .step-dot.future{ background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); }
+        .step-line { flex: 1; height: 2px; background: rgba(255,255,255,0.1); margin: 0 4px; }
+        .step-line.done { background: #22c55e; }
+
+        /* Card */
+        .card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 36px 32px;
+            backdrop-filter: blur(20px);
+        }
+        .step-panel { display: none; }
+        .step-panel.active { display: block; }
+
+        .step-emoji { font-size: 2.8rem; margin-bottom: 12px; display: block; }
+        .step-title { font-size: 1.4rem; font-weight: 800; color: #fff; margin-bottom: 6px; }
+        .step-sub { font-size: 0.85rem; color: rgba(255,255,255,0.5); margin-bottom: 28px; }
+
+        /* Fields */
+        .field { margin-bottom: 16px; }
+        .field label { display: block; font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 7px; }
+        .field input, .field select {
+            width: 100%; background: rgba(255,255,255,0.08);
+            border: 1.5px solid rgba(255,255,255,0.12);
+            color: #fff; border-radius: 10px; padding: 12px 14px;
+            font-size: 0.92rem; transition: border 0.15s, background 0.15s;
+        }
+        .field input:focus, .field select:focus { outline: none; border-color: #667eea; background: rgba(255,255,255,0.12); }
+        .field input::placeholder { color: rgba(255,255,255,0.2); }
+        .field select option { background: #302b63; }
+        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        /* Tone picker */
+        .tone-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+        .tone-opt { position: relative; }
+        .tone-opt input[type=radio] { position: absolute; opacity: 0; width: 0; }
+        .tone-opt label {
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+            padding: 14px 10px; border-radius: 12px;
+            border: 1.5px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.6); font-size: 0.8rem; font-weight: 600;
+            cursor: pointer; transition: all 0.15s; text-align: center;
+        }
+        .tone-opt label .emoji { font-size: 1.5rem; }
+        .tone-opt input:checked + label { border-color: #667eea; background: rgba(102,126,234,0.2); color: #fff; }
+
+        /* Day checkboxes */
+        .days-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .day-opt { position: relative; }
+        .day-opt input[type=checkbox] { position: absolute; opacity: 0; width: 0; }
+        .day-opt label {
+            display: block; padding: 8px 14px; border-radius: 8px;
+            border: 1.5px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.05);
+            color: rgba(255,255,255,0.5); font-size: 0.8rem; font-weight: 600;
+            cursor: pointer; transition: all 0.15s;
+        }
+        .day-opt input:checked + label { border-color: #f87171; background: rgba(248,113,113,0.2); color: #fca5a5; }
+
+        /* Auto toggles */
+        .auto-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .auto-item:last-child { border-bottom: none; }
+        .auto-info strong { font-size: 0.88rem; color: #fff; display: block; }
+        .auto-info small { font-size: 0.73rem; color: rgba(255,255,255,0.4); margin-top: 2px; display: block; }
+        .toggle-wrap { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+        .toggle-wrap input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; inset: 0; border-radius: 24px;
+            background: rgba(255,255,255,0.15); cursor: pointer; transition: 0.2s;
+        }
+        .slider:before {
+            content: ''; position: absolute; width: 18px; height: 18px;
+            border-radius: 50%; background: #fff; top: 3px; left: 3px; transition: 0.2s;
+        }
+        input:checked + .slider { background: #22c55e; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* Buttons */
+        .btn-next {
+            width: 100%; background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none; color: #fff; font-size: 1rem; font-weight: 700;
+            padding: 14px; border-radius: 12px; cursor: pointer; margin-top: 24px;
+            transition: opacity 0.15s;
+        }
+        .btn-next:hover { opacity: 0.88; }
+        .btn-back {
+            background: none; border: none; color: rgba(255,255,255,0.4);
+            font-size: 0.82rem; cursor: pointer; margin-top: 14px;
+            display: block; text-align: center; width: 100%;
+        }
+        .btn-back:hover { color: rgba(255,255,255,0.7); }
+
+        .hint { font-size: 0.73rem; color: rgba(255,255,255,0.3); margin-top: 6px; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <!-- Progress -->
+    <div class="progress-bar" id="progressBar">
+        <div class="step-dot active" id="dot1">1</div>
+        <div class="step-line" id="line1"></div>
+        <div class="step-dot future" id="dot2">2</div>
+        <div class="step-line" id="line2"></div>
+        <div class="step-dot future" id="dot3">3</div>
+        <div class="step-line" id="line3"></div>
+        <div class="step-dot future" id="dot4">4</div>
+        <div class="step-line" id="line4"></div>
+        <div class="step-dot future" id="dot5">5</div>
+    </div>
+
+    <form method="POST" id="onboardForm">
+    <div class="card">
+
+        <!-- Step 1: Restaurant basics -->
+        <div class="step-panel active" id="step1">
+            <span class="step-emoji">🍽️</span>
+            <div class="step-title">Tell us about your restaurant</div>
+            <p class="step-sub">This takes 2 minutes. AI handles everything after.</p>
+            <div class="field">
+                <label>Restaurant Name</label>
+                <input type="text" value="{{ business.business_name }}" disabled style="opacity:0.5;">
+            </div>
+            <div class="row2">
+                <div class="field">
+                    <label>Your Phone</label>
+                    <input type="tel" name="phone" value="{{ business.phone or '' }}" placeholder="(555) 123-4567">
+                </div>
+                <div class="field">
+                    <label>Website</label>
+                    <input type="text" name="website" value="{{ business.website or '' }}" placeholder="yourrestaurant.com">
+                </div>
+            </div>
+            <div class="field">
+                <label>Address</label>
+                <input type="text" name="address" value="{{ business.address or '' }}" placeholder="123 Main St, City, State">
+            </div>
+            <button type="button" class="btn-next" onclick="goTo(2)">Next →</button>
+        </div>
+
+        <!-- Step 2: Food & offer -->
+        <div class="step-panel" id="step2">
+            <span class="step-emoji">🤤</span>
+            <div class="step-title">What do you serve?</div>
+            <p class="step-sub">AI uses this to write authentic messages for your restaurant.</p>
+            <div class="field">
+                <label>Type of Cuisine</label>
+                <input type="text" name="cuisine_type" value="{{ profile.cuisine_type or '' }}" placeholder="e.g. Italian, Mexican, Indian, BBQ…" required>
+            </div>
+            <div class="field">
+                <label>Signature Dish / Best Seller</label>
+                <input type="text" name="signature_dish" value="{{ profile.signature_dish or '' }}" placeholder="e.g. Wood-fired pizza, Butter chicken, Ribs…">
+            </div>
+            <div class="field">
+                <label>Your Best Offer for New Customers</label>
+                <input type="text" name="special_offer" value="{{ profile.special_offer or '' }}" placeholder="e.g. Free dessert, 15% off, Buy 1 get 1…">
+                <p class="hint">AI will mention this in welcome and win-back messages.</p>
+            </div>
+            <button type="button" class="btn-next" onclick="goTo(3)">Next →</button>
+            <button type="button" class="btn-back" onclick="goTo(1)">← Back</button>
+        </div>
+
+        <!-- Step 3: Slow days -->
+        <div class="step-panel" id="step3">
+            <span class="step-emoji">📅</span>
+            <div class="step-title">When are you slow?</div>
+            <p class="step-sub">AI will automatically send flash deals on these days to fill empty seats.</p>
+            <div class="field">
+                <label>Select your slow days</label>
+                <div class="days-grid">
+                    {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
+                    <div class="day-opt">
+                        <input type="checkbox" name="slow_days_check" id="day_{{ day }}" value="{{ day }}"
+                            {% if profile.slow_days and day in profile.slow_days %}checked{% endif %}>
+                        <label for="day_{{ day }}">{{ day[:3] }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <input type="hidden" name="slow_days" id="slowDaysInput" value="{{ profile.slow_days or '' }}">
+                <p class="hint">Leave blank if you don't have slow days (lucky you 😄).</p>
+            </div>
+            <button type="button" class="btn-next" onclick="collectDays(); goTo(4)">Next →</button>
+            <button type="button" class="btn-back" onclick="goTo(2)">← Back</button>
+        </div>
+
+        <!-- Step 4: Tone -->
+        <div class="step-panel" id="step4">
+            <span class="step-emoji">💬</span>
+            <div class="step-title">What's your vibe?</div>
+            <p class="step-sub">AI will match this tone in every message it writes.</p>
+            <div class="tone-grid">
+                <div class="tone-opt">
+                    <input type="radio" name="tone" id="tone_friendly" value="friendly"
+                        {% if not profile.tone or profile.tone == 'friendly' %}checked{% endif %}>
+                    <label for="tone_friendly"><span class="emoji">😊</span>Friendly & Warm</label>
+                </div>
+                <div class="tone-opt">
+                    <input type="radio" name="tone" id="tone_fun" value="fun"
+                        {% if profile.tone == 'fun' %}checked{% endif %}>
+                    <label for="tone_fun"><span class="emoji">🎉</span>Fun & Energetic</label>
+                </div>
+                <div class="tone-opt">
+                    <input type="radio" name="tone" id="tone_professional" value="professional"
+                        {% if profile.tone == 'professional' %}checked{% endif %}>
+                    <label for="tone_professional"><span class="emoji">💼</span>Professional</label>
+                </div>
+            </div>
+            <button type="button" class="btn-next" onclick="goTo(5)">Next →</button>
+            <button type="button" class="btn-back" onclick="goTo(3)">← Back</button>
+        </div>
+
+        <!-- Step 5: Automations -->
+        <div class="step-panel" id="step5">
+            <span class="step-emoji">🤖</span>
+            <div class="step-title">Turn on your AI auto-pilot</div>
+            <p class="step-sub">These run automatically. You won't need to do anything.</p>
+
+            <div class="auto-item">
+                <div class="auto-info">
+                    <strong>👋 Welcome new customers</strong>
+                    <small>Instant message when someone signs up</small>
+                </div>
+                <label class="toggle-wrap"><input type="checkbox" checked disabled><span class="slider"></span></label>
+            </div>
+            <div class="auto-item">
+                <div class="auto-info">
+                    <strong>🎂 Birthday offers</strong>
+                    <small>AI wishes them happy birthday + sends a gift</small>
+                </div>
+                <label class="toggle-wrap"><input type="checkbox" checked disabled><span class="slider"></span></label>
+            </div>
+            <div class="auto-item">
+                <div class="auto-info">
+                    <strong>💔 Win-back after 30 days</strong>
+                    <small>AI reaches out if they haven't visited</small>
+                </div>
+                <label class="toggle-wrap"><input type="checkbox" checked disabled><span class="slider"></span></label>
+            </div>
+            <div class="auto-item">
+                <div class="auto-info">
+                    <strong>📅 Weekly special</strong>
+                    <small>AI sends a weekly promo every Tuesday</small>
+                </div>
+                <label class="toggle-wrap">
+                    <input type="checkbox" name="auto_weekly" id="autoWeekly" {% if profile.auto_weekly %}checked{% endif %}>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <button type="submit" class="btn-next" style="background:linear-gradient(135deg,#22c55e,#16a34a); margin-top:28px;">
+                🚀 Activate AI Auto-Pilot
+            </button>
+            <button type="button" class="btn-back" onclick="goTo(4)">← Back</button>
+        </div>
+
+    </div>
+    </form>
+</div>
+
+<script>
+let current = 1;
+const total = 5;
+
+function goTo(step) {
+    document.getElementById('step' + current).classList.remove('active');
+    document.getElementById('dot' + current).className = 'step-dot done';
+    if (current < total) document.getElementById('line' + current).classList.add('done');
+
+    current = step;
+    document.getElementById('step' + current).classList.add('active');
+    document.getElementById('dot' + current).className = 'step-dot active';
+
+    // Update future dots
+    for (let i = current + 1; i <= total; i++) {
+        document.getElementById('dot' + i).className = 'step-dot future';
+    }
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function collectDays() {
+    const checked = [...document.querySelectorAll('input[name="slow_days_check"]:checked')].map(el => el.value);
+    document.getElementById('slowDaysInput').value = checked.join(',');
+}
+</script>
+</body>
+</html>

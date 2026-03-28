@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>You're All Set! — Revvio</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex; align-items: center; justify-content: center; padding: 24px;
+        }
+        .card {
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px; padding: 40px 32px; max-width: 480px; width: 100%;
+            backdrop-filter: blur(20px); text-align: center;
+        }
+        .check { font-size: 3.5rem; margin-bottom: 14px; animation: pop 0.4s ease; }
+        @keyframes pop { 0%{transform:scale(0.5);opacity:0} 80%{transform:scale(1.15)} 100%{transform:scale(1);opacity:1} }
+        h1 { font-size: 1.6rem; font-weight: 800; color: #fff; margin-bottom: 8px; }
+        .sub { font-size: 0.85rem; color: rgba(255,255,255,0.5); margin-bottom: 28px; }
+
+        .qr-box {
+            background: #fff; border-radius: 16px; padding: 18px; display: inline-block;
+            margin-bottom: 16px; box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+        }
+        .qr-label { font-size: 0.72rem; color: rgba(255,255,255,0.4); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+        .link-box {
+            background: rgba(102,126,234,0.15); border: 1px solid rgba(102,126,234,0.3);
+            border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;
+            display: flex; align-items: center; gap: 10px; text-align: left;
+        }
+        .link-box span { font-size: 0.82rem; color: #a78bfa; flex: 1; word-break: break-all; }
+        .btn-copy {
+            background: rgba(124,111,255,0.2); border: 1px solid rgba(124,111,255,0.3);
+            color: #a78bfa; font-size: 0.75rem; font-weight: 700;
+            padding: 6px 14px; border-radius: 7px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+        }
+        .btn-copy:hover { background: rgba(124,111,255,0.3); }
+
+        .steps { text-align: left; margin-bottom: 24px; }
+        .step-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .step-row:last-child { border-bottom: none; }
+        .step-num { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; font-size: 0.72rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+        .step-text strong { font-size: 0.85rem; color: #fff; display: block; }
+        .step-text small { font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-top: 2px; display: block; }
+
+        .btn-dashboard {
+            width: 100%; background: linear-gradient(135deg,#667eea,#764ba2);
+            border: none; color: #fff; font-size: 1rem; font-weight: 700;
+            padding: 14px; border-radius: 12px; cursor: pointer; text-decoration: none;
+            display: block; transition: opacity 0.15s;
+        }
+        .btn-dashboard:hover { opacity: 0.88; color: #fff; }
+        .btn-print {
+            width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.6); font-size: 0.85rem; font-weight: 600;
+            padding: 11px; border-radius: 12px; cursor: pointer; margin-top: 10px;
+        }
+        .btn-print:hover { background: rgba(255,255,255,0.14); }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="check">🎉</div>
+    <h1>You're all set!</h1>
+    <p class="sub">Your AI auto-pilot is live. Share the QR code below and customers start signing up instantly.</p>
+
+    <p class="qr-label">Customer Sign-Up QR Code</p>
+    <div class="qr-box">
+        <canvas id="qrCanvas"></canvas>
+    </div>
+
+    <div class="link-box">
+        <span id="joinUrl">{{ join_url }}</span>
+        <button class="btn-copy" onclick="copyLink()">Copy</button>
+    </div>
+
+    <div class="steps">
+        <div class="step-row">
+            <div class="step-num">1</div>
+            <div class="step-text">
+                <strong>Print the QR code</strong>
+                <small>Put it on tables, receipts, and your front door</small>
+            </div>
+        </div>
+        <div class="step-row">
+            <div class="step-num">2</div>
+            <div class="step-text">
+                <strong>Customers scan & sign up in 30 seconds</strong>
+                <small>They enter their name, email, or phone</small>
+            </div>
+        </div>
+        <div class="step-row">
+            <div class="step-num">3</div>
+            <div class="step-text">
+                <strong>AI starts marketing automatically</strong>
+                <small>Welcome, birthday, win-back — all handled for you</small>
+            </div>
+        </div>
+        <div class="step-row">
+            <div class="step-num">4</div>
+            <div class="step-text">
+                <strong>Get a weekly email report</strong>
+                <small>Every Monday — how many messages sent, opens, new customers</small>
+            </div>
+        </div>
+    </div>
+
+    <a href="/dashboard" class="btn-dashboard">Go to Dashboard →</a>
+    <button class="btn-print" onclick="printQR()">🖨️ Print QR Code</button>
+</div>
+
+<script>
+const joinUrl = document.getElementById('joinUrl').textContent.trim();
+
+QRCode.toCanvas(document.getElementById('qrCanvas'), joinUrl, {
+    width: 180, margin: 1,
+    color: { dark: '#1a1a2e', light: '#ffffff' }
+}, function(err) { if (err) console.error(err); });
+
+function copyLink() {
+    navigator.clipboard.writeText(joinUrl);
+    const btn = document.querySelector('.btn-copy');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+}
+
+function printQR() {
+    const canvas = document.getElementById('qrCanvas');
+    const win = window.open('', '_blank');
+    win.document.write(`
+        <html><head><title>QR Code — {{ business.business_name }}</title>
+        <style>
+            body { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; font-family:Arial,sans-serif; }
+            h2 { font-size:1.4rem; margin-bottom:8px; }
+            p { color:#666; font-size:0.85rem; margin-bottom:20px; }
+            canvas { border:2px solid #eee; border-radius:12px; padding:10px; }
+            .url { font-size:0.75rem; color:#888; margin-top:14px; }
+        </style></head>
+        <body>
+            <h2>{{ business.business_name }}</h2>
+            <p>Scan to join our loyalty list & get exclusive offers!</p>
+            <img src="${canvas.toDataURL()}" style="width:220px;height:220px;">
+            <p class="url">${joinUrl}</p>
+        </body></html>`);
+    win.document.close();
+    win.print();
+}
+</script>
+</body>
+</html>
