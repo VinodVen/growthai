@@ -3,80 +3,349 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="description" content="AI-powered marketing for small businesses. Send promotions, SMS, and email campaigns to your customers in 60 seconds.">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Revvio">
-    <meta name="theme-color" content="#667eea">
-    <link rel="manifest" href="/static/manifest.json">
-    <link rel="apple-touch-icon" href="/static/icon-192.png">
-    <title>Revvio | Send Promotions to Your Customers in 60 Seconds</title>
+    <meta name="description" content="AI auto-pilot marketing for restaurants. Set up once — AI sends welcome messages, birthday offers, win-backs, and weekly specials automatically.">
+    <meta name="theme-color" content="#7c6fff">
+    <title>Revvio — AI Marketing Auto-Pilot for Restaurants</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --purple: #7c6fff;
+            --purple-dark: #5b4de8;
+            --pink: #f472b6;
+            --green: #22c55e;
+            --bg: #06060f;
+            --bg2: #0e0e1c;
+            --border: rgba(255,255,255,0.08);
+            --text: #e2e2f0;
+            --muted: #6b6b8a;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; }
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
 
-        /* NAVBAR */
-        .navbar { background: white; box-shadow: 0 2px 20px rgba(0,0,0,0.08); padding: 16px 0; }
-        .navbar-brand { font-size: 1.4rem; font-weight: 800; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-        .btn-nav-login { border: 2px solid #667eea; color: #667eea; border-radius: 8px; padding: 8px 20px; font-weight: 600; }
-        .btn-nav-login:hover { background: #667eea; color: white; }
-        .btn-nav-start { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 8px; padding: 8px 20px; font-weight: 600; }
-        .btn-nav-start:hover { color: white; opacity: 0.9; }
+        /* ── NAVBAR ── */
+        .navbar {
+            background: rgba(6,6,15,0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 0;
+            position: sticky; top: 0; z-index: 100;
+        }
+        .navbar-brand {
+            font-size: 1.35rem; font-weight: 900; letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #a78bfa, #7c6fff);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .btn-login {
+            border: 1.5px solid rgba(124,111,255,0.4); color: #a78bfa;
+            border-radius: 9px; padding: 8px 20px; font-weight: 600; font-size: 0.88rem;
+            text-decoration: none; transition: all 0.15s;
+        }
+        .btn-login:hover { background: rgba(124,111,255,0.15); color: #c4b5fd; border-color: #7c6fff; }
+        .btn-start {
+            background: linear-gradient(135deg, #7c6fff, #a855f7);
+            color: white; border: none; border-radius: 9px;
+            padding: 8px 22px; font-weight: 700; font-size: 0.88rem;
+            text-decoration: none; transition: all 0.2s;
+            box-shadow: 0 4px 20px rgba(124,111,255,0.35);
+        }
+        .btn-start:hover { color: white; transform: translateY(-1px); box-shadow: 0 6px 28px rgba(124,111,255,0.5); }
 
-        /* HERO */
-        .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 100px 0 80px; color: white; }
-        .hero h1 { font-size: 3.2rem; font-weight: 800; line-height: 1.2; }
-        .hero p.lead { font-size: 1.25rem; opacity: 0.9; max-width: 600px; }
-        .btn-hero { background: white; color: #667eea; border: none; border-radius: 10px; padding: 16px 36px; font-size: 1.1rem; font-weight: 700; }
-        .btn-hero:hover { color: #764ba2; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
-        .btn-hero-outline { background: transparent; color: white; border: 2px solid white; border-radius: 10px; padding: 16px 36px; font-size: 1.1rem; font-weight: 700; }
-        .btn-hero-outline:hover { background: white; color: #667eea; }
-        .hero-badge { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 20px; padding: 6px 16px; font-size: 0.9rem; display: inline-block; margin-bottom: 20px; }
+        /* ── HERO ── */
+        .hero {
+            position: relative; padding: 110px 0 90px; overflow: hidden;
+        }
+        .hero::before {
+            content: '';
+            position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
+            width: 900px; height: 900px;
+            background: radial-gradient(ellipse, rgba(124,111,255,0.18) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .hero::after {
+            content: '';
+            position: absolute; bottom: -100px; right: -100px;
+            width: 500px; height: 500px;
+            background: radial-gradient(ellipse, rgba(168,85,247,0.1) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(124,111,255,0.12); border: 1px solid rgba(124,111,255,0.3);
+            border-radius: 30px; padding: 7px 16px; font-size: 0.82rem; font-weight: 600;
+            color: #a78bfa; margin-bottom: 28px;
+        }
+        .hero-badge span { background: var(--green); color: #000; border-radius: 20px; padding: 2px 8px; font-size: 0.7rem; font-weight: 800; }
+        .hero h1 {
+            font-size: clamp(2.4rem, 5vw, 3.8rem);
+            font-weight: 900; line-height: 1.1; letter-spacing: -0.04em;
+            color: #fff; margin-bottom: 22px;
+        }
+        .hero h1 .gradient-text {
+            background: linear-gradient(135deg, #a78bfa, #7c6fff, #f472b6);
+            -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .hero-sub {
+            font-size: 1.15rem; color: var(--muted); max-width: 560px;
+            line-height: 1.7; margin-bottom: 40px;
+        }
+        .btn-cta-primary {
+            background: linear-gradient(135deg, #7c6fff, #a855f7);
+            color: white; border: none; border-radius: 12px;
+            padding: 16px 36px; font-size: 1.05rem; font-weight: 700;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+            box-shadow: 0 8px 32px rgba(124,111,255,0.45); transition: all 0.2s;
+        }
+        .btn-cta-primary:hover { color: white; transform: translateY(-2px); box-shadow: 0 12px 40px rgba(124,111,255,0.6); }
+        .btn-cta-secondary {
+            background: rgba(255,255,255,0.06); color: var(--text);
+            border: 1.5px solid var(--border); border-radius: 12px;
+            padding: 16px 32px; font-size: 1.05rem; font-weight: 600;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-cta-secondary:hover { color: white; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.15); }
+        .hero-note { font-size: 0.82rem; color: var(--muted); margin-top: 16px; }
 
-        /* BUSINESSES */
-        .businesses { background: #f8f9ff; padding: 50px 0; }
-        .biz-tag { background: white; border: 1px solid #e0e0e0; border-radius: 25px; padding: 10px 20px; font-size: 0.95rem; font-weight: 600; display: inline-block; margin: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        /* Hero mockup */
+        .hero-mockup {
+            background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+            border-radius: 20px; padding: 24px; position: relative;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,111,255,0.1);
+        }
+        .mockup-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        .mock-card {
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px; padding: 14px 16px; margin-bottom: 10px;
+            animation: floatUp 0.5s ease both;
+        }
+        .mock-card:nth-child(2) { animation-delay: 0.1s; }
+        .mock-card:nth-child(3) { animation-delay: 0.2s; }
+        @keyframes floatUp { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+        .mock-label { font-size: 0.7rem; color: var(--muted); margin-bottom: 4px; }
+        .mock-value { font-size: 1rem; font-weight: 700; color: #fff; }
+        .mock-msg { font-size: 0.82rem; color: #c0c0d8; line-height: 1.5; }
+        .mock-tag {
+            display: inline-block; font-size: 0.65rem; font-weight: 700;
+            padding: 2px 8px; border-radius: 20px; margin-right: 4px;
+        }
+        .tag-green { background: rgba(34,197,94,0.2); color: #4ade80; }
+        .tag-blue  { background: rgba(99,179,237,0.2); color: #63b3ed; }
+        .tag-orange{ background: rgba(251,146,60,0.2); color: #fb923c; }
+        .tag-purple{ background: rgba(167,139,250,0.2); color: #a78bfa; }
 
-        /* HOW IT WORKS */
-        .how { padding: 80px 0; }
-        .step-num { background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; margin: 0 auto 16px; }
+        /* floating stats badge */
+        .float-badge {
+            position: absolute; background: var(--bg2);
+            border: 1px solid var(--border); border-radius: 12px;
+            padding: 10px 16px; font-size: 0.8rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            animation: pulse 3s ease-in-out infinite;
+        }
+        @keyframes pulse { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+        .float-badge .val { font-size: 1.1rem; font-weight: 800; color: #fff; }
 
-        /* FEATURES */
-        .features { background: #f8f9ff; padding: 80px 0; }
-        .feature-card { background: white; border-radius: 16px; padding: 30px; border: 1px solid #e8e8f0; height: 100%; transition: transform 0.2s; }
-        .feature-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(102,126,234,0.15); }
-        .feature-icon { font-size: 2.5rem; margin-bottom: 16px; }
+        /* ── LOGOS / SOCIAL PROOF ── */
+        .social-proof { padding: 40px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .social-proof p { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 20px; }
+        .biz-pill {
+            background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+            border-radius: 30px; padding: 8px 18px; font-size: 0.85rem; font-weight: 500;
+            color: #b0b0c8; display: inline-block; margin: 4px;
+            transition: all 0.15s;
+        }
+        .biz-pill:hover { background: rgba(124,111,255,0.1); border-color: rgba(124,111,255,0.3); color: #a78bfa; }
 
-        /* PRICING */
-        .pricing { padding: 80px 0; }
-        .price-card { border-radius: 16px; padding: 36px; border: 2px solid #e8e8f0; text-align: center; height: 100%; transition: transform 0.2s; }
-        .price-card:hover { transform: translateY(-4px); }
-        .price-card.popular { border-color: #667eea; box-shadow: 0 12px 40px rgba(102,126,234,0.2); }
-        .popular-label { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 20px; padding: 4px 16px; font-size: 0.8rem; font-weight: 700; }
-        .price-num { font-size: 3rem; font-weight: 800; }
-        .btn-price { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 10px; padding: 14px; font-size: 1rem; font-weight: 700; width: 100%; }
-        .btn-price:hover { color: white; opacity: 0.9; }
-        .check { color: #28a745; font-weight: bold; margin-right: 6px; }
+        /* ── STATS ── */
+        .stats-section { padding: 80px 0; }
+        .stat-box { text-align: center; }
+        .stat-num { font-size: 3rem; font-weight: 900; letter-spacing: -0.04em; color: #fff; line-height: 1; }
+        .stat-num span { background: linear-gradient(135deg, #a78bfa, #7c6fff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-label { font-size: 0.85rem; color: var(--muted); margin-top: 6px; }
 
-        /* CTA */
-        .cta { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 80px 0; color: white; text-align: center; }
+        /* ── HOW IT WORKS ── */
+        .how-section { padding: 90px 0; }
+        .section-chip {
+            display: inline-block; background: rgba(124,111,255,0.12);
+            border: 1px solid rgba(124,111,255,0.3); color: #a78bfa;
+            border-radius: 30px; padding: 5px 16px; font-size: 0.78rem; font-weight: 700;
+            letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 14px;
+        }
+        .section-title { font-size: clamp(1.8rem, 3.5vw, 2.5rem); font-weight: 900; letter-spacing: -0.03em; color: #fff; }
+        .section-sub { color: var(--muted); font-size: 1rem; margin-top: 10px; }
+        .step-card {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 18px; padding: 30px; height: 100%;
+            transition: all 0.2s; position: relative; overflow: hidden;
+        }
+        .step-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, #7c6fff, #a855f7);
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .step-card:hover { border-color: rgba(124,111,255,0.3); transform: translateY(-4px); }
+        .step-card:hover::before { opacity: 1; }
+        .step-num {
+            width: 44px; height: 44px; border-radius: 12px;
+            background: linear-gradient(135deg, #7c6fff, #a855f7);
+            color: white; font-size: 1.1rem; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 18px; box-shadow: 0 4px 16px rgba(124,111,255,0.4);
+        }
+        .step-card h5 { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 10px; }
+        .step-card p { font-size: 0.875rem; color: var(--muted); line-height: 1.65; }
 
-        /* FOOTER */
-        footer { background: #1a1a2e; color: rgba(255,255,255,0.6); padding: 40px 0; text-align: center; }
-        footer a { color: rgba(255,255,255,0.6); text-decoration: none; }
-        footer a:hover { color: white; }
+        /* ── FEATURES ── */
+        .features-section { padding: 90px 0; background: var(--bg2); }
+        .feat-card {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+            border-radius: 18px; padding: 28px; height: 100%; transition: all 0.2s;
+        }
+        .feat-card:hover { border-color: rgba(124,111,255,0.25); background: rgba(124,111,255,0.05); transform: translateY(-3px); }
+        .feat-icon {
+            width: 50px; height: 50px; border-radius: 14px; font-size: 1.3rem;
+            display: flex; align-items: center; justify-content: center; margin-bottom: 18px;
+        }
+        .feat-card h5 { font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+        .feat-card p { font-size: 0.83rem; color: var(--muted); line-height: 1.65; margin: 0; }
+
+        /* ── AUTO-PILOT SHOWCASE ── */
+        .autopilot-section { padding: 90px 0; }
+        .auto-pill {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 12px; padding: 14px 18px;
+            display: flex; align-items: center; gap: 14px; margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+        .auto-pill:hover { border-color: rgba(124,111,255,0.3); background: rgba(124,111,255,0.06); }
+        .auto-pill-icon { font-size: 1.4rem; flex-shrink: 0; }
+        .auto-pill-name { font-size: 0.9rem; font-weight: 700; color: #fff; }
+        .auto-pill-desc { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+        .auto-pill-badge {
+            margin-left: auto; font-size: 0.68rem; font-weight: 700;
+            padding: 3px 10px; border-radius: 20px; flex-shrink: 0;
+            background: rgba(34,197,94,0.15); color: #4ade80;
+        }
+        .big-phone {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 24px; padding: 24px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,111,255,0.1);
+        }
+        .phone-msg {
+            background: rgba(124,111,255,0.15); border-radius: 12px 12px 12px 4px;
+            padding: 12px 16px; margin-bottom: 10px; font-size: 0.85rem; color: #e2e2f0;
+            line-height: 1.55;
+        }
+        .phone-msg-right {
+            background: rgba(34,197,94,0.15); border-radius: 12px 12px 4px 12px;
+            padding: 12px 16px; margin-bottom: 10px; font-size: 0.85rem; color: #e2e2f0;
+            line-height: 1.55; text-align: right;
+        }
+        .phone-label { font-size: 0.68rem; color: var(--muted); margin-bottom: 6px; }
+
+        /* ── PRICING ── */
+        .pricing-section { padding: 90px 0; background: var(--bg2); }
+        .price-card {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+            border-radius: 20px; padding: 36px; height: 100%; transition: all 0.2s;
+        }
+        .price-card.popular {
+            background: rgba(124,111,255,0.08);
+            border-color: rgba(124,111,255,0.4);
+            box-shadow: 0 0 0 1px rgba(124,111,255,0.2), 0 20px 60px rgba(124,111,255,0.15);
+        }
+        .popular-chip {
+            background: linear-gradient(135deg, #7c6fff, #a855f7);
+            color: white; border-radius: 20px; padding: 4px 14px;
+            font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em;
+            text-transform: uppercase; display: inline-block; margin-bottom: 16px;
+        }
+        .price-name { font-size: 0.85rem; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+        .price-num { font-size: 3.2rem; font-weight: 900; color: #fff; letter-spacing: -0.04em; line-height: 1; }
+        .price-num sup { font-size: 1.2rem; font-weight: 700; vertical-align: top; margin-top: 12px; }
+        .price-period { font-size: 0.82rem; color: var(--muted); margin: 8px 0 24px; }
+        .price-feature { font-size: 0.85rem; color: #c0c0d8; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 10px; }
+        .price-feature:last-child { border-bottom: none; }
+        .price-feature i { color: var(--green); font-size: 0.9rem; flex-shrink: 0; }
+        .btn-price-primary {
+            width: 100%; background: linear-gradient(135deg, #7c6fff, #a855f7);
+            color: white; border: none; border-radius: 11px;
+            padding: 14px; font-size: 0.95rem; font-weight: 700;
+            text-decoration: none; display: block; text-align: center;
+            margin-top: 28px; transition: all 0.2s;
+            box-shadow: 0 4px 16px rgba(124,111,255,0.4);
+        }
+        .btn-price-primary:hover { color: white; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(124,111,255,0.5); }
+        .btn-price-secondary {
+            width: 100%; background: rgba(255,255,255,0.06);
+            color: var(--text); border: 1.5px solid var(--border); border-radius: 11px;
+            padding: 14px; font-size: 0.95rem; font-weight: 700;
+            text-decoration: none; display: block; text-align: center;
+            margin-top: 28px; transition: all 0.2s;
+        }
+        .btn-price-secondary:hover { color: white; background: rgba(255,255,255,0.1); }
+
+        /* ── TESTIMONIALS ── */
+        .testimonials-section { padding: 90px 0; }
+        .testi-card {
+            background: var(--bg2); border: 1px solid var(--border);
+            border-radius: 18px; padding: 28px; height: 100%;
+        }
+        .stars { color: #fbbf24; font-size: 0.85rem; margin-bottom: 14px; }
+        .testi-text { font-size: 0.9rem; color: #c0c0d8; line-height: 1.7; margin-bottom: 20px; font-style: italic; }
+        .testi-avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: linear-gradient(135deg, #7c6fff, #a855f7);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; color: white; font-size: 0.9rem; flex-shrink: 0;
+        }
+        .testi-name { font-size: 0.88rem; font-weight: 700; color: #fff; }
+        .testi-role { font-size: 0.75rem; color: var(--muted); margin-top: 1px; }
+
+        /* ── CTA ── */
+        .cta-section { padding: 100px 0; position: relative; overflow: hidden; }
+        .cta-section::before {
+            content: '';
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            width: 700px; height: 700px;
+            background: radial-gradient(ellipse, rgba(124,111,255,0.15) 0%, transparent 70%);
+        }
+        .cta-box {
+            background: rgba(124,111,255,0.08); border: 1px solid rgba(124,111,255,0.25);
+            border-radius: 28px; padding: 64px 48px; text-align: center;
+            position: relative; z-index: 1;
+        }
+        .cta-box h2 { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 900; color: #fff; letter-spacing: -0.03em; margin-bottom: 16px; }
+        .cta-box p { font-size: 1.05rem; color: var(--muted); margin-bottom: 36px; }
+
+        /* ── FOOTER ── */
+        footer { background: #04040c; border-top: 1px solid var(--border); padding: 48px 0; }
+        footer .brand { font-size: 1.2rem; font-weight: 900; background: linear-gradient(135deg, #a78bfa, #7c6fff); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+        footer .tagline { font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
+        footer a { color: var(--muted); text-decoration: none; font-size: 0.85rem; transition: color 0.15s; }
+        footer a:hover { color: #a78bfa; }
+        footer .divider { color: rgba(255,255,255,0.1); }
+
+        /* ── UTILS ── */
+        .divider-glow {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(124,111,255,0.4), transparent);
+            margin: 0;
+        }
     </style>
 </head>
 <body>
 
 <!-- NAVBAR -->
-<nav class="navbar navbar-expand-lg sticky-top">
-    <div class="container">
+<nav class="navbar">
+    <div class="container d-flex align-items-center justify-content-between">
         <a class="navbar-brand" href="/">Revvio</a>
-        <div class="d-flex gap-2">
-            <a href="/login" class="btn btn-nav-login">Login</a>
-            <a href="/register" class="btn btn-nav-start">Start Free</a>
+        <div class="d-flex gap-2 align-items-center">
+            <a href="/login" class="btn-login">Login</a>
+            <a href="/register" class="btn-start">Start Free →</a>
         </div>
     </div>
 </nav>
@@ -84,30 +353,52 @@
 <!-- HERO -->
 <section class="hero">
     <div class="container">
-        <div class="row align-items-center">
-            <div class="col-lg-7">
-                <div class="hero-badge">Free to start — no credit card needed</div>
-                <h1 class="mb-4">Send Promotions to Your Customers in 60 Seconds</h1>
-                <p class="lead mb-5">Revvio helps small businesses bring customers back with AI-powered email and SMS campaigns. Upload your customer list and start sending in minutes.</p>
-                <div class="d-flex gap-3 flex-wrap">
-                    <a href="/register" class="btn btn-hero">Start Free Trial</a>
-                    <a href="/demo-login" class="btn btn-hero-outline">Try Live Demo</a>
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <div class="hero-badge">
+                    <span>NEW</span> AI Auto-Pilot for Restaurants
                 </div>
-                <p class="mt-3" style="opacity:0.75; font-size:0.9rem;">No signup needed for demo · Explore with real sample data</p>
+                <h1>Your Marketing<br>Runs <span class="gradient-text">24/7 on<br>Auto-Pilot</span></h1>
+                <p class="hero-sub">Set up once in 2 minutes. Revvio's AI automatically sends welcome messages, birthday offers, win-back campaigns, and weekly specials — while you focus on running your restaurant.</p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="/register" class="btn-cta-primary">
+                        <i class="bi bi-rocket-takeoff-fill"></i> Start Free — No Card Needed
+                    </a>
+                    <a href="/demo-login" class="btn-cta-secondary">
+                        <i class="bi bi-play-circle"></i> Try Live Demo
+                    </a>
+                </div>
+                <p class="hero-note">✓ Free to start &nbsp;·&nbsp; ✓ 2-minute setup &nbsp;·&nbsp; ✓ No tech skills needed</p>
             </div>
-            <div class="col-lg-5 mt-5 mt-lg-0 text-center">
-                <div style="background: rgba(255,255,255,0.15); border-radius: 20px; padding: 30px; border: 1px solid rgba(255,255,255,0.3);">
-                    <div style="background: rgba(255,255,255,0.2); border-radius: 12px; padding: 16px; margin-bottom: 12px; text-align: left;">
-                        <small style="opacity: 0.8;">Come Back Offer sent to 48 customers</small>
-                        <div style="font-size: 1.3rem; font-weight: 700; margin-top: 4px;">48 emails delivered</div>
+            <div class="col-lg-6">
+                <div class="hero-mockup" style="position:relative;">
+                    <!-- Header bar -->
+                    <div class="d-flex align-items-center gap-2 mb-4 pb-3" style="border-bottom:1px solid rgba(255,255,255,0.07);">
+                        <div class="mockup-dot" style="background:#f87171;"></div>
+                        <div class="mockup-dot" style="background:#fbbf24;"></div>
+                        <div class="mockup-dot" style="background:#4ade80;"></div>
+                        <span style="margin-left:10px; font-size:0.75rem; color:var(--muted);">Revvio AI — Today's Activity</span>
                     </div>
-                    <div style="background: rgba(255,255,255,0.2); border-radius: 12px; padding: 16px; margin-bottom: 12px; text-align: left;">
-                        <small style="opacity: 0.8;">Weekend Special — AI generated</small>
-                        <div style="font-size: 0.95rem; margin-top: 4px; opacity: 0.9;">"Hi Sarah! Special weekend deal at Mario's Grill — enjoy 20% off this Saturday only!"</div>
+                    <!-- Activity cards -->
+                    <div class="mock-card">
+                        <div class="mock-label">🎉 Welcome sent automatically</div>
+                        <div class="mock-msg">"Hi Maria! Welcome to Mario's Grill — your first visit earns you a free dessert. We can't wait to see you!"</div>
+                        <div style="margin-top:8px;"><span class="mock-tag tag-blue">Welcome</span><span class="mock-tag tag-green">Delivered</span></div>
                     </div>
-                    <div style="background: rgba(255,255,255,0.2); border-radius: 12px; padding: 16px; text-align: left;">
-                        <small style="opacity: 0.8;">Total customers imported</small>
-                        <div style="font-size: 1.3rem; font-weight: 700; margin-top: 4px;">243 customers</div>
+                    <div class="mock-card">
+                        <div class="mock-label">🎂 Birthday offer sent to 3 customers today</div>
+                        <div class="mock-msg">"Happy Birthday John! 🎁 Come celebrate with us — enjoy 20% off your entire meal today only!"</div>
+                        <div style="margin-top:8px;"><span class="mock-tag tag-orange">Birthday</span><span class="mock-tag tag-green">3 Opened</span></div>
+                    </div>
+                    <div class="mock-card">
+                        <div class="mock-label">💔 Win-back triggered — 12 customers</div>
+                        <div class="mock-msg">"We miss you! It's been a while — here's a special offer just for you: 15% off your next visit."</div>
+                        <div style="margin-top:8px;"><span class="mock-tag tag-purple">Win-Back</span><span class="mock-tag tag-green">Auto-sent</span></div>
+                    </div>
+                    <!-- Float badge -->
+                    <div class="float-badge" style="bottom:-16px; right:24px;">
+                        <div style="color:var(--muted); font-size:0.7rem; margin-bottom:2px;">📨 This week</div>
+                        <div class="val" style="color:#4ade80;">47 emails sent</div>
                     </div>
                 </div>
             </div>
@@ -115,98 +406,275 @@
     </div>
 </section>
 
-<!-- BUSINESSES -->
-<section class="businesses">
+<!-- SOCIAL PROOF BAR -->
+<div class="divider-glow"></div>
+<section class="social-proof">
     <div class="container text-center">
-        <p class="text-muted fw-bold mb-4">WORKS FOR ANY SMALL BUSINESS</p>
+        <p>Trusted by all types of restaurants & local businesses</p>
         <div>
-            <span class="biz-tag">Restaurants</span>
-            <span class="biz-tag">Cafes</span>
-            <span class="biz-tag">Salons & Barbershops</span>
-            <span class="biz-tag">Retail Stores</span>
-            <span class="biz-tag">Gyms & Fitness</span>
-            <span class="biz-tag">Auto Repair</span>
-            <span class="biz-tag">Spas</span>
-            <span class="biz-tag">Food Trucks</span>
-            <span class="biz-tag">Boutiques</span>
-            <span class="biz-tag">Pizza & Takeout</span>
-            <span class="biz-tag">Nail Salons</span>
-            <span class="biz-tag">Any Local Business</span>
+            <span class="biz-pill">🍕 Pizzerias</span>
+            <span class="biz-pill">🍣 Sushi Bars</span>
+            <span class="biz-pill">🌮 Mexican Grills</span>
+            <span class="biz-pill">☕ Cafes</span>
+            <span class="biz-pill">🍗 BBQ Joints</span>
+            <span class="biz-pill">🍔 Burger Spots</span>
+            <span class="biz-pill">🥗 Health Food</span>
+            <span class="biz-pill">🍜 Noodle Houses</span>
+            <span class="biz-pill">🧁 Bakeries</span>
+            <span class="biz-pill">🍷 Fine Dining</span>
+            <span class="biz-pill">🚚 Food Trucks</span>
+            <span class="biz-pill">🥡 Takeout & Delivery</span>
+        </div>
+    </div>
+</section>
+<div class="divider-glow"></div>
+
+<!-- STATS -->
+<section class="stats-section">
+    <div class="container">
+        <div class="row g-4 text-center">
+            <div class="col-6 col-md-3">
+                <div class="stat-box">
+                    <div class="stat-num"><span>2 min</span></div>
+                    <div class="stat-label">Average setup time</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-box">
+                    <div class="stat-num"><span>5×</span></div>
+                    <div class="stat-label">More customers return</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-box">
+                    <div class="stat-num"><span>$0</span></div>
+                    <div class="stat-label">To get started today</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-box">
+                    <div class="stat-num"><span>24/7</span></div>
+                    <div class="stat-label">AI works while you sleep</div>
+                </div>
+            </div>
         </div>
     </div>
 </section>
 
 <!-- HOW IT WORKS -->
-<section class="how">
+<section class="how-section">
     <div class="container">
-        <h2 class="text-center fw-bold mb-2">How It Works</h2>
-        <p class="text-center text-muted mb-5">Three simple steps to bring your customers back</p>
-        <div class="row text-center">
-            <div class="col-md-4 mb-4">
-                <div class="step-num">1</div>
-                <h5 class="fw-bold mb-2">Import Your Customers</h5>
-                <p class="text-muted">Upload a CSV, Excel file, or just paste phone numbers and emails. Works with Square, Clover, Toast, and any software.</p>
+        <div class="text-center mb-5">
+            <div class="section-chip">How It Works</div>
+            <h2 class="section-title">Set up once.<br>AI does the rest forever.</h2>
+            <p class="section-sub">No marketing experience needed. No tech skills. Just 3 steps.</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="step-card">
+                    <div class="step-num">1</div>
+                    <h5>Tell us about your restaurant</h5>
+                    <p>Your cuisine, your best dish, your special offer for new customers. Takes 2 minutes. AI uses this to write authentic messages in your voice.</p>
+                </div>
             </div>
-            <div class="col-md-4 mb-4">
-                <div class="step-num">2</div>
-                <h5 class="fw-bold mb-2">Pick a Campaign</h5>
-                <p class="text-muted">Choose from Come Back Offer, Weekend Special, Lunch Deal, Birthday, Happy Hour, and more. AI writes the message for you.</p>
+            <div class="col-md-4">
+                <div class="step-card">
+                    <div class="step-num">2</div>
+                    <h5>Share your QR code with customers</h5>
+                    <p>Print it on tables, receipts, and your front door. Customers scan and sign up in 30 seconds. No app download, no friction.</p>
+                </div>
             </div>
-            <div class="col-md-4 mb-4">
-                <div class="step-num">3</div>
-                <h5 class="fw-bold mb-2">Send & Grow</h5>
-                <p class="text-muted">Send to one customer or all customers at once. Professional emails delivered directly to their inbox.</p>
+            <div class="col-md-4">
+                <div class="step-card">
+                    <div class="step-num">3</div>
+                    <h5>AI handles everything automatically</h5>
+                    <p>Welcome messages, birthday offers, win-back campaigns, weekly specials — all written by AI and sent at the perfect time. You do nothing.</p>
+                </div>
             </div>
         </div>
     </div>
 </section>
 
 <!-- FEATURES -->
-<section class="features">
+<section class="features-section">
     <div class="container">
-        <h2 class="text-center fw-bold mb-2">Everything You Need</h2>
-        <p class="text-center text-muted mb-5">Built specifically for small business owners</p>
+        <div class="text-center mb-5">
+            <div class="section-chip">Features</div>
+            <h2 class="section-title">Everything built for restaurants</h2>
+            <p class="section-sub">No complex marketing tools. Just what you actually need.</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4 col-sm-6">
+                <div class="feat-card">
+                    <div class="feat-icon" style="background:rgba(124,111,255,0.15); color:#a78bfa;">🤖</div>
+                    <h5>AI Writes Every Message</h5>
+                    <p>AI generates personalized messages in your restaurant's tone — friendly, fun, or professional. Never write marketing copy again.</p>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <div class="feat-card">
+                    <div class="feat-icon" style="background:rgba(34,197,94,0.15); color:#4ade80;">👋</div>
+                    <h5>Welcome New Customers</h5>
+                    <p>The moment someone joins, they get a warm personalized welcome email. First impressions that keep them coming back.</p>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <div class="feat-card">
+                    <div class="feat-icon" style="background:rgba(251,146,60,0.15); color:#fb923c;">🎂</div>
+                    <h5>Birthday Offers</h5>
+                    <p>AI automatically wishes customers happy birthday with a special offer on their big day. They'll remember you every year.</p>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <div class="feat-card">
+                    <div class="feat-icon" style="background:rgba(248,113,113,0.15); color:#f87171;">💔</div>
+                    <h5>Win-Back Campaigns</h5>
+                    <p>30 days since a customer visited? AI sends a personalized "we miss you" offer automatically. Bring lapsed customers back.</p>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <div class="feat-card">
+                    <div class="feat-icon" style="background:rgba(99,179,237,0.15); color:#63b3ed;">📅</div>
+                    <h5>Weekly Specials</h5>
+                    <p>Every Tuesday, AI sends a fresh promo to your entire customer list. Fill slow days without lifting a finger.</p>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <div class="feat-card">
+                    <div class="feat-icon" style="background:rgba(251,191,36,0.15); color:#fbbf24;">⚡</div>
+                    <h5>Flash Deals on Slow Days</h5>
+                    <p>Tell AI your slow days. It sends flash deals automatically to fill empty seats — right when you need it most.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- AUTO-PILOT SHOWCASE -->
+<section class="autopilot-section">
+    <div class="container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-5">
+                <div class="section-chip">Auto-Pilot</div>
+                <h2 class="section-title mb-3">5 automations running 24/7</h2>
+                <p style="color:var(--muted); margin-bottom:32px; line-height:1.7;">Once active, your marketing never stops. Each automation fires at exactly the right moment — no reminders, no manual work.</p>
+                <div class="auto-pill">
+                    <div class="auto-pill-icon">👋</div>
+                    <div>
+                        <div class="auto-pill-name">Welcome Message</div>
+                        <div class="auto-pill-desc">Sent instantly when a customer joins</div>
+                    </div>
+                    <div class="auto-pill-badge">LIVE</div>
+                </div>
+                <div class="auto-pill">
+                    <div class="auto-pill-icon">🎂</div>
+                    <div>
+                        <div class="auto-pill-name">Birthday Offer</div>
+                        <div class="auto-pill-desc">Sent on the customer's birthday</div>
+                    </div>
+                    <div class="auto-pill-badge">LIVE</div>
+                </div>
+                <div class="auto-pill">
+                    <div class="auto-pill-icon">💔</div>
+                    <div>
+                        <div class="auto-pill-name">Win-Back</div>
+                        <div class="auto-pill-desc">After 30 days of no visits</div>
+                    </div>
+                    <div class="auto-pill-badge">LIVE</div>
+                </div>
+                <div class="auto-pill">
+                    <div class="auto-pill-icon">📅</div>
+                    <div>
+                        <div class="auto-pill-name">Weekly Special</div>
+                        <div class="auto-pill-desc">Every Tuesday to all customers</div>
+                    </div>
+                    <div class="auto-pill-badge">LIVE</div>
+                </div>
+                <div class="auto-pill">
+                    <div class="auto-pill-icon">⚡</div>
+                    <div>
+                        <div class="auto-pill-name">Flash Deal</div>
+                        <div class="auto-pill-desc">On your selected slow days</div>
+                    </div>
+                    <div class="auto-pill-badge">LIVE</div>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="big-phone">
+                    <div class="d-flex align-items-center gap-3 mb-4 pb-3" style="border-bottom:1px solid var(--border);">
+                        <div style="width:36px; height:36px; background:linear-gradient(135deg,#7c6fff,#a855f7); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1rem;">🤖</div>
+                        <div>
+                            <div style="font-size:0.88rem; font-weight:700; color:#fff;">Revvio AI</div>
+                            <div style="font-size:0.72rem; color:var(--green);">● Online — sending now</div>
+                        </div>
+                    </div>
+                    <div class="phone-label">AI sent to Sarah K. — Birthday 🎂</div>
+                    <div class="phone-msg">
+                        🎉 Happy Birthday Sarah! On behalf of everyone at Mario's Grill, we hope your day is as amazing as you are.<br><br>
+                        As our birthday gift to you — enjoy <strong>20% off your entire meal</strong> today. No code needed, just mention this message!<br><br>
+                        We'd love to celebrate with you. 🥂
+                    </div>
+                    <div class="phone-label mt-3">Sarah replied</div>
+                    <div class="phone-msg-right">
+                        "Oh my goodness, thank you!! Coming in tonight with the family! 🙏"
+                    </div>
+                    <div class="phone-label mt-3">AI sent win-back to James T. — 32 days inactive</div>
+                    <div class="phone-msg">
+                        Hi James! We've been missing you at Mario's Grill 👋<br><br>
+                        It's been a little while — so here's something special just for you: <strong>free garlic bread</strong> on your next visit. Just show this email.<br><br>
+                        Come back soon, we'd love to see you!
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="testimonials-section">
+    <div class="container">
+        <div class="text-center mb-5">
+            <div class="section-chip">Testimonials</div>
+            <h2 class="section-title">Restaurant owners love it</h2>
+        </div>
         <div class="row g-4">
             <div class="col-md-4">
-                <div class="feature-card">
-                    <div class="feature-icon">🤖</div>
-                    <h5 class="fw-bold">AI Message Generation</h5>
-                    <p class="text-muted mb-0">Type a customer name and campaign type — AI writes a personalized message in seconds. No marketing experience needed.</p>
+                <div class="testi-card">
+                    <div class="stars">★★★★★</div>
+                    <p class="testi-text">"I set it up Tuesday morning in about 10 minutes. By Friday I had 3 customers come back saying they got the birthday message. That never happened before."</p>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="testi-avatar">M</div>
+                        <div>
+                            <div class="testi-name">Marco R.</div>
+                            <div class="testi-role">Owner, Bella Italia Ristorante</div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="feature-card">
-                    <div class="feature-icon">📤</div>
-                    <h5 class="fw-bold">Bulk Send to All Customers</h5>
-                    <p class="text-muted mb-0">Send one campaign to all your customers at once. Perfect for weekend specials or come back offers.</p>
+                <div class="testi-card">
+                    <div class="stars">★★★★★</div>
+                    <p class="testi-text">"Monday is usually dead. Since I turned on the flash deal automation, I'm getting 15–20% more covers on Mondays. The AI writes better promos than I ever could."</p>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="testi-avatar">S</div>
+                        <div>
+                            <div class="testi-name">Sandra K.</div>
+                            <div class="testi-role">Owner, Seoul Kitchen</div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="feature-card">
-                    <div class="feature-icon">📱</div>
-                    <h5 class="fw-bold">Email & SMS</h5>
-                    <p class="text-muted mb-0">Send professional HTML emails and SMS text messages. Customers get your offer wherever they are.</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <div class="feature-icon">📥</div>
-                    <h5 class="fw-bold">Easy Customer Import</h5>
-                    <p class="text-muted mb-0">Paste phone numbers, upload CSV/Excel, or export from Square, Clover, Toast, QuickBooks, and more.</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h5 class="fw-bold">9 Campaign Types</h5>
-                    <p class="text-muted mb-0">Come Back Offer, Weekend Special, Lunch Deal, Dinner Special, Birthday, Loyalty Reward, Happy Hour, and more.</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="feature-card">
-                    <div class="feature-icon">📊</div>
-                    <h5 class="fw-bold">Simple Dashboard</h5>
-                    <p class="text-muted mb-0">See all your customers, campaigns sent, and quick actions in one place. No complexity, just results.</p>
+                <div class="testi-card">
+                    <div class="stars">★★★★★</div>
+                    <p class="testi-text">"I'm not a tech person at all. My daughter helped me scan the QR and set it up. Now customers sign up themselves and AI does everything. I don't touch anything."</p>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="testi-avatar">J</div>
+                        <div>
+                            <div class="testi-name">Jose M.</div>
+                            <div class="testi-role">Owner, El Rancho Mexican Grill</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -214,86 +682,96 @@
 </section>
 
 <!-- PRICING -->
-<section class="pricing" id="pricing">
+<section class="pricing-section" id="pricing">
     <div class="container">
-        <h2 class="text-center fw-bold mb-2">Simple Pricing</h2>
-        <p class="text-center text-muted mb-5">Start free, upgrade when you're ready</p>
+        <div class="text-center mb-5">
+            <div class="section-chip">Pricing</div>
+            <h2 class="section-title">Simple, honest pricing</h2>
+            <p class="section-sub">Start free. No credit card. Upgrade when you're ready.</p>
+        </div>
         <div class="row justify-content-center g-4">
-
             <div class="col-md-4">
                 <div class="price-card">
-                    <h5 class="text-muted">Free</h5>
-                    <div class="price-num">$0</div>
-                    <p class="text-muted mb-4">Forever free</p>
-                    <ul class="list-unstyled text-start mb-4">
-                        <li class="mb-2"><span class="check">✓</span>50 customers</li>
-                        <li class="mb-2"><span class="check">✓</span>10 campaigns/month</li>
-                        <li class="mb-2"><span class="check">✓</span>AI message generation</li>
-                        <li class="mb-2"><span class="check">✓</span>Email marketing</li>
-                    </ul>
-                    <a href="/register" class="btn btn-price">Get Started Free</a>
+                    <div class="price-name">Free</div>
+                    <div class="price-num"><sup>$</sup>0</div>
+                    <div class="price-period">Forever free</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> Up to 50 customers</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> Welcome automation</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> AI message writing</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> QR sign-up page</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> Email campaigns</div>
+                    <a href="/register" class="btn-price-secondary">Get Started Free</a>
                 </div>
             </div>
-
             <div class="col-md-4">
                 <div class="price-card popular">
-                    <div class="mb-2"><span class="popular-label">MOST POPULAR</span></div>
-                    <h5 class="text-muted">Starter</h5>
-                    <div class="price-num">$19</div>
-                    <p class="text-muted mb-4">per month</p>
-                    <ul class="list-unstyled text-start mb-4">
-                        <li class="mb-2"><span class="check">✓</span>500 customers</li>
-                        <li class="mb-2"><span class="check">✓</span>Unlimited campaigns</li>
-                        <li class="mb-2"><span class="check">✓</span>Bulk send to all</li>
-                        <li class="mb-2"><span class="check">✓</span>Email + SMS</li>
-                    </ul>
-                    <a href="/register" class="btn btn-price">Start Free Trial</a>
+                    <div class="popular-chip">Most Popular</div>
+                    <div class="price-name">Starter</div>
+                    <div class="price-num"><sup>$</sup>19</div>
+                    <div class="price-period">per month</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> Up to 500 customers</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> All 5 automations</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> Birthday &amp; win-back</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> Weekly &amp; flash deals</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> Weekly email report</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> Email + SMS*</div>
+                    <a href="/register" class="btn-price-primary">Start Free Trial</a>
                 </div>
             </div>
-
             <div class="col-md-4">
                 <div class="price-card">
-                    <h5 class="text-muted">Pro</h5>
-                    <div class="price-num">$50</div>
-                    <p class="text-muted mb-4">per month</p>
-                    <ul class="list-unstyled text-start mb-4">
-                        <li class="mb-2"><span class="check">✓</span>Unlimited customers</li>
-                        <li class="mb-2"><span class="check">✓</span>Unlimited campaigns</li>
-                        <li class="mb-2"><span class="check">✓</span>Bulk send to all</li>
-                        <li class="mb-2"><span class="check">✓</span>Email + SMS</li>
-                        <li class="mb-2"><span class="check">✓</span>Priority support</li>
-                    </ul>
-                    <a href="/register" class="btn btn-price">Get Pro</a>
+                    <div class="price-name">Pro</div>
+                    <div class="price-num"><sup>$</sup>50</div>
+                    <div class="price-period">per month</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> Unlimited customers</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> Everything in Starter</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> Priority support</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> Custom automations</div>
+                    <div class="price-feature"><i class="bi bi-check-circle-fill"></i> Advanced analytics</div>
+                    <a href="/register" class="btn-price-secondary">Get Pro</a>
                 </div>
             </div>
-
         </div>
+        <p style="text-align:center; font-size:0.75rem; color:var(--muted); margin-top:24px;">* SMS requires Twilio account. Email only plans available.</p>
     </div>
 </section>
 
 <!-- CTA -->
-<section class="cta">
+<section class="cta-section">
     <div class="container">
-        <h2 class="fw-bold display-5 mb-3">Ready to Grow Your Business?</h2>
-        <p class="lead mb-5 opacity-75">Join small business owners sending smarter promotions with Revvio</p>
-        <a href="/register" class="btn btn-hero btn-lg px-5">Start Free — No Credit Card Needed</a>
+        <div class="cta-box">
+            <h2>Your restaurant deserves<br>marketing that works while you sleep</h2>
+            <p>Join other restaurant owners who set up once and let AI handle the rest.</p>
+            <div class="d-flex justify-content-center gap-3 flex-wrap">
+                <a href="/register" class="btn-cta-primary" style="font-size:1.1rem; padding:18px 44px;">
+                    <i class="bi bi-rocket-takeoff-fill"></i> Activate Your AI Auto-Pilot — Free
+                </a>
+            </div>
+            <p style="font-size:0.82rem; color:var(--muted); margin-top:16px; margin-bottom:0;">✓ 2-minute setup &nbsp;·&nbsp; ✓ No credit card &nbsp;·&nbsp; ✓ Cancel anytime</p>
+        </div>
     </div>
 </section>
 
 <!-- FOOTER -->
 <footer>
     <div class="container">
-        <p class="fw-bold text-white mb-2">Revvio</p>
-        <p class="mb-3">AI-Powered Marketing for Small Businesses</p>
-        <div class="d-flex justify-content-center gap-4 mb-3 flex-wrap">
-            <a href="/contact">Contact</a>
-            <a href="#pricing">Pricing</a>
-            <a href="/login">Login</a>
-            <a href="/register">Register</a>
-            <a href="/privacy">Privacy Policy</a>
-            <a href="/terms">Terms of Service</a>
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-4">
+            <div>
+                <div class="brand">Revvio</div>
+                <div class="tagline">AI Marketing Auto-Pilot for Restaurants</div>
+            </div>
+            <div class="d-flex flex-wrap gap-4 justify-content-center">
+                <a href="#pricing">Pricing</a>
+                <a href="/login">Login</a>
+                <a href="/register">Sign Up</a>
+                <a href="/privacy">Privacy</a>
+                <a href="/terms">Terms</a>
+                <a href="/contact">Contact</a>
+            </div>
         </div>
-        <p class="mb-0" style="font-size: 0.85rem;">© 2025 Revvio. All rights reserved. · 8105 Rasor Blvd Suite 280, Plano, TX 75024</p>
+        <div style="border-top:1px solid var(--border); margin-top:32px; padding-top:24px; text-align:center;">
+            <p style="font-size:0.78rem; color:var(--muted);">© 2025 Revvio. All rights reserved. · 8105 Rasor Blvd Suite 280, Plano, TX 75024</p>
+        </div>
     </div>
 </footer>
 
