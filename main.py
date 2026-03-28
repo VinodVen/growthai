@@ -1,4 +1,5 @@
 import os
+import re
 import bcrypt
 import stripe
 import stripe.checkout
@@ -6,7 +7,7 @@ import smtplib
 import hmac
 import hashlib
 import base64
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, request, redirect, session, url_for, flash, jsonify
 from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
@@ -124,6 +125,11 @@ migrate = Migrate(app, db)
 # MODELS
 # ============================================
 
+def make_slug(name, uid):
+    """Generate a URL-safe slug from business name + id."""
+    base = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    return f"{base}-{uid}"
+
 class Business(db.Model):
     __tablename__ = "businesses"
     id = db.Column(db.Integer, primary_key=True)
@@ -136,7 +142,29 @@ class Business(db.Model):
     address = db.Column(db.String(300))
     phone = db.Column(db.String(50))
     website = db.Column(db.String(200))
+    slug = db.Column(db.String(200), unique=True)          # e.g. marios-pizza-3
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class BusinessProfile(db.Model):
+    """Stores automation settings filled in by the business owner."""
+    __tablename__ = "business_profiles"
+    id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), unique=True, nullable=False)
+    cuisine_type = db.Column(db.String(100))               # Italian, Mexican, Indian…
+    signature_dish = db.Column(db.String(200))             # "Wood-fired pizza"
+    special_offer = db.Column(db.String(200))              # "15% off", "free dessert"
+    slow_days = db.Column(db.String(100))                  # "Mon,Tue"
+    peak_days = db.Column(db.String(100))                  # "Fri,Sat,Sun"
+    tone = db.Column(db.String(50), default="friendly")    # friendly|professional|fun
+    timezone = db.Column(db.String(50), default="America/Chicago")
+    auto_welcome = db.Column(db.Boolean, default=True)     # welcome new customers
+    auto_weekly = db.Column(db.Boolean, default=False)     # weekly special every week
+    auto_flash = db.Column(db.Boolean, default=False)      # flash deal on slow days
+    auto_birthday = db.Column(db.Boolean, default=True)
+    auto_winback = db.Column(db.Boolean, default=True)
+    weekly_send_day = db.Column(db.String(20), default="Tuesday")
+    setup_complete = db.Column(db.Boolean, default=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class Customer(db.Model):
     __tablename__ = "customers"
@@ -151,6 +179,9 @@ class Customer(db.Model):
     tags = db.Column(db.String(300))  # comma-separated: VIP,Regular,Corporate
     visit_count = db.Column(db.Integer, default=0)
     unsubscribed = db.Column(db.Boolean, default=False)
+    sms_opted_in = db.Column(db.Boolean, default=False)    # TCPA compliance
+    sms_opted_in_at = db.Column(db.DateTime, nullable=True)
+    sms_opt_in_ip = db.Column(db.String(60), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Campaign(db.Model):
@@ -217,7 +248,11 @@ with app.app_context():
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS address VARCHAR(300)",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS phone VARCHAR(50)",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS website VARCHAR(200)",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS slug VARCHAR(200)",
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS unsubscribed BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS sms_opted_in BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS sms_opted_in_at TIMESTAMP",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS sms_opt_in_ip VARCHAR(60)",
         "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMP",
         "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS open_count INTEGER DEFAULT 0",
         "ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS opened_at TIMESTAMP",
@@ -646,10 +681,13 @@ def send_email(to_email, subject, body, customer_name="", business_name="", camp
             return False
 
 def send_sms(to_phone, message):
+    """Send SMS with TCPA compliance — mandatory STOP footer."""
     if not twilio_client or not twilio_phone:
         return False
+    # Append mandatory opt-out footer if not already present
+    body = message.rstrip() + (" Reply STOP to unsubscribe." if "STOP" not in message else "")
     try:
-        twilio_client.messages.create(body=message, from_=twilio_phone, to=to_phone)
+        twilio_client.messages.create(body=body, from_=twilio_phone, to=to_phone)
         return True
     except Exception as e:
         print(f"SMS error: {e}")
@@ -2367,6 +2405,221 @@ def admin_delete_campaign_type(type_id):
         db.session.commit()
         flash(f"Deleted '{ct.label}'.", "success")
     return redirect("/admin/dashboard")
+
+# ============================================
+# PUBLIC OPT-IN PAGE  /join/<slug>
+# ============================================
+
+def _ensure_slug(b):
+    """Make sure a business has a slug; save it if missing."""
+    if not b.slug:
+        b.slug = make_slug(b.business_name, b.id)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+@app.route("/join/<slug>", methods=["GET", "POST"])
+def customer_optin(slug):
+    b = Business.query.filter_by(slug=slug).first()
+    if not b:
+        return render_template("optin_notfound.html"), 404
+
+    if request.method == "POST":
+        first_name = request.form.get("first_name", "").strip()
+        last_name  = request.form.get("last_name", "").strip()
+        email      = request.form.get("email", "").strip()
+        phone      = request.form.get("phone", "").strip()
+        dob        = request.form.get("dob", "").strip()
+        sms_consent = request.form.get("sms_consent") == "on"
+
+        if not first_name:
+            flash("First name is required.", "error")
+            return redirect(f"/join/{slug}")
+        if not email and not phone:
+            flash("Please provide at least an email or phone number.", "error")
+            return redirect(f"/join/{slug}")
+        if phone and not sms_consent:
+            flash("Please check the SMS consent box to receive text messages.", "error")
+            return redirect(f"/join/{slug}")
+
+        ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
+
+        # Check for duplicate by phone or email within this business
+        existing = None
+        if email:
+            existing = Customer.query.filter_by(business_id=b.id, email=email).first()
+        if not existing and phone:
+            existing = Customer.query.filter_by(business_id=b.id, phone=phone).first()
+
+        if existing:
+            # Update opt-in status if they re-submit
+            if phone and sms_consent:
+                existing.phone = phone
+                existing.sms_opted_in = True
+                existing.sms_opted_in_at = datetime.now(timezone.utc)
+                existing.sms_opt_in_ip = ip
+            db.session.commit()
+            return render_template("optin_success.html", business=b, already=True)
+
+        customer = Customer(
+            business_id=b.id,
+            first_name=first_name,
+            last_name=last_name or "",
+            email=email or None,
+            phone=phone or None,
+            dob=dob or None,
+            sms_opted_in=sms_consent and bool(phone),
+            sms_opted_in_at=datetime.now(timezone.utc) if (sms_consent and phone) else None,
+            sms_opt_in_ip=ip if (sms_consent and phone) else None,
+        )
+        db.session.add(customer)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            flash("Something went wrong. Please try again.", "error")
+            return redirect(f"/join/{slug}")
+
+        # Send welcome SMS if opted in and automation is on
+        profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+        if customer.sms_opted_in and customer.phone and profile and profile.auto_welcome:
+            offer = profile.special_offer or "a special welcome offer"
+            welcome_msg = (
+                f"Welcome to {b.business_name}, {first_name}! 🎉 "
+                f"Thanks for joining — enjoy {offer} on your next visit!"
+            )
+            send_sms(customer.phone, welcome_msg)
+
+        return render_template("optin_success.html", business=b, already=False)
+
+    _ensure_slug(b)
+    consent_text = (
+        f"By checking this box, you agree to receive marketing text messages from "
+        f"{b.business_name}. Message frequency varies. Msg & data rates may apply. "
+        f"Reply STOP to unsubscribe at any time. Reply HELP for help."
+    )
+    return render_template("customer_optin.html", business=b, consent_text=consent_text)
+
+
+# ============================================
+# TWILIO WEBHOOK — handle STOP / HELP replies
+# ============================================
+
+@app.route("/twilio/webhook", methods=["POST"])
+def twilio_webhook():
+    """Twilio calls this when a customer replies STOP, HELP, etc."""
+    from_number = request.form.get("From", "").strip()
+    body        = request.form.get("Body", "").strip().upper()
+
+    if from_number and body in ("STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "QUIT"):
+        # Mark all customers with this phone as unsubscribed + sms_opted_in=False
+        customers = Customer.query.filter_by(phone=from_number).all()
+        for c in customers:
+            c.unsubscribed   = True
+            c.sms_opted_in   = False
+        try:
+            db.session.commit()
+            print(f"STOP received from {from_number} — {len(customers)} customer(s) unsubscribed.")
+        except Exception:
+            db.session.rollback()
+
+    # Twilio expects a TwiML response (can be empty)
+    return '<?xml version="1.0" encoding="UTF-8"?><Response></Response>', 200, {"Content-Type": "text/xml"}
+
+
+# ============================================
+# BUSINESS SETUP / ONBOARDING  /setup
+# ============================================
+
+@app.route("/setup", methods=["GET", "POST"])
+def business_setup():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+
+    _ensure_slug(b)
+    profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+    if not profile:
+        profile = BusinessProfile(business_id=b.id)
+        db.session.add(profile)
+        db.session.commit()
+
+    if request.method == "POST":
+        profile.cuisine_type     = request.form.get("cuisine_type", "").strip()
+        profile.signature_dish   = request.form.get("signature_dish", "").strip()
+        profile.special_offer    = request.form.get("special_offer", "").strip()
+        profile.slow_days        = request.form.get("slow_days", "").strip()
+        profile.peak_days        = request.form.get("peak_days", "").strip()
+        profile.tone             = request.form.get("tone", "friendly")
+        profile.timezone         = request.form.get("timezone", "America/Chicago")
+        profile.auto_welcome     = request.form.get("auto_welcome") == "on"
+        profile.auto_weekly      = request.form.get("auto_weekly") == "on"
+        profile.auto_flash       = request.form.get("auto_flash") == "on"
+        profile.auto_birthday    = request.form.get("auto_birthday") == "on"
+        profile.auto_winback     = request.form.get("auto_winback") == "on"
+        profile.weekly_send_day  = request.form.get("weekly_send_day", "Tuesday")
+        profile.setup_complete   = True
+
+        # Also update business website if provided
+        website = request.form.get("website", "").strip()
+        if website:
+            b.website = website
+
+        try:
+            db.session.commit()
+            flash("Setup saved! Your AI auto-pilot is active. 🚀", "success")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error saving: {e}", "error")
+        return redirect("/setup")
+
+    join_url = request.host_url.rstrip("/") + f"/join/{b.slug}"
+    return render_template("setup.html", business=b, profile=profile, join_url=join_url)
+
+
+# ============================================
+# AUTO-PILOT DASHBOARD  /autopilot
+# ============================================
+
+@app.route("/autopilot")
+def autopilot():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    if b.plan == "free":
+        flash("Auto-pilot requires Starter or Pro plan.", "error")
+        return redirect("/upgrade")
+
+    _ensure_slug(b)
+    profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+
+    # Recent automated campaigns (last 30 days)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    auto_types = ["welcome", "birthday", "come_back", "loyalty", "weekly_special", "flash_deal"]
+    recent = Campaign.query.filter(
+        Campaign.business_id == b.id,
+        Campaign.status == "sent",
+        Campaign.created_at >= thirty_days_ago,
+        Campaign.campaign_type.in_(auto_types)
+    ).order_by(Campaign.created_at.desc()).limit(50).all()
+
+    total_auto_sent   = len(recent)
+    total_auto_opens  = sum(c.open_count or 0 for c in recent)
+    sms_opted_count   = Customer.query.filter_by(business_id=b.id, sms_opted_in=True, unsubscribed=False).count()
+    join_url          = request.host_url.rstrip("/") + f"/join/{b.slug}"
+
+    return render_template(
+        "autopilot.html",
+        business=b,
+        profile=profile,
+        recent=recent,
+        total_auto_sent=total_auto_sent,
+        total_auto_opens=total_auto_opens,
+        sms_opted_count=sms_opted_count,
+        join_url=join_url,
+    )
+
 
 if __name__ == "__main__":
     with app.app_context():

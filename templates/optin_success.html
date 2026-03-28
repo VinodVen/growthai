@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>You're in! — {{ business.business_name }}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #f5f5f7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .card { background: #fff; border-radius: 20px; max-width: 420px; width: 100%; padding: 48px 32px; box-shadow: 0 4px 40px rgba(0,0,0,0.10); text-align: center; }
+        .check { font-size: 3.5rem; margin-bottom: 16px; }
+        h1 { font-size: 1.5rem; font-weight: 800; color: #1a1a2e; }
+        p { font-size: 0.9rem; color: #666; margin-top: 10px; line-height: 1.6; }
+        .badge { display: inline-block; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border-radius: 20px; padding: 6px 18px; font-size: 0.8rem; font-weight: 700; margin-top: 20px; }
+        .powered { font-size: 0.68rem; color: #ccc; margin-top: 32px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="check">🎉</div>
+        <h1>{% if already %}Welcome back!{% else %}You're in!{% endif %}</h1>
+        <p>
+            {% if already %}
+            We already have you in our list for <strong>{{ business.business_name }}</strong>.<br>
+            Watch for exclusive offers coming your way!
+            {% else %}
+            Thanks for joining <strong>{{ business.business_name }}</strong>!<br>
+            You'll receive exclusive deals and offers soon.
+            {% endif %}
+        </p>
+        <span class="badge">{{ business.business_name }}</span>
+        <p class="powered">Powered by Revvio</p>
+    </div>
+</body>
+</html>

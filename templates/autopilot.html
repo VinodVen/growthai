@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Pilot — Revvio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #09090f; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .topbar { background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.07); backdrop-filter: blur(10px); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .page-wrap { max-width: 960px; margin: 0 auto; padding: 36px 20px 60px; }
+        .page-title { font-size: 1.5rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+        .page-sub { color: #6b6b8a; font-size: 0.85rem; margin-top: 4px; }
+
+        .stat-card { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 22px; }
+        .stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; margin-bottom: 14px; }
+        .stat-val { font-size: 2rem; font-weight: 800; color: #fff; line-height: 1; }
+        .stat-label { font-size: 0.7rem; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 5px; }
+
+        .panel { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; overflow: hidden; }
+        .panel-head { padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between; }
+        .panel-head h3 { font-size: 0.85rem; font-weight: 700; color: #fff; margin: 0; }
+
+        .auto-row { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .auto-row:last-child { border-bottom: none; }
+        .auto-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .dot-on { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+        .dot-off { background: #3d3d5c; }
+        .auto-name { font-size: 0.88rem; font-weight: 600; color: #e2e2f0; flex: 1; }
+        .auto-desc { font-size: 0.75rem; color: #6b6b8a; margin-top: 2px; }
+        .auto-status { font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+        .status-on { background: rgba(34,197,94,0.15); color: #4ade80; }
+        .status-off { background: rgba(107,107,138,0.15); color: #6b6b8a; }
+
+        .activity-table { width: 100%; border-collapse: collapse; }
+        .activity-table th { font-size: 0.67rem; font-weight: 600; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.07em; padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .activity-table td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.83rem; color: #c0c0d8; vertical-align: middle; }
+        .activity-table tr:last-child td { border-bottom: none; }
+        .type-badge { display: inline-block; font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .t-welcome   { background: rgba(99,179,237,0.15); color: #63b3ed; }
+        .t-birthday  { background: rgba(251,146,60,0.15); color: #fb923c; }
+        .t-come_back { background: rgba(248,113,113,0.15); color: #f87171; }
+        .t-loyalty   { background: rgba(167,139,250,0.15); color: #a78bfa; }
+        .t-weekly    { background: rgba(34,197,94,0.15); color: #4ade80; }
+        .t-flash     { background: rgba(251,191,36,0.15); color: #fbbf24; }
+
+        .join-box { background: #1a1a2e; border: 1.5px solid rgba(124,111,255,0.3); border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+        .join-url { font-size: 0.82rem; color: #a78bfa; word-break: break-all; }
+        .btn-copy { background: rgba(124,111,255,0.15); border: 1px solid rgba(124,111,255,0.3); color: #a78bfa; font-size: 0.75rem; font-weight: 600; padding: 7px 16px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+        .btn-copy:hover { background: rgba(124,111,255,0.25); }
+        .btn-setup { background: linear-gradient(135deg, #7c6fff, #a855f7); border: none; color: #fff; font-size: 0.82rem; font-weight: 600; padding: 9px 20px; border-radius: 9px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+        a.back-link { color: #6b6b8a; font-size: 0.82rem; text-decoration: none; }
+        a.back-link:hover { color: #a78bfa; }
+        .empty-msg { text-align: center; padding: 40px; color: #6b6b8a; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <span class="brand">Revvio</span>
+    <a href="/dashboard" class="back-link"><i class="bi bi-arrow-left"></i> Dashboard</a>
+</div>
+
+<div class="page-wrap">
+    <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4">
+        <div>
+            <div class="page-title">🤖 AI Auto-Pilot</div>
+            <p class="page-sub">Your marketing runs 24/7 while you run your restaurant</p>
+        </div>
+        <a href="/setup" class="btn-setup"><i class="bi bi-gear"></i> Edit Setup</a>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:rgba(124,111,255,0.15); color:#a78bfa;"><i class="bi bi-send-check"></i></div>
+                <div class="stat-val">{{ total_auto_sent }}</div>
+                <div class="stat-label">Auto-sends (30 days)</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:rgba(34,197,94,0.15); color:#4ade80;"><i class="bi bi-eye"></i></div>
+                <div class="stat-val">{{ total_auto_opens }}</div>
+                <div class="stat-label">Opens from AI sends</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:rgba(251,146,60,0.15); color:#fb923c;"><i class="bi bi-phone"></i></div>
+                <div class="stat-val">{{ sms_opted_count }}</div>
+                <div class="stat-label">SMS-consented customers</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:rgba(99,179,237,0.15); color:#63b3ed;"><i class="bi bi-robot"></i></div>
+                <div class="stat-val" style="font-size:1.2rem; color:{% if profile and profile.setup_complete %}#4ade80{% else %}#f87171{% endif %};">
+                    {% if profile and profile.setup_complete %}ON{% else %}OFF{% endif %}
+                </div>
+                <div class="stat-label">Auto-pilot status</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Active automations -->
+        <div class="col-md-5">
+            <div class="panel mb-4">
+                <div class="panel-head">
+                    <h3>Active Automations</h3>
+                </div>
+                {% if profile %}
+                <div class="auto-row">
+                    <div class="auto-dot {% if profile.auto_welcome %}dot-on{% else %}dot-off{% endif %}"></div>
+                    <div class="flex-grow-1">
+                        <div class="auto-name">👋 Welcome Message</div>
+                        <div class="auto-desc">Sent when new customer joins</div>
+                    </div>
+                    <span class="auto-status {% if profile.auto_welcome %}status-on{% else %}status-off{% endif %}">
+                        {% if profile.auto_welcome %}ON{% else %}OFF{% endif %}
+                    </span>
+                </div>
+                <div class="auto-row">
+                    <div class="auto-dot {% if profile.auto_weekly %}dot-on{% else %}dot-off{% endif %}"></div>
+                    <div class="flex-grow-1">
+                        <div class="auto-name">📅 Weekly Special</div>
+                        <div class="auto-desc">Every {{ profile.weekly_send_day or 'Tuesday' }}</div>
+                    </div>
+                    <span class="auto-status {% if profile.auto_weekly %}status-on{% else %}status-off{% endif %}">
+                        {% if profile.auto_weekly %}ON{% else %}OFF{% endif %}
+                    </span>
+                </div>
+                <div class="auto-row">
+                    <div class="auto-dot {% if profile.auto_flash %}dot-on{% else %}dot-off{% endif %}"></div>
+                    <div class="flex-grow-1">
+                        <div class="auto-name">⚡ Flash Deal</div>
+                        <div class="auto-desc">Slow days: {{ profile.slow_days or 'not set' }}</div>
+                    </div>
+                    <span class="auto-status {% if profile.auto_flash %}status-on{% else %}status-off{% endif %}">
+                        {% if profile.auto_flash %}ON{% else %}OFF{% endif %}
+                    </span>
+                </div>
+                <div class="auto-row">
+                    <div class="auto-dot {% if profile.auto_birthday %}dot-on{% else %}dot-off{% endif %}"></div>
+                    <div class="flex-grow-1">
+                        <div class="auto-name">🎂 Birthday Offer</div>
+                        <div class="auto-desc">Sent on customer's birthday</div>
+                    </div>
+                    <span class="auto-status {% if profile.auto_birthday %}status-on{% else %}status-off{% endif %}">
+                        {% if profile.auto_birthday %}ON{% else %}OFF{% endif %}
+                    </span>
+                </div>
+                <div class="auto-row">
+                    <div class="auto-dot {% if profile.auto_winback %}dot-on{% else %}dot-off{% endif %}"></div>
+                    <div class="flex-grow-1">
+                        <div class="auto-name">💔 Win-Back</div>
+                        <div class="auto-desc">30 days of no visits</div>
+                    </div>
+                    <span class="auto-status {% if profile.auto_winback %}status-on{% else %}status-off{% endif %}">
+                        {% if profile.auto_winback %}ON{% else %}OFF{% endif %}
+                    </span>
+                </div>
+                {% else %}
+                <div class="empty-msg">
+                    Setup not complete.<br>
+                    <a href="/setup" style="color:#a78bfa;">Complete setup →</a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Customer sign-up link -->
+            <div class="panel">
+                <div class="panel-head"><h3>📲 Customer Sign-Up Link</h3></div>
+                <div style="padding:16px 20px;">
+                    <p style="font-size:0.78rem; color:#6b6b8a; margin-bottom:12px;">Share this so customers opt-in to SMS. Print as QR code on tables, receipts, menus.</p>
+                    <div class="join-box">
+                        <span class="join-url" id="joinUrl">{{ join_url }}</span>
+                        <button class="btn-copy" onclick="copyLink()"><i class="bi bi-clipboard"></i> Copy</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent AI activity -->
+        <div class="col-md-7">
+            <div class="panel">
+                <div class="panel-head"><h3>Recent AI Activity (Last 30 Days)</h3></div>
+                {% if recent %}
+                <div style="overflow-x:auto;">
+                    <table class="activity-table">
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th>Type</th>
+                                <th>Sent</th>
+                                <th>Opens</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for c in recent %}
+                        <tr>
+                            <td>{{ c.customer_name }}</td>
+                            <td>
+                                <span class="type-badge t-{{ c.campaign_type }}">
+                                    {{ c.campaign_type.replace('_', ' ').title() }}
+                                </span>
+                            </td>
+                            <td style="color:#6b6b8a;">{{ c.created_at.strftime('%b %d') }}</td>
+                            <td>
+                                {% if c.open_count %}
+                                <span style="color:#4ade80; font-weight:600;">{{ c.open_count }}</span>
+                                {% else %}<span style="color:#3d3d5c;">—</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-msg">
+                    No automated sends yet.<br>
+                    <span style="font-size:0.78rem;">Complete setup and add customers to get started.</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyLink() {
+    navigator.clipboard.writeText(document.getElementById('joinUrl').textContent.trim());
+    const btn = document.querySelector('.btn-copy');
+    btn.innerHTML = '<i class="bi bi-check2"></i> Copied!';
+    setTimeout(() => btn.innerHTML = '<i class="bi bi-clipboard"></i> Copy', 2000);
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

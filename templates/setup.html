@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Setup — Revvio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #09090f; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .topbar { background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.07); backdrop-filter: blur(10px); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .brand span { font-size: 0.65rem; background: linear-gradient(135deg,#7c6fff,#a855f7); color: white; border-radius: 4px; padding: 2px 6px; margin-left: 6px; font-weight: 700; letter-spacing: 0.06em; }
+        .page-wrap { max-width: 820px; margin: 0 auto; padding: 36px 20px 60px; }
+        .page-title { font-size: 1.6rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+        .page-sub { color: #6b6b8a; font-size: 0.85rem; margin-top: 4px; }
+        .section-card { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+        .section-card h2 { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: #6b6b8a; margin-bottom: 18px; }
+        label.field-label { font-size: 0.75rem; font-weight: 600; color: #9090b0; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px; }
+        .ctrl { background: #1a1a2e; border: 1.5px solid rgba(255,255,255,0.1); color: #e2e2f0; border-radius: 9px; padding: 9px 13px; font-size: 0.88rem; width: 100%; transition: border 0.15s; }
+        .ctrl:focus { outline: none; border-color: #7c6fff; box-shadow: 0 0 0 3px rgba(124,111,255,0.15); }
+        .ctrl::placeholder { color: #3d3d5c; }
+        select.ctrl option { background: #1a1a2e; }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .toggle-row:last-child { border-bottom: none; }
+        .toggle-info strong { font-size: 0.88rem; color: #e2e2f0; display: block; }
+        .toggle-info small { font-size: 0.75rem; color: #6b6b8a; margin-top: 2px; display: block; }
+        .form-check-input { width: 40px; height: 22px; cursor: pointer; }
+        .form-check-input:checked { background-color: #7c6fff; border-color: #7c6fff; }
+        .join-link-box { background: #1a1a2e; border: 1.5px solid rgba(124,111,255,0.3); border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .join-link-box span { font-size: 0.82rem; color: #a78bfa; word-break: break-all; }
+        .btn-copy { background: rgba(124,111,255,0.15); border: 1px solid rgba(124,111,255,0.3); color: #a78bfa; font-size: 0.75rem; font-weight: 600; padding: 6px 14px; border-radius: 7px; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+        .btn-copy:hover { background: rgba(124,111,255,0.25); }
+        .btn-save { background: linear-gradient(135deg, #7c6fff, #a855f7); border: none; color: #fff; font-size: 0.95rem; font-weight: 700; padding: 13px 36px; border-radius: 11px; cursor: pointer; transition: opacity 0.15s; }
+        .btn-save:hover { opacity: 0.88; }
+        .alert-success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: #4ade80; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; }
+        .alert-danger { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: #f87171; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; }
+        .qr-hint { font-size: 0.75rem; color: #6b6b8a; margin-top: 8px; }
+        a.back-link { color: #6b6b8a; font-size: 0.82rem; text-decoration: none; }
+        a.back-link:hover { color: #a78bfa; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <span class="brand">Revvio <span>AI SETUP</span></span>
+    <a href="/dashboard" class="back-link"><i class="bi bi-arrow-left"></i> Dashboard</a>
+</div>
+
+<div class="page-wrap">
+    <div class="page-title">AI Auto-Pilot Setup</div>
+    <p class="page-sub">Fill this in once. AI handles your marketing forever. ✨</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="alert-{{ 'danger' if cat == 'error' else 'success' }} mt-3">{{ msg }}</div>
+    {% endfor %}{% endif %}
+    {% endwith %}
+
+    <!-- Customer join link -->
+    <div class="section-card mt-4">
+        <h2>📲 Your Customer Sign-Up Link</h2>
+        <p style="font-size:0.82rem; color:#6b6b8a; margin-bottom:14px;">
+            Share this link on your menu, receipt, or Instagram. Customers sign up + consent to SMS in 30 seconds.
+        </p>
+        <div class="join-link-box">
+            <span id="joinUrl">{{ join_url }}</span>
+            <button class="btn-copy" onclick="copyLink()"><i class="bi bi-clipboard"></i> Copy</button>
+        </div>
+        <p class="qr-hint">💡 Tip: Print this as a QR code on your table cards. Customers scan → sign up instantly.</p>
+    </div>
+
+    <form method="POST">
+        <!-- Restaurant info -->
+        <div class="section-card">
+            <h2>🍽️ Restaurant Details</h2>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="field-label">Cuisine Type</label>
+                    <input type="text" class="ctrl" name="cuisine_type" value="{{ profile.cuisine_type or '' }}" placeholder="e.g. Italian, Mexican, Indian">
+                </div>
+                <div class="col-md-6">
+                    <label class="field-label">Signature Dish / Best Seller</label>
+                    <input type="text" class="ctrl" name="signature_dish" value="{{ profile.signature_dish or '' }}" placeholder="e.g. Wood-fired pizza, Butter chicken">
+                </div>
+                <div class="col-md-6">
+                    <label class="field-label">Your Best Offer / Deal</label>
+                    <input type="text" class="ctrl" name="special_offer" value="{{ profile.special_offer or '' }}" placeholder="e.g. 15% off, free dessert, buy 1 get 1">
+                </div>
+                <div class="col-md-6">
+                    <label class="field-label">Website</label>
+                    <input type="text" class="ctrl" name="website" value="{{ business.website or '' }}" placeholder="https://yourrestaurant.com">
+                </div>
+                <div class="col-md-6">
+                    <label class="field-label">Slow Days (when you need customers most)</label>
+                    <input type="text" class="ctrl" name="slow_days" value="{{ profile.slow_days or '' }}" placeholder="e.g. Mon, Tue, Wed">
+                </div>
+                <div class="col-md-6">
+                    <label class="field-label">Busy Days</label>
+                    <input type="text" class="ctrl" name="peak_days" value="{{ profile.peak_days or '' }}" placeholder="e.g. Fri, Sat, Sun">
+                </div>
+                <div class="col-md-4">
+                    <label class="field-label">Message Tone</label>
+                    <select name="tone" class="ctrl">
+                        <option value="friendly" {% if profile.tone == 'friendly' %}selected{% endif %}>😊 Friendly & Warm</option>
+                        <option value="fun" {% if profile.tone == 'fun' %}selected{% endif %}>🎉 Fun & Energetic</option>
+                        <option value="professional" {% if profile.tone == 'professional' %}selected{% endif %}>💼 Professional</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="field-label">Weekly Special — Send Day</label>
+                    <select name="weekly_send_day" class="ctrl">
+                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
+                        <option value="{{ day }}" {% if profile.weekly_send_day == day %}selected{% endif %}>{{ day }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="field-label">Your Timezone</label>
+                    <select name="timezone" class="ctrl">
+                        <option value="America/New_York" {% if profile.timezone == 'America/New_York' %}selected{% endif %}>Eastern (ET)</option>
+                        <option value="America/Chicago" {% if profile.timezone == 'America/Chicago' %}selected{% endif %}>Central (CT)</option>
+                        <option value="America/Denver" {% if profile.timezone == 'America/Denver' %}selected{% endif %}>Mountain (MT)</option>
+                        <option value="America/Los_Angeles" {% if profile.timezone == 'America/Los_Angeles' %}selected{% endif %}>Pacific (PT)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Automations toggles -->
+        <div class="section-card">
+            <h2>🤖 AI Automations — Toggle On/Off</h2>
+
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <strong>👋 Welcome Message</strong>
+                    <small>AI texts new customers the moment they sign up via your link</small>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="auto_welcome" {% if profile.auto_welcome %}checked{% endif %}>
+                </div>
+            </div>
+
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <strong>📅 Weekly Special</strong>
+                    <small>AI sends a weekly offer every {{ profile.weekly_send_day or 'Tuesday' }} to all opted-in customers</small>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="auto_weekly" {% if profile.auto_weekly %}checked{% endif %}>
+                </div>
+            </div>
+
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <strong>⚡ Flash Deal on Slow Days</strong>
+                    <small>AI sends a flash deal on your slow days to fill empty seats</small>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="auto_flash" {% if profile.auto_flash %}checked{% endif %}>
+                </div>
+            </div>
+
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <strong>🎂 Birthday Offer</strong>
+                    <small>AI sends a birthday gift message on each customer's birthday</small>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="auto_birthday" {% if profile.auto_birthday %}checked{% endif %}>
+                </div>
+            </div>
+
+            <div class="toggle-row">
+                <div class="toggle-info">
+                    <strong>💔 Win-Back (30 days)</strong>
+                    <small>AI reaches out to customers who haven't visited in 30 days</small>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="auto_winback" {% if profile.auto_winback %}checked{% endif %}>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end">
+            <button type="submit" class="btn-save">Save &amp; Activate Auto-Pilot 🚀</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function copyLink() {
+    navigator.clipboard.writeText(document.getElementById('joinUrl').textContent.trim());
+    const btn = document.querySelector('.btn-copy');
+    btn.innerHTML = '<i class="bi bi-check2"></i> Copied!';
+    setTimeout(() => btn.innerHTML = '<i class="bi bi-clipboard"></i> Copy', 2000);
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
