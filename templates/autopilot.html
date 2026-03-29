@@ -97,9 +97,9 @@
         </div>
         <div class="col-6 col-md-3">
             <div class="stat-card">
-                <div class="stat-icon" style="background:rgba(251,146,60,0.15); color:#fb923c;"><i class="bi bi-phone"></i></div>
-                <div class="stat-val">{{ sms_opted_count }}</div>
-                <div class="stat-label">SMS-consented customers</div>
+                <div class="stat-icon" style="background:rgba(251,146,60,0.15); color:#fb923c;"><i class="bi bi-star-fill"></i></div>
+                <div class="stat-val">{{ total_loyalty_pts }}</div>
+                <div class="stat-label">Total loyalty points earned</div>
             </div>
         </div>
         <div class="col-6 col-md-3">
@@ -169,6 +169,26 @@
                     </div>
                     <span class="auto-status {% if profile.auto_winback %}status-on{% else %}status-off{% endif %}">
                         {% if profile.auto_winback %}ON{% else %}OFF{% endif %}
+                    </span>
+                </div>
+                <div class="auto-row">
+                    <div class="auto-dot {% if profile.auto_review %}dot-on{% else %}dot-off{% endif %}"></div>
+                    <div class="flex-grow-1">
+                        <div class="auto-name">⭐ Google Review Request</div>
+                        <div class="auto-desc">Sent {{ profile.review_days or 3 }} days after signup</div>
+                    </div>
+                    <span class="auto-status {% if profile.auto_review %}status-on{% else %}status-off{% endif %}">
+                        {% if profile.auto_review %}ON{% else %}OFF{% endif %}
+                    </span>
+                </div>
+                <div class="auto-row">
+                    <div class="auto-dot {% if profile.auto_loyalty %}dot-on{% else %}dot-off{% endif %}"></div>
+                    <div class="flex-grow-1">
+                        <div class="auto-name">🏆 Loyalty Milestone</div>
+                        <div class="auto-desc">Reward every {{ profile.loyalty_reward_visits or 5 }} visits</div>
+                    </div>
+                    <span class="auto-status {% if profile.auto_loyalty %}status-on{% else %}status-off{% endif %}">
+                        {% if profile.auto_loyalty %}ON{% else %}OFF{% endif %}
                     </span>
                 </div>
                 {% else %}

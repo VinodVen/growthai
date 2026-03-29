@@ -165,6 +165,11 @@ class BusinessProfile(db.Model):
     weekly_send_day = db.Column(db.String(20), default="Tuesday")
     setup_complete = db.Column(db.Boolean, default=False)
     last_weekly_summary = db.Column(db.DateTime, nullable=True)  # track when summary last sent
+    auto_review = db.Column(db.Boolean, default=True)         # send review request
+    review_days = db.Column(db.Integer, default=3)            # days after signup to send review
+    google_review_url = db.Column(db.String(300))             # google review link
+    auto_loyalty = db.Column(db.Boolean, default=True)        # loyalty milestone emails
+    loyalty_reward_visits = db.Column(db.Integer, default=5)  # visits to earn a reward
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class Customer(db.Model):
@@ -179,6 +184,8 @@ class Customer(db.Model):
     notes = db.Column(db.Text)
     tags = db.Column(db.String(300))  # comma-separated: VIP,Regular,Corporate
     visit_count = db.Column(db.Integer, default=0)
+    last_visit = db.Column(db.DateTime, nullable=True)        # last time customer visited
+    loyalty_points = db.Column(db.Integer, default=0)         # cumulative loyalty points
     unsubscribed = db.Column(db.Boolean, default=False)
     sms_opted_in = db.Column(db.Boolean, default=False)    # TCPA compliance
     sms_opted_in_at = db.Column(db.DateTime, nullable=True)
@@ -265,6 +272,13 @@ with app.app_context():
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS tags VARCHAR(300)",
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS visit_count INTEGER DEFAULT 0",
         "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS last_weekly_summary TIMESTAMP",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS last_visit TIMESTAMP",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS loyalty_points INTEGER DEFAULT 0",
+        "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS auto_review BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS review_days INTEGER DEFAULT 3",
+        "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS google_review_url VARCHAR(300)",
+        "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS auto_loyalty BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS loyalty_reward_visits INTEGER DEFAULT 5",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -564,6 +578,125 @@ def run_automations(business_id):
         db.session.commit()
     except Exception as e:
         print(f"Automation error: {e}")
+
+def _run_profile_autopilot(b, profile):
+    """Run AI autopilot based on BusinessProfile settings. Called on dashboard load (throttled)."""
+    if not profile or not profile.setup_complete:
+        return
+    now = datetime.utcnow()
+    today_str = now.strftime("%Y-%m-%d")
+    dish   = profile.signature_dish or "our specials"
+    offer  = profile.special_offer  or "a special offer"
+    tone   = profile.tone           or "friendly"
+
+    def ai_msg(name, campaign_hint, extra_ctx=""):
+        try:
+            return generate_ai_message(
+                name, b.business_name, campaign_hint,
+                cuisine=profile.cuisine_type or "",
+                dish=dish, offer=offer, tone=tone, extra=extra_ctx
+            )
+        except Exception:
+            return None
+
+    def already_sent(customer, camp_type, since_days=30):
+        cutoff = now - timedelta(days=since_days)
+        return Campaign.query.filter_by(
+            business_id=b.id,
+            customer_email=customer.email or f"phone:{customer.phone}",
+            campaign_type=camp_type,
+        ).filter(Campaign.created_at >= cutoff).first() is not None
+
+    customers = Customer.query.filter_by(business_id=b.id, unsubscribed=False).all()
+
+    for c in customers:
+        # ── REVIEW REQUEST: send review_days after signup ──
+        if profile.auto_review and profile.google_review_url and c.email:
+            days_since_join = (now - c.created_at).days
+            if days_since_join == (profile.review_days or 3):
+                if not already_sent(c, "review_request", since_days=365):
+                    review_link = profile.google_review_url
+                    msg = (
+                        f"Hi {c.first_name}! 🌟\n\n"
+                        f"Thank you so much for visiting {b.business_name}. "
+                        f"We hope you had a wonderful experience!\n\n"
+                        f"Would you mind taking 30 seconds to leave us a review? "
+                        f"It means the world to a small business like ours.\n\n"
+                        f"👉 {review_link}\n\n"
+                        f"Thank you so much, {c.first_name}! 🙏"
+                    )
+                    _send_auto_campaign(b, c, "review_request", msg)
+
+        # ── WIN-BACK: 30 days since last visit or signup ──
+        if profile.auto_winback and (c.email or c.phone):
+            ref_date = c.last_visit or c.created_at
+            days_inactive = (now - ref_date).days
+            if days_inactive >= 30:
+                if not already_sent(c, "come_back", since_days=30):
+                    msg = ai_msg(c.first_name, "come_back", f"customer hasn't visited in {days_inactive} days")
+                    if msg:
+                        _send_auto_campaign(b, c, "come_back", msg)
+
+        # ── LOYALTY MILESTONE: every N visits ──
+        if profile.auto_loyalty and c.email:
+            n = profile.loyalty_reward_visits or 5
+            if c.visit_count > 0 and c.visit_count % n == 0:
+                if not already_sent(c, "loyalty", since_days=7):
+                    msg = ai_msg(
+                        c.first_name, "loyalty",
+                        f"customer just reached {c.visit_count} visits — send a loyalty reward"
+                    )
+                    if msg:
+                        _send_auto_campaign(b, c, "loyalty", msg)
+
+    # ── BIRTHDAY: send on the customer's birthday ──
+    if profile.auto_birthday:
+        for c in customers:
+            if not c.dob or not (c.email or c.phone):
+                continue
+            try:
+                dob = datetime.strptime(c.dob[:10], "%Y-%m-%d")
+                if dob.month == now.month and dob.day == now.day:
+                    if not already_sent(c, "birthday", since_days=300):
+                        msg = ai_msg(c.first_name, "birthday", f"it is {c.first_name}'s birthday today")
+                        if msg:
+                            _send_auto_campaign(b, c, "birthday", msg)
+            except Exception:
+                pass
+
+    # ── WEEKLY SPECIAL: on the configured send day ──
+    if profile.auto_weekly:
+        day_name = now.strftime("%A")  # Monday, Tuesday, …
+        send_day = profile.weekly_send_day or "Tuesday"
+        if day_name == send_day:
+            # Check if we already sent weekly special today
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            already_today = Campaign.query.filter_by(
+                business_id=b.id, campaign_type="weekly_special"
+            ).filter(Campaign.created_at >= today_start).first()
+            if not already_today:
+                active_customers = [c for c in customers if c.email or c.phone]
+                for c in active_customers[:200]:  # cap at 200 per run
+                    msg = ai_msg(c.first_name, "weekend", f"send weekly {send_day} special")
+                    if msg:
+                        _send_auto_campaign(b, c, "weekly_special", msg)
+
+    # ── FLASH DEAL: on slow days ──
+    if profile.auto_flash and profile.slow_days:
+        day_name = now.strftime("%A")
+        slow = [d.strip() for d in profile.slow_days.split(",")]
+        if day_name in slow:
+            today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            already_today = Campaign.query.filter_by(
+                business_id=b.id, campaign_type="flash_deal"
+            ).filter(Campaign.created_at >= today_start).first()
+            if not already_today:
+                active_customers = [c for c in customers if c.email or c.phone]
+                for c in active_customers[:200]:
+                    msg = ai_msg(c.first_name, "promotion", f"urgent flash deal — slow {day_name}, fill seats now")
+                    if msg:
+                        _send_auto_campaign(b, c, "flash_deal", msg)
+
 
 def _maybe_send_weekly_summary(b, profile, today):
     """Send a weekly summary email to the business owner every Monday, once per week."""
@@ -932,6 +1065,9 @@ def dashboard():
     profile = BusinessProfile.query.filter_by(business_id=b.id).first()
     if not profile or not profile.setup_complete:
         return redirect("/onboarding")
+
+    # Run AI autopilot (profile-based automations)
+    _run_profile_autopilot(b, profile)
 
     # Send weekly summary every Monday (throttled — once per week)
     _maybe_send_weekly_summary(b, profile, today)
@@ -2522,6 +2658,8 @@ def onboarding():
         profile.auto_welcome    = True
         profile.auto_birthday   = True
         profile.auto_winback    = True
+        profile.auto_review     = True
+        profile.auto_loyalty    = True
         profile.auto_weekly     = request.form.get("auto_weekly") == "on"
         profile.auto_flash      = bool(profile.slow_days)
         profile.setup_complete  = True
@@ -2710,6 +2848,24 @@ def customer_optin(slug):
 # TWILIO WEBHOOK — handle STOP / HELP replies
 # ============================================
 
+@app.route("/customer/<int:customer_id>/visit", methods=["POST"])
+def log_visit(customer_id):
+    """Log a customer visit: increment visit_count, set last_visit, add loyalty points."""
+    b = current_business()
+    if not b:
+        return jsonify({"ok": False, "error": "not logged in"}), 401
+    c = Customer.query.filter_by(id=customer_id, business_id=b.id).first_or_404()
+    c.visit_count    = (c.visit_count or 0) + 1
+    c.last_visit     = datetime.now(timezone.utc)
+    c.loyalty_points = (c.loyalty_points or 0) + 10
+    try:
+        db.session.commit()
+        return jsonify({"ok": True, "visits": c.visit_count, "points": c.loyalty_points})
+    except Exception:
+        db.session.rollback()
+        return jsonify({"ok": False}), 500
+
+
 @app.route("/twilio/webhook", methods=["POST"])
 def twilio_webhook():
     """Twilio calls this when a customer replies STOP, HELP, etc."""
@@ -2757,13 +2913,17 @@ def business_setup():
         profile.peak_days        = request.form.get("peak_days", "").strip()
         profile.tone             = request.form.get("tone", "friendly")
         profile.timezone         = request.form.get("timezone", "America/Chicago")
-        profile.auto_welcome     = request.form.get("auto_welcome") == "on"
-        profile.auto_weekly      = request.form.get("auto_weekly") == "on"
-        profile.auto_flash       = request.form.get("auto_flash") == "on"
-        profile.auto_birthday    = request.form.get("auto_birthday") == "on"
-        profile.auto_winback     = request.form.get("auto_winback") == "on"
-        profile.weekly_send_day  = request.form.get("weekly_send_day", "Tuesday")
-        profile.setup_complete   = True
+        profile.auto_welcome          = request.form.get("auto_welcome") == "on"
+        profile.auto_weekly           = request.form.get("auto_weekly") == "on"
+        profile.auto_flash            = request.form.get("auto_flash") == "on"
+        profile.auto_birthday         = request.form.get("auto_birthday") == "on"
+        profile.auto_winback          = request.form.get("auto_winback") == "on"
+        profile.auto_review           = request.form.get("auto_review") == "on"
+        profile.auto_loyalty          = request.form.get("auto_loyalty") == "on"
+        profile.google_review_url     = request.form.get("google_review_url", "").strip()
+        profile.loyalty_reward_visits = int(request.form.get("loyalty_reward_visits") or 5)
+        profile.weekly_send_day       = request.form.get("weekly_send_day", "Tuesday")
+        profile.setup_complete        = True
 
         # Also update business website if provided
         website = request.form.get("website", "").strip()
@@ -2812,6 +2972,8 @@ def autopilot():
     total_auto_opens  = sum(c.open_count or 0 for c in recent)
     sms_opted_count   = Customer.query.filter_by(business_id=b.id, sms_opted_in=True, unsubscribed=False).count()
     join_url          = request.host_url.rstrip("/") + f"/join/{b.slug}"
+    avg_visits        = db.session.query(db.func.avg(Customer.visit_count)).filter_by(business_id=b.id).scalar() or 0
+    total_loyalty_pts = db.session.query(db.func.sum(Customer.loyalty_points)).filter_by(business_id=b.id).scalar() or 0
 
     return render_template(
         "autopilot.html",
@@ -2822,6 +2984,8 @@ def autopilot():
         total_auto_opens=total_auto_opens,
         sms_opted_count=sms_opted_count,
         join_url=join_url,
+        avg_visits=round(float(avg_visits), 1),
+        total_loyalty_pts=int(total_loyalty_pts),
     )
 
 

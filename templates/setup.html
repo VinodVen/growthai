@@ -181,6 +181,38 @@
                 </div>
             </div>
         </div>
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <strong>⭐ Google Review Request</strong>
+                <small>AI asks customers for a Google review 3 days after they sign up</small>
+            </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="auto_review" {% if profile.auto_review %}checked{% endif %}>
+            </div>
+        </div>
+        <div class="toggle-row">
+            <div class="toggle-info">
+                <strong>🏆 Loyalty Milestones</strong>
+                <small>AI rewards customers when they reach visit milestones</small>
+            </div>
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="auto_loyalty" {% if profile.auto_loyalty %}checked{% endif %}>
+            </div>
+        </div>
+
+        <div class="mb-3 mt-3">
+            <label style="font-size:0.78rem; font-weight:700; color:#6b6b8a; text-transform:uppercase; letter-spacing:0.06em; display:block; margin-bottom:6px;">Google Review Link</label>
+            <input type="text" name="google_review_url" class="form-control" value="{{ profile.google_review_url or '' }}" placeholder="https://g.page/r/YOUR-REVIEW-LINK">
+            <small class="text-muted">Paste your Google Business review link. AI includes this in review request emails.</small>
+        </div>
+        <div class="mb-3">
+            <label style="font-size:0.78rem; font-weight:700; color:#6b6b8a; text-transform:uppercase; letter-spacing:0.06em; display:block; margin-bottom:6px;">Loyalty Reward — Every how many visits?</label>
+            <select name="loyalty_reward_visits" class="form-select">
+                <option value="3" {% if (profile.loyalty_reward_visits or 5) == 3 %}selected{% endif %}>Every 3 visits</option>
+                <option value="5" {% if (profile.loyalty_reward_visits or 5) == 5 %}selected{% endif %}>Every 5 visits</option>
+                <option value="10" {% if (profile.loyalty_reward_visits or 5) == 10 %}selected{% endif %}>Every 10 visits</option>
+            </select>
+        </div>
 
         <div class="d-flex justify-content-end">
             <button type="submit" class="btn-save">Save &amp; Activate Auto-Pilot 🚀</button>
