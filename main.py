@@ -1029,7 +1029,7 @@ def register():
         except:
             db.session.rollback()
             flash("Error creating account.", "error")
-    return render_template("index.html")
+    return render_template("index.html", google_client_id=os.getenv("GOOGLE_CLIENT_ID", ""))
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -1044,7 +1044,64 @@ def login():
             return redirect("/dashboard")
         flash("Invalid email or password.", "error")
         return redirect("/login")
-    return render_template("login.html")
+    return render_template("login.html", google_client_id=os.getenv("GOOGLE_CLIENT_ID", ""))
+
+@app.route("/auth/google", methods=["POST"])
+def auth_google():
+    """Verify Google ID token and log in or create account."""
+    from google.oauth2 import id_token
+    from google.auth.transport import requests as google_requests
+    credential = request.form.get("credential") or (request.json or {}).get("credential", "")
+    if not credential:
+        flash("Google sign-in failed. Please try again.", "error")
+        return redirect("/login")
+    google_client_id = os.getenv("GOOGLE_CLIENT_ID", "")
+    if not google_client_id:
+        flash("Google Sign-In is not configured yet.", "error")
+        return redirect("/login")
+    try:
+        info = id_token.verify_oauth2_token(credential, google_requests.Request(), google_client_id)
+    except Exception as e:
+        print(f"Google token error: {e}")
+        flash("Google sign-in failed. Please try again.", "error")
+        return redirect("/login")
+    email      = info.get("email", "").strip().lower()
+    name       = info.get("name", "").strip()
+    first_name = info.get("given_name", name.split()[0] if name else "User").strip()
+    if not email:
+        flash("Could not get email from Google account.", "error")
+        return redirect("/login")
+    # Find or create business account
+    b = Business.query.filter_by(email=email).first()
+    if b:
+        # Existing user — log in
+        session["user_id"] = b.id
+        session.permanent = True
+        flash(f"Welcome back, {b.owner_name}! 👋", "success")
+        return redirect("/dashboard")
+    else:
+        # New user — create account with a random password (Google handles auth)
+        import secrets
+        random_pw = secrets.token_hex(24)
+        hashed = bcrypt.hashpw(random_pw.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        b = Business(
+            business_name=f"{first_name}'s Restaurant",
+            owner_name=name or first_name,
+            email=email,
+            password=hashed,
+        )
+        try:
+            db.session.add(b)
+            db.session.commit()
+            session["user_id"] = b.id
+            session.permanent = True
+            flash(f"Welcome to Revvio, {first_name}! Let's set up your AI in 2 minutes. 🚀", "success")
+            return redirect("/onboarding")
+        except Exception:
+            db.session.rollback()
+            flash("Error creating account. Please try again.", "error")
+            return redirect("/register")
+
 
 @app.route("/logout")
 def logout():
