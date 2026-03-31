@@ -946,6 +946,45 @@ def generate_ai_message(customer_name, business_name, campaign_type, raise_on_er
 # ROUTES
 # ============================================
 
+@app.route("/try", methods=["GET", "POST"])
+def try_demo():
+    """Interactive AI demo — enter restaurant details, get real AI messages."""
+    messages = None
+    form_data = {}
+    if request.method == "POST":
+        business_name = request.form.get("business_name", "").strip()
+        cuisine       = request.form.get("cuisine", "").strip()
+        dish          = request.form.get("dish", "").strip()
+        offer         = request.form.get("offer", "").strip()
+        customer_name = request.form.get("customer_name", "Sarah").strip() or "Sarah"
+        form_data = {"business_name": business_name, "cuisine": cuisine, "dish": dish, "offer": offer, "customer_name": customer_name}
+        if business_name:
+            def gen(ctype, hint):
+                try:
+                    prompt = (
+                        f"You are a marketing AI for {business_name}, a {cuisine} restaurant. "
+                        f"Their signature dish is '{dish}'. Their current offer is '{offer}'. "
+                        f"Write a {hint} for a customer named {customer_name}. "
+                        f"Keep it under 3 sentences. No markdown. Use emojis. Sound warm and genuine."
+                    )
+                    return clean_ai_text(_call_openai(prompt, max_tokens=120))
+                except Exception:
+                    fallbacks2 = {
+                        "welcome":  f"Welcome to {business_name}, {customer_name}! 🎉 We're so glad you're here. Your first visit earns you {offer or 'a special treat'} — can't wait to see you!",
+                        "birthday": f"Happy Birthday {customer_name}! 🎂 The whole team at {business_name} wishes you an amazing day. Come celebrate with us and enjoy {offer or '20% off'}!",
+                        "winback":  f"Hey {customer_name}, we miss you! 💔 It's been a while since you visited {business_name}. Come back this week and enjoy {offer or '15% off'} — just for you.",
+                        "weekly":   f"Hi {customer_name}! 📅 This week's special at {business_name}: our famous {dish or 'chef special'} with {offer or 'an exclusive deal'}. Come in before it's gone!",
+                    }
+                    return fallbacks2.get(ctype, "")
+            messages = {
+                "welcome":  gen("welcome",  f"warm welcome message for a brand new customer"),
+                "birthday": gen("birthday", f"birthday offer message"),
+                "winback":  gen("winback",  f"'we miss you, come back' offer for a customer who hasn't visited in 30 days"),
+                "weekly":   gen("weekly",   f"weekly Tuesday special promotion highlighting {dish or 'their best dish'} and {offer or 'a deal'}"),
+            }
+    return render_template("try_demo.html", messages=messages, form_data=form_data)
+
+
 @app.route("/test")
 def test():
     return f"<h1>Flask is working!</h1><p>Environment: {ENV}</p>"
