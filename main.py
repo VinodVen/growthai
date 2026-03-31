@@ -1040,7 +1040,7 @@ def contact():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    if "user_id" in session:
+    if "user_id" in session and not session.get("is_demo"):
         return redirect("/dashboard")
     if request.method == "POST":
         business_name = request.form.get("business_name", "").strip()
@@ -1056,6 +1056,8 @@ def register():
         if Business.query.filter_by(email=email).first():
             flash("Email already registered.", "error")
             return redirect("/login")
+        session.pop("is_demo", None)
+        session.pop("user_id", None)
         hashed = bcrypt.hashpw(raw_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         b = Business(business_name=business_name, owner_name=owner_name, email=email, password=hashed)
         try:
@@ -1063,6 +1065,41 @@ def register():
             db.session.commit()
             session["user_id"] = b.id
             session.permanent = True
+            # Send welcome email to new user
+            try:
+                welcome_html = f"""
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;">
+      <div style="background:linear-gradient(135deg,#667eea,#764ba2);border-radius:14px;padding:28px;text-align:center;margin-bottom:20px;">
+        <h1 style="color:#fff;margin:0;font-size:24px;">Welcome to Revvio! 🚀</h1>
+        <p style="color:rgba(255,255,255,0.85);margin:8px 0 0;">AI Marketing Auto-Pilot for {business_name}</p>
+      </div>
+      <div style="background:#f9f9f9;border-radius:14px;padding:24px;margin-bottom:16px;">
+        <p style="color:#333;font-size:16px;">Hi <strong>{owner_name}</strong>! 👋</p>
+        <p style="color:#555;line-height:1.7;">You're just 2 minutes away from having AI handle all your restaurant marketing automatically.</p>
+        <p style="color:#555;line-height:1.7;"><strong>What happens next:</strong></p>
+        <ul style="color:#555;line-height:2;">
+          <li>Complete your AI setup (takes 2 min)</li>
+          <li>Share your customer signup link</li>
+          <li>AI starts sending welcome messages, birthday offers, and weekly specials — automatically</li>
+        </ul>
+      </div>
+      <div style="text-align:center;margin-top:20px;">
+        <a href="https://revvio.ai/onboarding" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:14px 32px;border-radius:10px;display:inline-block;font-weight:700;text-decoration:none;font-size:16px;">Complete My AI Setup →</a>
+      </div>
+      <p style="text-align:center;color:#bbb;font-size:12px;margin-top:20px;">Revvio · hello@revvio.ai · Plano, TX</p>
+    </div>
+    """
+                send_email(
+                    email,
+                    f"Welcome to Revvio, {owner_name}! 🚀 Let's activate your AI",
+                    f"Welcome to Revvio, {owner_name}! Complete your AI setup at https://revvio.ai/onboarding",
+                    customer_name=owner_name,
+                    business_name="Revvio",
+                    campaign_type="promotion",
+                    html_override=welcome_html
+                )
+            except Exception:
+                pass
             flash(f"Welcome {owner_name}! Let's get your AI set up in 2 minutes. 🚀", "success")
             return redirect("/onboarding")
         except:
@@ -1072,6 +1109,8 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    if "user_id" in session and not session.get("is_demo"):
+        return redirect("/dashboard")
     if request.method == "POST":
         email = request.form.get("email", "").strip()
         password = request.form.get("password", "")
@@ -1116,6 +1155,7 @@ def auth_google():
         # Existing user — log in
         session["user_id"] = b.id
         session.permanent = True
+        session.pop("is_demo", None)
         flash(f"Welcome back, {b.owner_name}! 👋", "success")
         return redirect("/dashboard")
     else:
@@ -1134,6 +1174,18 @@ def auth_google():
             db.session.commit()
             session["user_id"] = b.id
             session.permanent = True
+            session.pop("is_demo", None)
+            try:
+                send_email(
+                    email,
+                    f"Welcome to Revvio, {first_name}! 🚀 Let's activate your AI",
+                    f"Welcome to Revvio! Complete your AI setup at https://revvio.ai/onboarding",
+                    customer_name=first_name,
+                    business_name="Revvio",
+                    campaign_type="promotion"
+                )
+            except Exception:
+                pass
             flash(f"Welcome to Revvio, {first_name}! Let's set up your AI in 2 minutes. 🚀", "success")
             return redirect("/onboarding")
         except Exception:
@@ -1145,8 +1197,17 @@ def auth_google():
 @app.route("/logout")
 def logout():
     session.pop("user_id", None)
+    session.pop("is_demo", None)
     flash("You've been logged out.", "success")
     return redirect("/")
+
+@app.route("/demo-logout")
+def demo_logout():
+    session.pop("user_id", None)
+    session.pop("is_demo", None)
+    if request.args.get("next") == "login":
+        return redirect("/login")
+    return redirect("/register")
 
 @app.route("/dashboard")
 def dashboard():

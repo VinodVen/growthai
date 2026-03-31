@@ -202,7 +202,9 @@
 
 {% if is_demo %}
 <div style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;text-align:center;padding:10px 16px;font-size:0.88rem;font-weight:700;position:sticky;top:0;z-index:999;">
-    🎭 You're in Demo Mode — data is fake. <a href="/register" style="color:#fff;text-decoration:underline;margin-left:8px;">Create your free account →</a>
+    🎭 You're in Demo Mode — data is fake. &nbsp;
+    <a href="/demo-logout" style="background:rgba(255,255,255,0.25);color:#fff;border:1.5px solid rgba(255,255,255,0.5);border-radius:6px;padding:4px 14px;text-decoration:none;margin-left:8px;font-size:0.82rem;">Create Free Account →</a>
+    <a href="/login" style="color:rgba(255,255,255,0.8);text-decoration:underline;margin-left:12px;font-size:0.78rem;">Already have account? Login</a>
 </div>
 {% endif %}
 
@@ -277,8 +279,8 @@
                 <span class="text-muted ms-2 small">Explore freely — no real emails or SMS are sent. This is Mario's Grill with sample data.</span>
             </div>
             <div class="d-flex gap-2">
-                <a href="/register" class="btn btn-sm fw-bold" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;">Sign Up Free</a>
-                <a href="/login" class="btn btn-sm btn-outline-secondary">Login</a>
+                <a href="/demo-logout" class="btn btn-sm fw-bold" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;">Sign Up Free</a>
+                <a href="/demo-logout?next=login" class="btn btn-sm btn-outline-secondary">Login</a>
             </div>
         </div>
         {% endif %}
