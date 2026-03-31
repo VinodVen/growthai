@@ -968,7 +968,7 @@ def test_ai():
 @app.route("/", methods=["GET"])
 def landing():
     try:
-        return render_template("landing.html")
+        return render_template("landing.html", google_client_id=os.getenv("GOOGLE_CLIENT_ID", ""))
     except Exception as e:
         return f"<h1>Error: {e}</h1>", 500
 
