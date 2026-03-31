@@ -200,6 +200,12 @@
 </head>
 <body>
 
+{% if is_demo %}
+<div style="background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;text-align:center;padding:10px 16px;font-size:0.88rem;font-weight:700;position:sticky;top:0;z-index:999;">
+    🎭 You're in Demo Mode — data is fake. <a href="/register" style="color:#fff;text-decoration:underline;margin-left:8px;">Create your free account →</a>
+</div>
+{% endif %}
+
 <!-- ── SIDEBAR ── -->
 <aside class="sidebar">
     <div class="sidebar-brand">

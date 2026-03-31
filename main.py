@@ -1275,6 +1275,7 @@ def dashboard():
         top_customers=top_customers,
         chart_labels=chart_labels,
         chart_data=chart_data,
+        is_demo=session.get("is_demo", False),
     )
 
 @app.route("/customers")
@@ -2241,6 +2242,32 @@ def demo_login():
         )
         db.session.add(demo)
         db.session.flush()  # get demo.id before commit
+
+    # Ensure demo has a completed profile
+    profile = BusinessProfile.query.filter_by(business_id=demo.id).first()
+    if not profile:
+        profile = BusinessProfile(
+            business_id=demo.id,
+            cuisine_type="Italian-American",
+            signature_dish="Wood-fired Pizza",
+            special_offer="15% off first visit",
+            slow_days="Monday,Tuesday",
+            peak_days="Friday,Saturday,Sunday",
+            tone="friendly",
+            timezone="America/Chicago",
+            auto_welcome=True,
+            auto_weekly=True,
+            auto_flash=True,
+            auto_birthday=True,
+            auto_winback=True,
+            auto_review=True,
+            auto_loyalty=True,
+            weekly_send_day="Tuesday",
+            setup_complete=True,
+        )
+        db.session.add(profile)
+    else:
+        profile.setup_complete = True
 
     # Wipe and re-seed demo data
     Customer.query.filter(Customer.business_id == demo.id).delete(synchronize_session=False)
