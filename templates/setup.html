@@ -112,9 +112,59 @@
                 <div class="col-md-4">
                     <label class="field-label">Message Language</label>
                     <select name="language" class="ctrl">
-                        {% for lang in ['English','Spanish','French','Arabic','Hindi','Portuguese','German','Italian','Japanese','Chinese','Korean','Thai','Vietnamese','Tagalog','Swahili','Turkish','Dutch','Polish','Russian','Malay'] %}
-                        <option value="{{ lang }}" {% if (profile.language or 'English') == lang %}selected{% endif %}>{{ lang }}</option>
-                        {% endfor %}
+                        <option value="English" {% if (profile.language or 'English') == 'English' %}selected{% endif %}>🌐 English</option>
+
+                        <optgroup label="🇮🇳 India — Regional Languages">
+                            <option value="Hindi" {% if profile.language == 'Hindi' %}selected{% endif %}>Hindi (हिन्दी)</option>
+                            <option value="Tamil" {% if profile.language == 'Tamil' %}selected{% endif %}>Tamil (தமிழ்) — TN, Puducherry</option>
+                            <option value="Telugu" {% if profile.language == 'Telugu' %}selected{% endif %}>Telugu (తెలుగు) — AP, Telangana</option>
+                            <option value="Kannada" {% if profile.language == 'Kannada' %}selected{% endif %}>Kannada (ಕನ್ನಡ) — Karnataka</option>
+                            <option value="Malayalam" {% if profile.language == 'Malayalam' %}selected{% endif %}>Malayalam (മലയാളം) — Kerala</option>
+                            <option value="Marathi" {% if profile.language == 'Marathi' %}selected{% endif %}>Marathi (मराठी) — Maharashtra</option>
+                            <option value="Bengali" {% if profile.language == 'Bengali' %}selected{% endif %}>Bengali (বাংলা) — West Bengal</option>
+                            <option value="Gujarati" {% if profile.language == 'Gujarati' %}selected{% endif %}>Gujarati (ગુજરાતી) — Gujarat</option>
+                            <option value="Punjabi" {% if profile.language == 'Punjabi' %}selected{% endif %}>Punjabi (ਪੰਜਾਬੀ) — Punjab</option>
+                            <option value="Odia" {% if profile.language == 'Odia' %}selected{% endif %}>Odia (ଓଡ଼ିଆ) — Odisha</option>
+                            <option value="Urdu" {% if profile.language == 'Urdu' %}selected{% endif %}>Urdu (اردو)</option>
+                        </optgroup>
+
+                        <optgroup label="🌍 Middle East">
+                            <option value="Arabic" {% if profile.language == 'Arabic' %}selected{% endif %}>Arabic (العربية)</option>
+                            <option value="Turkish" {% if profile.language == 'Turkish' %}selected{% endif %}>Turkish (Türkçe)</option>
+                        </optgroup>
+
+                        <optgroup label="🌍 Africa">
+                            <option value="Swahili" {% if profile.language == 'Swahili' %}selected{% endif %}>Swahili — Kenya, Tanzania</option>
+                            <option value="Amharic" {% if profile.language == 'Amharic' %}selected{% endif %}>Amharic — Ethiopia</option>
+                            <option value="Yoruba" {% if profile.language == 'Yoruba' %}selected{% endif %}>Yoruba — Nigeria</option>
+                            <option value="Zulu" {% if profile.language == 'Zulu' %}selected{% endif %}>Zulu — South Africa</option>
+                        </optgroup>
+
+                        <optgroup label="🌎 Americas">
+                            <option value="Spanish" {% if profile.language == 'Spanish' %}selected{% endif %}>Spanish (Español)</option>
+                            <option value="Portuguese" {% if profile.language == 'Portuguese' %}selected{% endif %}>Portuguese (Português)</option>
+                            <option value="Tagalog" {% if profile.language == 'Tagalog' %}selected{% endif %}>Tagalog — Philippines</option>
+                        </optgroup>
+
+                        <optgroup label="🌏 Asia Pacific">
+                            <option value="Malay" {% if profile.language == 'Malay' %}selected{% endif %}>Malay (Bahasa Melayu)</option>
+                            <option value="Thai" {% if profile.language == 'Thai' %}selected{% endif %}>Thai (ภาษาไทย)</option>
+                            <option value="Vietnamese" {% if profile.language == 'Vietnamese' %}selected{% endif %}>Vietnamese (Tiếng Việt)</option>
+                            <option value="Chinese" {% if profile.language == 'Chinese' %}selected{% endif %}>Chinese (中文)</option>
+                            <option value="Japanese" {% if profile.language == 'Japanese' %}selected{% endif %}>Japanese (日本語)</option>
+                            <option value="Korean" {% if profile.language == 'Korean' %}selected{% endif %}>Korean (한국어)</option>
+                            <option value="Indonesian" {% if profile.language == 'Indonesian' %}selected{% endif %}>Indonesian (Bahasa Indonesia)</option>
+                        </optgroup>
+
+                        <optgroup label="🌍 Europe">
+                            <option value="French" {% if profile.language == 'French' %}selected{% endif %}>French (Français)</option>
+                            <option value="German" {% if profile.language == 'German' %}selected{% endif %}>German (Deutsch)</option>
+                            <option value="Italian" {% if profile.language == 'Italian' %}selected{% endif %}>Italian (Italiano)</option>
+                            <option value="Dutch" {% if profile.language == 'Dutch' %}selected{% endif %}>Dutch (Nederlands)</option>
+                            <option value="Polish" {% if profile.language == 'Polish' %}selected{% endif %}>Polish (Polski)</option>
+                            <option value="Russian" {% if profile.language == 'Russian' %}selected{% endif %}>Russian (Русский)</option>
+                            <option value="Greek" {% if profile.language == 'Greek' %}selected{% endif %}>Greek (Ελληνικά)</option>
+                        </optgroup>
                     </select>
                 </div>
                 <div class="col-md-4">
