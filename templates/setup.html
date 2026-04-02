@@ -110,6 +110,14 @@
                     </select>
                 </div>
                 <div class="col-md-4">
+                    <label class="field-label">Message Language</label>
+                    <select name="language" class="ctrl">
+                        {% for lang in ['English','Spanish','French','Arabic','Hindi','Portuguese','German','Italian','Japanese','Chinese','Korean','Thai','Vietnamese','Tagalog','Swahili','Turkish','Dutch','Polish','Russian','Malay'] %}
+                        <option value="{{ lang }}" {% if (profile.language or 'English') == lang %}selected{% endif %}>{{ lang }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
                     <label class="field-label">Weekly Special — Send Day</label>
                     <select name="weekly_send_day" class="ctrl">
                         {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
@@ -120,10 +128,50 @@
                 <div class="col-md-4">
                     <label class="field-label">Your Timezone</label>
                     <select name="timezone" class="ctrl">
-                        <option value="America/New_York" {% if profile.timezone == 'America/New_York' %}selected{% endif %}>Eastern (ET)</option>
-                        <option value="America/Chicago" {% if profile.timezone == 'America/Chicago' %}selected{% endif %}>Central (CT)</option>
-                        <option value="America/Denver" {% if profile.timezone == 'America/Denver' %}selected{% endif %}>Mountain (MT)</option>
-                        <option value="America/Los_Angeles" {% if profile.timezone == 'America/Los_Angeles' %}selected{% endif %}>Pacific (PT)</option>
+                        <optgroup label="🇺🇸 United States">
+                            <option value="America/New_York" {% if profile.timezone == 'America/New_York' %}selected{% endif %}>Eastern (ET) — New York</option>
+                            <option value="America/Chicago" {% if profile.timezone == 'America/Chicago' %}selected{% endif %}>Central (CT) — Chicago</option>
+                            <option value="America/Denver" {% if profile.timezone == 'America/Denver' %}selected{% endif %}>Mountain (MT) — Denver</option>
+                            <option value="America/Los_Angeles" {% if profile.timezone == 'America/Los_Angeles' %}selected{% endif %}>Pacific (PT) — Los Angeles</option>
+                            <option value="Pacific/Honolulu" {% if profile.timezone == 'Pacific/Honolulu' %}selected{% endif %}>Hawaii (HT)</option>
+                        </optgroup>
+                        <optgroup label="🇬🇧 United Kingdom">
+                            <option value="Europe/London" {% if profile.timezone == 'Europe/London' %}selected{% endif %}>London (GMT/BST)</option>
+                        </optgroup>
+                        <optgroup label="🇪🇺 Europe">
+                            <option value="Europe/Paris" {% if profile.timezone == 'Europe/Paris' %}selected{% endif %}>Paris / Berlin (CET)</option>
+                            <option value="Europe/Athens" {% if profile.timezone == 'Europe/Athens' %}selected{% endif %}>Athens / Helsinki (EET)</option>
+                        </optgroup>
+                        <optgroup label="🇮🇳 India">
+                            <option value="Asia/Kolkata" {% if profile.timezone == 'Asia/Kolkata' %}selected{% endif %}>India (IST) — +5:30</option>
+                        </optgroup>
+                        <optgroup label="🇦🇪 Middle East">
+                            <option value="Asia/Dubai" {% if profile.timezone == 'Asia/Dubai' %}selected{% endif %}>Dubai / UAE (GST) — +4</option>
+                            <option value="Asia/Riyadh" {% if profile.timezone == 'Asia/Riyadh' %}selected{% endif %}>Riyadh / Saudi Arabia (AST) — +3</option>
+                        </optgroup>
+                        <optgroup label="🇸🇬 Asia Pacific">
+                            <option value="Asia/Singapore" {% if profile.timezone == 'Asia/Singapore' %}selected{% endif %}>Singapore / Malaysia (SGT) — +8</option>
+                            <option value="Asia/Tokyo" {% if profile.timezone == 'Asia/Tokyo' %}selected{% endif %}>Tokyo / Japan (JST) — +9</option>
+                            <option value="Asia/Shanghai" {% if profile.timezone == 'Asia/Shanghai' %}selected{% endif %}>China (CST) — +8</option>
+                            <option value="Asia/Bangkok" {% if profile.timezone == 'Asia/Bangkok' %}selected{% endif %}>Bangkok / Thailand (ICT) — +7</option>
+                        </optgroup>
+                        <optgroup label="🇦🇺 Australia">
+                            <option value="Australia/Sydney" {% if profile.timezone == 'Australia/Sydney' %}selected{% endif %}>Sydney (AEST) — +10/11</option>
+                            <option value="Australia/Perth" {% if profile.timezone == 'Australia/Perth' %}selected{% endif %}>Perth (AWST) — +8</option>
+                        </optgroup>
+                        <optgroup label="🇨🇦 Canada">
+                            <option value="America/Toronto" {% if profile.timezone == 'America/Toronto' %}selected{% endif %}>Toronto (ET)</option>
+                            <option value="America/Vancouver" {% if profile.timezone == 'America/Vancouver' %}selected{% endif %}>Vancouver (PT)</option>
+                        </optgroup>
+                        <optgroup label="🇧🇷 Latin America">
+                            <option value="America/Sao_Paulo" {% if profile.timezone == 'America/Sao_Paulo' %}selected{% endif %}>São Paulo / Brazil (BRT) — -3</option>
+                            <option value="America/Mexico_City" {% if profile.timezone == 'America/Mexico_City' %}selected{% endif %}>Mexico City (CST) — -6</option>
+                        </optgroup>
+                        <optgroup label="🇿🇦 Africa">
+                            <option value="Africa/Johannesburg" {% if profile.timezone == 'Africa/Johannesburg' %}selected{% endif %}>Johannesburg (SAST) — +2</option>
+                            <option value="Africa/Lagos" {% if profile.timezone == 'Africa/Lagos' %}selected{% endif %}>Lagos / Nigeria (WAT) — +1</option>
+                            <option value="Africa/Nairobi" {% if profile.timezone == 'Africa/Nairobi' %}selected{% endif %}>Nairobi / Kenya (EAT) — +3</option>
+                        </optgroup>
                     </select>
                 </div>
             </div>

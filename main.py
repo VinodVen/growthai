@@ -170,6 +170,7 @@ class BusinessProfile(db.Model):
     google_review_url = db.Column(db.String(300))             # google review link
     auto_loyalty = db.Column(db.Boolean, default=True)        # loyalty milestone emails
     loyalty_reward_visits = db.Column(db.Integer, default=5)  # visits to earn a reward
+    language = db.Column(db.String(20), default="English")    # message language for AI
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 class Customer(db.Model):
@@ -279,6 +280,7 @@ with app.app_context():
         "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS google_review_url VARCHAR(300)",
         "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS auto_loyalty BOOLEAN DEFAULT TRUE",
         "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS loyalty_reward_visits INTEGER DEFAULT 5",
+        "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS language VARCHAR(20) DEFAULT 'English'",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -585,16 +587,18 @@ def _run_profile_autopilot(b, profile):
         return
     now = datetime.utcnow()
     today_str = now.strftime("%Y-%m-%d")
-    dish   = profile.signature_dish or "our specials"
-    offer  = profile.special_offer  or "a special offer"
-    tone   = profile.tone           or "friendly"
+    dish     = profile.signature_dish or "our specials"
+    offer    = profile.special_offer  or "a special offer"
+    tone     = profile.tone           or "friendly"
+    language = profile.language       or "English"
 
     def ai_msg(name, campaign_hint, extra_ctx=""):
         try:
             return generate_ai_message(
                 name, b.business_name, campaign_hint,
                 cuisine=profile.cuisine_type or "",
-                dish=dish, offer=offer, tone=tone, extra=extra_ctx
+                dish=dish, offer=offer, tone=tone,
+                language=language, extra=extra_ctx
             )
         except Exception:
             return None
@@ -896,7 +900,7 @@ def send_sms(to_phone, message):
         print(f"SMS error: {e}")
         return False
 
-def generate_ai_message(customer_name, business_name, campaign_type, raise_on_error=False):
+def generate_ai_message(customer_name, business_name, campaign_type, raise_on_error=False, language="English", cuisine="", dish="", offer="", tone="friendly", extra=""):
     fallbacks = {
         "come_back":  f"We miss you, {customer_name}! Come back to {business_name} and enjoy 15% off your next visit. We'd love to see you again!",
         "weekend":    f"Hi {customer_name}! Weekend special at {business_name} — amazing food and great deals this weekend only!",
@@ -932,7 +936,16 @@ def generate_ai_message(customer_name, business_name, campaign_type, raise_on_er
         "hotel_loyalty": f"Write a guest loyalty reward message for {customer_name} from {business_name} hotel. Thank them warmly.",
     }
 
-    prompt = prompts.get(campaign_type, prompts["promotion"]) + " Keep it under 3 sentences. No markdown. Include emojis."
+    context_parts = []
+    if cuisine:  context_parts.append(f"cuisine: {cuisine}")
+    if dish:     context_parts.append(f"signature dish: {dish}")
+    if offer:    context_parts.append(f"current offer: {offer}")
+    if extra:    context_parts.append(extra)
+    context_str = (". Context: " + ", ".join(context_parts)) if context_parts else ""
+    lang_str = f" Write the message in {language}." if language and language != "English" else ""
+    tone_str = f" Use a {tone} tone." if tone else ""
+
+    prompt = prompts.get(campaign_type, prompts["promotion"]) + context_str + tone_str + lang_str + " Keep it under 3 sentences. No markdown. Include emojis."
 
     try:
         return clean_ai_text(_call_openai(prompt))
@@ -3167,6 +3180,7 @@ def business_setup():
         profile.google_review_url     = request.form.get("google_review_url", "").strip()
         profile.loyalty_reward_visits = int(request.form.get("loyalty_reward_visits") or 5)
         profile.weekly_send_day       = request.form.get("weekly_send_day", "Tuesday")
+        profile.language              = request.form.get("language", "English")
         profile.setup_complete        = True
 
         # Also update business website if provided
