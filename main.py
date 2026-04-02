@@ -1124,6 +1124,32 @@ def login():
         return redirect("/login")
     return render_template("login.html", google_client_id=os.getenv("GOOGLE_CLIENT_ID", ""))
 
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        b = Business.query.filter_by(email=email).first()
+        if b:
+            import secrets as _secrets
+            new_pw = _secrets.token_urlsafe(10)
+            b.password = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt()).decode()
+            db.session.commit()
+            try:
+                send_email(
+                    email,
+                    "Your Revvio temporary password",
+                    f"Hi {b.owner_name},\n\nYour temporary password is: {new_pw}\n\nLog in at https://revvio.ai/login and change it in Settings.\n\n— Revvio Team",
+                    customer_name=b.owner_name,
+                    business_name="Revvio",
+                    campaign_type="promotion"
+                )
+            except Exception:
+                pass
+        # Always show success (don't reveal if email exists)
+        flash("If that email is registered, you'll receive a temporary password shortly.", "success")
+        return redirect("/login")
+    return render_template("forgot_password.html")
+
 @app.route("/auth/google", methods=["POST"])
 def auth_google():
     """Verify Google ID token and log in or create account."""
@@ -1192,6 +1218,40 @@ def auth_google():
             db.session.rollback()
             flash("Error creating account. Please try again.", "error")
             return redirect("/register")
+
+
+@app.route("/cron/run-automations")
+def cron_run_automations():
+    """
+    Called daily by Render Cron Job (or any scheduler).
+    Runs AI autopilot for every business that has completed setup.
+    Protect with a secret token so only the scheduler can call it.
+    """
+    token = request.args.get("token", "")
+    cron_secret = os.getenv("CRON_SECRET", "")
+    if cron_secret and token != cron_secret:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    today = datetime.utcnow()
+    businesses = Business.query.all()
+    results = []
+    for b in businesses:
+        if b.email == DEMO_EMAIL:
+            continue  # skip demo account
+        profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+        if not profile or not profile.setup_complete:
+            continue
+        try:
+            _run_profile_autopilot(b, profile)
+            _maybe_send_weekly_summary(b, profile, today)
+            run_automations(b.id)
+            db.session.commit()
+            results.append({"business": b.business_name, "status": "ok"})
+        except Exception as e:
+            db.session.rollback()
+            results.append({"business": b.business_name, "status": f"error: {e}"})
+
+    return jsonify({"ran": len(results), "results": results, "timestamp": today.isoformat()})
 
 
 @app.route("/logout")
