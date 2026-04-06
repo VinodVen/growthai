@@ -240,6 +240,41 @@ class AutomationRule(db.Model):
     last_run = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class Journey(db.Model):
+    __tablename__ = "journeys"
+    id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    trigger = db.Column(db.String(50), default="signup")  # signup, birthday, winback, manual
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    journey_steps = db.relationship("JourneyStep", backref="journey", lazy=True, order_by="JourneyStep.step_order")
+
+class JourneyStep(db.Model):
+    __tablename__ = "journey_steps"
+    id = db.Column(db.Integer, primary_key=True)
+    journey_id = db.Column(db.Integer, db.ForeignKey("journeys.id"), nullable=False)
+    step_order = db.Column(db.Integer, default=0)
+    delay_days = db.Column(db.Integer, default=0)
+    message_type = db.Column(db.String(50), default="promotion")
+    message_text = db.Column(db.Text)
+    use_ai = db.Column(db.Boolean, default=True)
+    channel = db.Column(db.String(20), default="email")  # email, sms, both
+    condition = db.Column(db.String(50), default="none")  # none, visited, not_visited
+
+class CustomerJourney(db.Model):
+    __tablename__ = "customer_journeys"
+    id = db.Column(db.Integer, primary_key=True)
+    journey_id = db.Column(db.Integer, db.ForeignKey("journeys.id"), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"), nullable=False)
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=False)
+    next_step_order = db.Column(db.Integer, default=0)
+    enrolled_at = db.Column(db.DateTime, default=datetime.utcnow)
+    next_step_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed = db.Column(db.Boolean, default=False)
+    active = db.Column(db.Boolean, default=True)
+
 class CampaignTypeModel(db.Model):
     __tablename__ = "campaign_type_options"
     id = db.Column(db.Integer, primary_key=True)
@@ -281,6 +316,9 @@ with app.app_context():
         "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS auto_loyalty BOOLEAN DEFAULT TRUE",
         "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS loyalty_reward_visits INTEGER DEFAULT 5",
         "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS language VARCHAR(20) DEFAULT 'English'",
+        "CREATE TABLE IF NOT EXISTS journeys (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), name VARCHAR(200), description TEXT, trigger VARCHAR(50) DEFAULT 'signup', active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT NOW())",
+        "CREATE TABLE IF NOT EXISTS journey_steps (id SERIAL PRIMARY KEY, journey_id INTEGER REFERENCES journeys(id), step_order INTEGER DEFAULT 0, delay_days INTEGER DEFAULT 0, message_type VARCHAR(50) DEFAULT 'promotion', message_text TEXT, use_ai BOOLEAN DEFAULT TRUE, channel VARCHAR(20) DEFAULT 'email', condition VARCHAR(50) DEFAULT 'none')",
+        "CREATE TABLE IF NOT EXISTS customer_journeys (id SERIAL PRIMARY KEY, journey_id INTEGER REFERENCES journeys(id), customer_id INTEGER REFERENCES customers(id), business_id INTEGER REFERENCES businesses(id), next_step_order INTEGER DEFAULT 0, enrolled_at TIMESTAMP DEFAULT NOW(), next_step_at TIMESTAMP DEFAULT NOW(), completed BOOLEAN DEFAULT FALSE, active BOOLEAN DEFAULT TRUE)",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -580,6 +618,94 @@ def run_automations(business_id):
         db.session.commit()
     except Exception as e:
         print(f"Automation error: {e}")
+
+
+def enroll_customer_in_journeys(customer, trigger="signup"):
+    """Enroll a customer in all active journeys with matching trigger."""
+    try:
+        now = datetime.utcnow()
+        journeys = Journey.query.filter_by(business_id=customer.business_id, trigger=trigger, active=True).all()
+        for journey in journeys:
+            existing = CustomerJourney.query.filter_by(journey_id=journey.id, customer_id=customer.id).first()
+            if existing:
+                continue
+            first_step = JourneyStep.query.filter_by(journey_id=journey.id, step_order=0).first()
+            delay = first_step.delay_days if first_step else 0
+            cj = CustomerJourney(
+                journey_id=journey.id,
+                customer_id=customer.id,
+                business_id=customer.business_id,
+                next_step_order=0,
+                enrolled_at=now,
+                next_step_at=now + timedelta(days=delay)
+            )
+            db.session.add(cj)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Journey enroll error: {e}")
+
+
+def process_journeys(business_id=None):
+    """Run all due journey steps. Called by cron job daily."""
+    now = datetime.utcnow()
+    try:
+        query = CustomerJourney.query.filter_by(completed=False, active=True).filter(CustomerJourney.next_step_at <= now)
+        if business_id:
+            query = query.filter_by(business_id=business_id)
+        due = query.all()
+        for cj in due:
+            journey = Journey.query.get(cj.journey_id)
+            if not journey or not journey.active:
+                cj.active = False
+                continue
+            customer = Customer.query.get(cj.customer_id)
+            if not customer or customer.unsubscribed:
+                cj.active = False
+                continue
+            business = Business.query.get(cj.business_id)
+            if not business:
+                continue
+            profile = BusinessProfile.query.filter_by(business_id=cj.business_id).first()
+            step = JourneyStep.query.filter_by(journey_id=journey.id, step_order=cj.next_step_order).first()
+            if not step:
+                cj.completed = True
+                continue
+            # Check condition
+            skip = False
+            if step.condition == "visited":
+                ref = customer.last_visit or customer.created_at
+                if (now - ref).days > 7:
+                    skip = True
+            elif step.condition == "not_visited":
+                ref = customer.last_visit or customer.created_at
+                if (now - ref).days <= 7:
+                    skip = True
+            if not skip:
+                lang = profile.language if profile else "English"
+                cuisine = profile.cuisine_type if profile else ""
+                dish = profile.signature_dish if profile else ""
+                offer = profile.special_offer if profile else ""
+                tone = profile.tone if profile else "friendly"
+                if step.use_ai:
+                    msg = generate_ai_message(customer.first_name, business.business_name, step.message_type,
+                                              language=lang, cuisine=cuisine, dish=dish, offer=offer, tone=tone)
+                else:
+                    msg = (step.message_text or "").replace("{name}", customer.first_name).replace("{business}", business.business_name)
+                if msg:
+                    _send_auto_campaign(business, customer, step.message_type, msg)
+            # Advance
+            cj.next_step_order += 1
+            next_step = JourneyStep.query.filter_by(journey_id=journey.id, step_order=cj.next_step_order).first()
+            if next_step:
+                cj.next_step_at = now + timedelta(days=next_step.delay_days)
+            else:
+                cj.completed = True
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Journey process error: {e}")
+
 
 def _run_profile_autopilot(b, profile):
     """Run AI autopilot based on BusinessProfile settings. Called on dashboard load (throttled)."""
@@ -1258,6 +1384,7 @@ def cron_run_automations():
             _run_profile_autopilot(b, profile)
             _maybe_send_weekly_summary(b, profile, today)
             run_automations(b.id)
+            process_journeys(b.id)
             db.session.commit()
             results.append({"business": b.business_name, "status": "ok"})
         except Exception as e:
@@ -1491,6 +1618,7 @@ def add_customer():
         try:
             db.session.add(customer)
             db.session.commit()
+            enroll_customer_in_journeys(customer, trigger="signup")
             flash(f"Customer {first_name} added!", "success")
             return redirect("/customers")
         except:
@@ -2445,6 +2573,39 @@ def demo_login():
     # Wipe and re-seed demo data
     Customer.query.filter(Customer.business_id == demo.id).delete(synchronize_session=False)
     Campaign.query.filter(Campaign.business_id == demo.id).delete(synchronize_session=False)
+    # Seed demo journeys
+    existing_journeys = Journey.query.filter_by(business_id=demo.id).all()
+    for j in existing_journeys:
+        JourneyStep.query.filter_by(journey_id=j.id).delete(synchronize_session=False)
+        CustomerJourney.query.filter_by(journey_id=j.id).delete(synchronize_session=False)
+    Journey.query.filter_by(business_id=demo.id).delete(synchronize_session=False)
+    demo_journeys = [
+        {"name": "New Customer Welcome Journey", "trigger": "signup", "steps": [
+            {"order": 0, "delay": 0,  "type": "loyalty",   "use_ai": True, "channel": "email"},
+            {"order": 1, "delay": 3,  "type": "promotion", "use_ai": True, "channel": "email"},
+            {"order": 2, "delay": 7,  "type": "come_back", "use_ai": True, "channel": "email", "condition": "not_visited"},
+            {"order": 3, "delay": 14, "type": "weekend",   "use_ai": True, "channel": "email"},
+        ]},
+        {"name": "Win-Back Journey", "trigger": "winback", "steps": [
+            {"order": 0, "delay": 0,  "type": "come_back", "use_ai": True, "channel": "email"},
+            {"order": 1, "delay": 7,  "type": "promotion", "use_ai": True, "channel": "email"},
+            {"order": 2, "delay": 14, "type": "come_back", "use_ai": True, "channel": "sms"},
+        ]},
+        {"name": "Birthday VIP Journey", "trigger": "birthday", "steps": [
+            {"order": 0, "delay": 0, "type": "birthday",   "use_ai": True, "channel": "email"},
+            {"order": 1, "delay": 3, "type": "come_back",  "use_ai": True, "channel": "email", "condition": "not_visited"},
+        ]},
+    ]
+    for jd in demo_journeys:
+        j = Journey(business_id=demo.id, name=jd["name"], trigger=jd["trigger"], active=True)
+        db.session.add(j)
+        db.session.flush()
+        for s in jd["steps"]:
+            db.session.add(JourneyStep(
+                journey_id=j.id, step_order=s["order"], delay_days=s["delay"],
+                message_type=s["type"], use_ai=s["use_ai"], channel=s["channel"],
+                condition=s.get("condition", "none")
+            ))
 
     DEMO_CUSTOMERS = [
         {"first": "James",   "last": "Martinez",  "email": "james.martinez@demo.com",  "phone": "+12145550101"},
@@ -2514,6 +2675,95 @@ def demo_login():
     session["is_demo"] = True
     session.permanent = True
     return redirect("/dashboard")
+
+
+@app.route("/journeys")
+def journeys():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    all_journeys = Journey.query.filter_by(business_id=b.id).order_by(Journey.created_at.desc()).all()
+    journey_stats = {}
+    for j in all_journeys:
+        enrolled = CustomerJourney.query.filter_by(journey_id=j.id).count()
+        completed = CustomerJourney.query.filter_by(journey_id=j.id, completed=True).count()
+        active_count = CustomerJourney.query.filter_by(journey_id=j.id, completed=False, active=True).count()
+        steps = JourneyStep.query.filter_by(journey_id=j.id).count()
+        journey_stats[j.id] = {"enrolled": enrolled, "completed": completed, "active": active_count, "steps": steps}
+    return render_template("journeys.html", journeys=all_journeys, journey_stats=journey_stats, campaign_types=get_campaign_types())
+
+
+@app.route("/journeys/create", methods=["GET", "POST"])
+def create_journey():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        trigger = request.form.get("trigger", "signup")
+        if not name:
+            flash("Journey name is required.", "error")
+            return redirect("/journeys/create")
+        journey = Journey(business_id=b.id, name=name, description=description, trigger=trigger, active=True)
+        db.session.add(journey)
+        db.session.flush()
+        # Save steps
+        step_orders = request.form.getlist("step_order[]")
+        step_delays = request.form.getlist("step_delay[]")
+        step_types = request.form.getlist("step_type[]")
+        step_msgs = request.form.getlist("step_msg[]")
+        step_use_ai = request.form.getlist("step_use_ai[]")
+        step_channels = request.form.getlist("step_channel[]")
+        step_conditions = request.form.getlist("step_condition[]")
+        for i in range(len(step_delays)):
+            step = JourneyStep(
+                journey_id=journey.id,
+                step_order=i,
+                delay_days=int(step_delays[i] or 0),
+                message_type=step_types[i] if i < len(step_types) else "promotion",
+                message_text=step_msgs[i] if i < len(step_msgs) else "",
+                use_ai=(str(i) in step_use_ai),
+                channel=step_channels[i] if i < len(step_channels) else "email",
+                condition=step_conditions[i] if i < len(step_conditions) else "none",
+            )
+            db.session.add(step)
+        try:
+            db.session.commit()
+            flash(f"Journey '{name}' created and activated!", "success")
+            return redirect("/journeys")
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error creating journey: {e}", "error")
+    return render_template("create_journey.html", campaign_types=get_campaign_types())
+
+
+@app.route("/journeys/<int:journey_id>/toggle", methods=["POST"])
+def toggle_journey(journey_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    journey = Journey.query.get(journey_id)
+    if journey and journey.business_id == b.id:
+        journey.active = not journey.active
+        db.session.commit()
+        flash(f"Journey {'activated' if journey.active else 'paused'}.", "success")
+    return redirect("/journeys")
+
+
+@app.route("/journeys/<int:journey_id>/delete", methods=["POST"])
+def delete_journey(journey_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    journey = Journey.query.get(journey_id)
+    if journey and journey.business_id == b.id:
+        JourneyStep.query.filter_by(journey_id=journey_id).delete()
+        CustomerJourney.query.filter_by(journey_id=journey_id).delete()
+        db.session.delete(journey)
+        db.session.commit()
+        flash("Journey deleted.", "success")
+    return redirect("/journeys")
 
 
 @app.route("/analytics")

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Journey — Revvio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #09090f; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .topbar { background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .page-wrap { max-width: 820px; margin: 0 auto; padding: 36px 20px 80px; }
+        .page-title { font-size: 1.5rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+
+        .card-section { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+        .card-section h2 { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: #6b6b8a; margin-bottom: 16px; }
+
+        .field-label { font-size: 0.75rem; font-weight: 600; color: #9090b0; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px; }
+        .ctrl { background: #1a1a2e; border: 1.5px solid rgba(255,255,255,0.1); color: #e2e2f0; border-radius: 9px; padding: 9px 13px; font-size: 0.88rem; width: 100%; transition: border 0.15s; font-family: inherit; }
+        .ctrl:focus { outline: none; border-color: #7c6fff; box-shadow: 0 0 0 3px rgba(124,111,255,0.15); }
+        .ctrl::placeholder { color: #3d3d5c; }
+        select.ctrl option { background: #1a1a2e; }
+
+        /* Trigger selector */
+        .trigger-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        @media(min-width:600px) { .trigger-grid { grid-template-columns: repeat(4, 1fr); } }
+        .trigger-opt { display: none; }
+        .trigger-label { display: flex; flex-direction: column; align-items: center; gap: 6px; background: #1a1a2e; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px 10px; cursor: pointer; transition: all 0.15s; text-align: center; }
+        .trigger-label:hover { border-color: rgba(124,111,255,0.4); }
+        .trigger-opt:checked + .trigger-label { border-color: #7c6fff; background: rgba(124,111,255,0.12); }
+        .trigger-icon { font-size: 1.6rem; }
+        .trigger-name { font-size: 0.78rem; font-weight: 700; color: #e2e2f0; }
+        .trigger-desc { font-size: 0.65rem; color: #6b6b8a; }
+
+        /* Journey canvas */
+        .journey-canvas { position: relative; }
+        .step-card { background: #1a1a2e; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 18px; margin-bottom: 0; position: relative; }
+        .step-card:hover { border-color: rgba(124,111,255,0.3); }
+        .step-number { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #7c6fff, #a855f7); color: #fff; font-size: 0.75rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .connector { display: flex; flex-direction: column; align-items: center; margin: 0; padding: 8px 0; }
+        .connector-line { width: 2px; height: 24px; background: linear-gradient(to bottom, rgba(124,111,255,0.5), rgba(124,111,255,0.2)); }
+        .connector-arrow { color: #7c6fff; font-size: 0.9rem; margin-top: -4px; }
+
+        .node-start { background: rgba(34,197,94,0.1); border: 1.5px solid rgba(34,197,94,0.3); border-radius: 12px; padding: 12px 18px; display: flex; align-items: center; gap: 10px; margin-bottom: 0; }
+        .node-end { background: rgba(34,197,94,0.1); border: 1.5px solid rgba(34,197,94,0.3); border-radius: 12px; padding: 12px 18px; display: flex; align-items: center; gap: 10px; margin-top: 0; }
+
+        .ai-toggle { display: flex; align-items: center; gap: 8px; }
+        .form-check-input:checked { background-color: #7c6fff; border-color: #7c6fff; }
+
+        .btn-add-step { background: rgba(124,111,255,0.1); border: 1.5px dashed rgba(124,111,255,0.4); color: #a78bfa; border-radius: 12px; padding: 12px; width: 100%; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-add-step:hover { background: rgba(124,111,255,0.18); border-color: #7c6fff; }
+
+        .btn-remove { position: absolute; top: 12px; right: 12px; background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); color: #f87171; border-radius: 6px; padding: 3px 9px; font-size: 0.72rem; cursor: pointer; transition: all 0.15s; }
+        .btn-remove:hover { background: rgba(248,113,113,0.2); }
+
+        .btn-save { background: linear-gradient(135deg, #7c6fff, #a855f7); border: none; color: #fff; font-size: 1rem; font-weight: 700; padding: 14px 40px; border-radius: 12px; cursor: pointer; transition: opacity 0.15s; }
+        .btn-save:hover { opacity: 0.88; }
+
+        a.back-link { color: #6b6b8a; font-size: 0.82rem; text-decoration: none; }
+        a.back-link:hover { color: #a78bfa; }
+
+        .alert-e { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: #f87171; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; }
+
+        .template-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+        .tpl-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #9090b0; border-radius: 8px; padding: 7px 14px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .tpl-btn:hover { background: rgba(124,111,255,0.15); color: #a78bfa; border-color: rgba(124,111,255,0.3); }
+    </style>
+</head>
+<body>
+<div class="topbar">
+    <span class="brand">Revvio <span style="font-size:0.6rem;background:linear-gradient(135deg,#7c6fff,#a855f7);color:#fff;border-radius:4px;padding:2px 6px;margin-left:6px;font-weight:700;">JOURNEY BUILDER</span></span>
+    <a href="/journeys" class="back-link"><i class="bi bi-arrow-left"></i> My Journeys</a>
+</div>
+
+<div class="page-wrap">
+    <div class="page-title mb-1">Create New Journey</div>
+    <p style="color:#6b6b8a;font-size:0.85rem;margin-bottom:28px;">Set a trigger, add steps with delays, and AI sends the right message at the right time — automatically.</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="alert-e">{{ msg }}</div>
+    {% endfor %}{% endif %}
+    {% endwith %}
+
+    <!-- Quick Templates -->
+    <div class="card-section">
+        <h2>⚡ Quick Templates — Start From Here</h2>
+        <div class="template-bar">
+            <button class="tpl-btn" onclick="loadTemplate('new_customer')">👋 New Customer Journey</button>
+            <button class="tpl-btn" onclick="loadTemplate('birthday')">🎂 Birthday Journey</button>
+            <button class="tpl-btn" onclick="loadTemplate('winback')">💔 Win-Back Journey</button>
+            <button class="tpl-btn" onclick="loadTemplate('loyalty')">🏆 Loyalty Journey</button>
+            <button class="tpl-btn" onclick="loadTemplate('vip')">⭐ VIP Journey</button>
+        </div>
+    </div>
+
+    <form method="POST" id="journeyForm">
+
+        <!-- Journey Details -->
+        <div class="card-section">
+            <h2>📋 Journey Details</h2>
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label class="field-label">Journey Name *</label>
+                    <input type="text" class="ctrl" name="name" id="journeyName" placeholder="e.g. New Customer Welcome Journey" required>
+                </div>
+                <div class="col-md-4">
+                    <!-- hidden, set by trigger selection -->
+                </div>
+                <div class="col-12">
+                    <label class="field-label">Description (optional)</label>
+                    <input type="text" class="ctrl" name="description" placeholder="e.g. Onboards new customers with 4 messages over 30 days">
+                </div>
+            </div>
+        </div>
+
+        <!-- Trigger -->
+        <div class="card-section">
+            <h2>🎯 Entry Trigger — What Starts This Journey?</h2>
+            <div class="trigger-grid">
+                <div>
+                    <input type="radio" class="trigger-opt" name="trigger" id="t_signup" value="signup" checked>
+                    <label class="trigger-label" for="t_signup">
+                        <span class="trigger-icon">👋</span>
+                        <span class="trigger-name">New Sign Up</span>
+                        <span class="trigger-desc">Customer joins via your link</span>
+                    </label>
+                </div>
+                <div>
+                    <input type="radio" class="trigger-opt" name="trigger" id="t_birthday" value="birthday">
+                    <label class="trigger-label" for="t_birthday">
+                        <span class="trigger-icon">🎂</span>
+                        <span class="trigger-name">Birthday</span>
+                        <span class="trigger-desc">On their birthday</span>
+                    </label>
+                </div>
+                <div>
+                    <input type="radio" class="trigger-opt" name="trigger" id="t_winback" value="winback">
+                    <label class="trigger-label" for="t_winback">
+                        <span class="trigger-icon">💔</span>
+                        <span class="trigger-name">Inactive 30 Days</span>
+                        <span class="trigger-desc">Haven't visited in 30d</span>
+                    </label>
+                </div>
+                <div>
+                    <input type="radio" class="trigger-opt" name="trigger" id="t_manual" value="manual">
+                    <label class="trigger-label" for="t_manual">
+                        <span class="trigger-icon">⚡</span>
+                        <span class="trigger-name">Manual</span>
+                        <span class="trigger-desc">You enroll manually</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Journey Canvas -->
+        <div class="card-section">
+            <h2>🗺️ Journey Steps</h2>
+
+            <!-- Entry node -->
+            <div class="node-start">
+                <span style="font-size:1.4rem;">🚀</span>
+                <div>
+                    <div style="font-size:0.85rem;font-weight:700;color:#4ade80;">Journey Entry</div>
+                    <div style="font-size:0.72rem;color:#6b6b8a;">Customer enters when trigger fires</div>
+                </div>
+            </div>
+
+            <div id="stepsContainer"></div>
+
+            <!-- Add step button -->
+            <div class="connector">
+                <div class="connector-line"></div>
+                <div class="connector-arrow">▼</div>
+            </div>
+            <button type="button" class="btn-add-step" onclick="addStep()">
+                <i class="bi bi-plus-circle"></i> Add Step
+            </button>
+            <div class="connector">
+                <div class="connector-line"></div>
+                <div class="connector-arrow">▼</div>
+            </div>
+
+            <!-- Exit node -->
+            <div class="node-end">
+                <span style="font-size:1.4rem;">✅</span>
+                <div>
+                    <div style="font-size:0.85rem;font-weight:700;color:#4ade80;">Journey Complete</div>
+                    <div style="font-size:0.72rem;color:#6b6b8a;">Customer exits after all steps</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-3">
+            <a href="/journeys" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#9090b0;border-radius:10px;padding:12px 24px;text-decoration:none;font-weight:600;font-size:0.9rem;">Cancel</a>
+            <button type="submit" class="btn-save">🚀 Activate Journey</button>
+        </div>
+
+    </form>
+</div>
+
+<script>
+let stepCount = 0;
+const campaignTypes = {{ campaign_types | tojson }};
+
+function addStep(data = {}) {
+    const i = stepCount++;
+    const container = document.getElementById('stepsContainer');
+
+    const connector = document.createElement('div');
+    connector.className = 'connector';
+    connector.innerHTML = '<div class="connector-line"></div><div class="connector-arrow">▼</div>';
+    container.appendChild(connector);
+
+    const card = document.createElement('div');
+    card.className = 'step-card';
+    card.id = `step_${i}`;
+
+    const typeOptions = Object.entries(campaignTypes).map(([k, v]) =>
+        `<option value="${k}" ${data.message_type === k ? 'selected' : ''}>${v}</option>`
+    ).join('');
+
+    card.innerHTML = `
+        <button type="button" class="btn-remove" onclick="removeStep(${i})">✕ Remove</button>
+        <input type="hidden" name="step_order[]" value="${i}">
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="step-number">${i + 1}</div>
+            <div style="font-size:0.85rem;font-weight:700;color:#e2e2f0;">Step ${i + 1}</div>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="field-label">Wait (days after prev step)</label>
+                <input type="number" class="ctrl" name="step_delay[]" min="0" max="365" value="${data.delay_days ?? 0}" placeholder="0 = same day">
+            </div>
+            <div class="col-md-3">
+                <label class="field-label">Message Type</label>
+                <select class="ctrl" name="step_type[]">${typeOptions}</select>
+            </div>
+            <div class="col-md-3">
+                <label class="field-label">Channel</label>
+                <select class="ctrl" name="step_channel[]">
+                    <option value="email" ${data.channel === 'email' ? 'selected' : ''}>📧 Email</option>
+                    <option value="sms" ${data.channel === 'sms' ? 'selected' : ''}>📱 SMS</option>
+                    <option value="both" ${data.channel === 'both' ? 'selected' : ''}>📧+📱 Both</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="field-label">Condition</label>
+                <select class="ctrl" name="step_condition[]">
+                    <option value="none" ${(data.condition ?? 'none') === 'none' ? 'selected' : ''}>No condition</option>
+                    <option value="visited" ${data.condition === 'visited' ? 'selected' : ''}>Only if visited recently</option>
+                    <option value="not_visited" ${data.condition === 'not_visited' ? 'selected' : ''}>Only if NOT visited</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <div class="d-flex align-items-center gap-3 mb-2">
+                    <label class="field-label mb-0">Message</label>
+                    <div class="ai-toggle">
+                        <input type="checkbox" class="form-check-input" id="ai_${i}" name="step_use_ai[]" value="${i}" ${data.use_ai !== false ? 'checked' : ''} onchange="toggleMsg(${i})">
+                        <label for="ai_${i}" style="font-size:0.75rem;color:#a78bfa;font-weight:600;cursor:pointer;">🤖 AI writes it</label>
+                    </div>
+                </div>
+                <textarea class="ctrl" name="step_msg[]" id="msg_${i}" rows="2" placeholder="Leave empty for AI to write, or type your own message. Use {name} and {business} as variables." style="display:${data.use_ai !== false ? 'none' : 'block'};">${data.message_text ?? ''}</textarea>
+                <div id="ai_hint_${i}" style="font-size:0.75rem;color:#6b6b8a;display:${data.use_ai !== false ? 'block' : 'none'};">✨ AI will write a personalized message using your restaurant details and tone.</div>
+            </div>
+        </div>
+    `;
+    container.appendChild(card);
+}
+
+function removeStep(i) {
+    const card = document.getElementById(`step_${i}`);
+    if (card) {
+        // Also remove the connector before it
+        const prev = card.previousSibling;
+        if (prev && prev.className && prev.className.includes('connector')) prev.remove();
+        card.remove();
+    }
+}
+
+function toggleMsg(i) {
+    const cb = document.getElementById(`ai_${i}`);
+    const msg = document.getElementById(`msg_${i}`);
+    const hint = document.getElementById(`ai_hint_${i}`);
+    if (cb.checked) { msg.style.display = 'none'; hint.style.display = 'block'; }
+    else { msg.style.display = 'block'; hint.style.display = 'none'; }
+}
+
+// Templates
+const templates = {
+    new_customer: {
+        name: "New Customer Welcome Journey",
+        trigger: "signup",
+        steps: [
+            { delay_days: 0, message_type: "loyalty", channel: "email", condition: "none", use_ai: true },
+            { delay_days: 3, message_type: "promotion", channel: "email", condition: "none", use_ai: true },
+            { delay_days: 7, message_type: "come_back", channel: "email", condition: "not_visited", use_ai: true },
+            { delay_days: 14, message_type: "weekend", channel: "email", condition: "none", use_ai: true },
+        ]
+    },
+    birthday: {
+        name: "Birthday VIP Journey",
+        trigger: "birthday",
+        steps: [
+            { delay_days: 0, message_type: "birthday", channel: "email", condition: "none", use_ai: true },
+            { delay_days: 3, message_type: "come_back", channel: "email", condition: "not_visited", use_ai: true },
+        ]
+    },
+    winback: {
+        name: "30-Day Win-Back Journey",
+        trigger: "winback",
+        steps: [
+            { delay_days: 0, message_type: "come_back", channel: "email", condition: "none", use_ai: true },
+            { delay_days: 7, message_type: "promotion", channel: "email", condition: "not_visited", use_ai: true },
+            { delay_days: 14, message_type: "come_back", channel: "sms", condition: "not_visited", use_ai: true },
+        ]
+    },
+    loyalty: {
+        name: "Loyalty Milestone Journey",
+        trigger: "signup",
+        steps: [
+            { delay_days: 0, message_type: "loyalty", channel: "email", condition: "none", use_ai: true },
+            { delay_days: 30, message_type: "loyalty", channel: "email", condition: "visited", use_ai: true },
+            { delay_days: 60, message_type: "promotion", channel: "email", condition: "visited", use_ai: true },
+        ]
+    },
+    vip: {
+        name: "VIP Customer Journey",
+        trigger: "signup",
+        steps: [
+            { delay_days: 0, message_type: "loyalty", channel: "email", condition: "none", use_ai: true },
+            { delay_days: 7, message_type: "promotion", channel: "email", condition: "none", use_ai: true },
+            { delay_days: 21, message_type: "weekend", channel: "email", condition: "none", use_ai: true },
+            { delay_days: 30, message_type: "happy_hour", channel: "sms", condition: "none", use_ai: true },
+        ]
+    }
+};
+
+function loadTemplate(key) {
+    const tpl = templates[key];
+    if (!tpl) return;
+    document.getElementById('journeyName').value = tpl.name;
+    document.getElementById(`t_${tpl.trigger}`).checked = true;
+    document.getElementById('stepsContainer').innerHTML = '';
+    stepCount = 0;
+    tpl.steps.forEach(s => addStep(s));
+}
+
+// Load default template on page load
+window.onload = () => loadTemplate('new_customer');
+</script>
+</body>
+</html>
