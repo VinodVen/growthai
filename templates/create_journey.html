@@ -240,7 +240,7 @@ function addStep(data = {}) {
             </div>
             <div class="col-md-3">
                 <label class="field-label">Channel</label>
-                <select class="ctrl" name="step_channel[]">
+                <select class="ctrl" name="step_channel[]" id="chan_${i}" onchange="toggleFallback(${i})">
                     <option value="email" ${data.channel === 'email' ? 'selected' : ''}>📧 Email</option>
                     <option value="sms" ${data.channel === 'sms' ? 'selected' : ''}>📱 SMS</option>
                     <option value="both" ${data.channel === 'both' ? 'selected' : ''}>📧+📱 Both</option>
@@ -253,6 +253,14 @@ function addStep(data = {}) {
                     <option value="visited" ${data.condition === 'visited' ? 'selected' : ''}>Only if visited recently</option>
                     <option value="not_visited" ${data.condition === 'not_visited' ? 'selected' : ''}>Only if NOT visited</option>
                 </select>
+            </div>
+            <div class="col-12" id="fallback_row_${i}" style="display:${(data.channel ?? 'email') === 'email' ? 'block' : 'none'};">
+                <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <input type="checkbox" id="fallback_cb_${i}" name="step_sms_fallback[]" value="${i}" ${data.sms_fallback ? 'checked' : ''} style="width:16px;height:16px;accent-color:#a855f7;">
+                    <label for="fallback_cb_${i}" style="font-size:0.8rem;color:#c084fc;font-weight:600;cursor:pointer;margin:0;">📱 If email not opened within</label>
+                    <input type="number" class="ctrl" name="step_sms_fallback_days[]" value="${data.sms_fallback_days ?? 2}" min="1" max="30" style="width:65px;padding:4px 8px;font-size:0.82rem;">
+                    <span style="font-size:0.8rem;color:#c084fc;font-weight:600;">days → send SMS fallback</span>
+                </div>
             </div>
             <div class="col-12">
                 <div class="d-flex align-items-center gap-3 mb-2">
@@ -286,6 +294,12 @@ function toggleMsg(i) {
     const hint = document.getElementById(`ai_hint_${i}`);
     if (cb.checked) { msg.style.display = 'none'; hint.style.display = 'block'; }
     else { msg.style.display = 'block'; hint.style.display = 'none'; }
+}
+
+function toggleFallback(i) {
+    const sel = document.getElementById(`chan_${i}`);
+    const row = document.getElementById(`fallback_row_${i}`);
+    if (row) row.style.display = sel.value === 'email' ? 'block' : 'none';
 }
 
 // Templates

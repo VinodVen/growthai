@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ customer.first_name }} {{ customer.last_name or '' }} — Revvio Profile</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #09090f; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .topbar { background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .page-wrap { max-width: 1100px; margin: 0 auto; padding: 36px 20px 80px; }
+
+        .profile-hero { background: linear-gradient(135deg, #13131f, #1a1a2e); border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; padding: 32px; margin-bottom: 28px; }
+        .avatar { width: 72px; height: 72px; border-radius: 50%; background: linear-gradient(135deg, #7c6fff, #a855f7); display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 800; color: #fff; flex-shrink: 0; }
+        .profile-name { font-size: 1.6rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+        .profile-sub { color: #6b6b8a; font-size: 0.85rem; margin-top: 2px; }
+
+        .stat-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 20px; text-align: center; }
+        .stat-num { font-size: 1.8rem; font-weight: 800; color: #fff; line-height: 1; }
+        .stat-lbl { font-size: 0.68rem; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 4px; }
+
+        .section-title { font-size: 0.75rem; font-weight: 700; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
+        .card-dark { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+
+        .tag-pill { display: inline-flex; align-items: center; background: rgba(124,111,255,0.12); border: 1px solid rgba(124,111,255,0.25); border-radius: 20px; padding: 2px 10px; font-size: 0.72rem; font-weight: 700; color: #a78bfa; margin: 2px; }
+        .attr-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .attr-row:last-child { border-bottom: none; }
+        .attr-icon { color: #6b6b8a; font-size: 0.9rem; width: 18px; flex-shrink: 0; margin-top: 1px; }
+        .attr-label { font-size: 0.72rem; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.06em; }
+        .attr-val { font-size: 0.88rem; color: #e2e2f0; font-weight: 600; }
+
+        .timeline-item { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .timeline-item:last-child { border-bottom: none; }
+        .timeline-dot { width: 8px; height: 8px; border-radius: 50%; background: #7c6fff; flex-shrink: 0; margin-top: 6px; }
+        .tl-type { font-size: 0.7rem; font-weight: 700; color: #a78bfa; text-transform: uppercase; letter-spacing: 0.05em; }
+        .tl-msg { font-size: 0.82rem; color: #c0c0d8; margin-top: 2px; }
+        .tl-meta { font-size: 0.7rem; color: #6b6b8a; margin-top: 3px; }
+        .open-badge { background: rgba(34,197,94,0.15); color: #4ade80; border-radius: 10px; padding: 1px 7px; font-size: 0.65rem; font-weight: 700; }
+        .click-badge { background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 10px; padding: 1px 7px; font-size: 0.65rem; font-weight: 700; }
+
+        .journey-bar-wrap { background: rgba(255,255,255,0.05); border-radius: 100px; height: 6px; overflow: hidden; margin-top: 6px; }
+        .journey-bar { background: linear-gradient(90deg, #7c6fff, #a855f7); height: 100%; border-radius: 100px; transition: width 0.3s; }
+        .journey-status { font-size: 0.7rem; font-weight: 700; }
+        .completed-badge { color: #4ade80; }
+        .active-badge { color: #a78bfa; }
+
+        a.back-link { color: #6b6b8a; font-size: 0.82rem; text-decoration: none; }
+        a.back-link:hover { color: #a78bfa; }
+        .identity-chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 4px 12px; font-size: 0.75rem; color: #c0c0d8; margin: 3px; }
+    </style>
+</head>
+<body>
+<div class="topbar">
+    <span class="brand">Revvio <span style="font-size:0.6rem;background:linear-gradient(135deg,#7c6fff,#a855f7);color:#fff;border-radius:4px;padding:2px 6px;margin-left:6px;font-weight:700;">PROFILE</span></span>
+    <div class="d-flex align-items-center gap-3">
+        <a href="/audiences" class="back-link"><i class="bi bi-people-fill"></i> Audiences</a>
+        <a href="/customers" class="back-link"><i class="bi bi-arrow-left"></i> All Customers</a>
+    </div>
+</div>
+
+<div class="page-wrap">
+    <!-- Hero / Identity Graph -->
+    <div class="profile-hero">
+        <div class="d-flex align-items-center gap-4 flex-wrap mb-4">
+            <div class="avatar">{{ customer.first_name[0] }}{{ (customer.last_name or ' ')[0] }}</div>
+            <div>
+                <div class="profile-name">{{ customer.first_name }} {{ customer.last_name or '' }}</div>
+                <div class="profile-sub">Customer since {{ customer.created_at.strftime('%b %d, %Y') }}</div>
+                <div class="mt-2">
+                    {% if customer.email %}<span class="identity-chip"><i class="bi bi-envelope-fill"></i> {{ customer.email }}</span>{% endif %}
+                    {% if customer.phone %}<span class="identity-chip"><i class="bi bi-telephone-fill"></i> {{ customer.phone }}</span>{% endif %}
+                    {% if customer.unsubscribed %}<span class="identity-chip" style="color:#f87171;"><i class="bi bi-x-circle-fill"></i> Unsubscribed</span>{% endif %}
+                    {% if customer.sms_opted_in %}<span class="identity-chip" style="color:#4ade80;"><i class="bi bi-check-circle-fill"></i> SMS Opted In</span>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats row -->
+        <div class="row g-3">
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-num">{{ customer.visit_count or 0 }}</div>
+                    <div class="stat-lbl">Visits</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-num" style="color:#a78bfa;">{{ customer.loyalty_points or 0 }}</div>
+                    <div class="stat-lbl">Loyalty Points</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    <div class="stat-num" style="color:#60a5fa;">{{ campaigns | length }}</div>
+                    <div class="stat-lbl">Messages Received</div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="stat-card">
+                    {% set opens = campaigns | selectattr('open_count', 'gt', 0) | list | length %}
+                    <div class="stat-num" style="color:#4ade80;">{{ opens }}</div>
+                    <div class="stat-lbl">Emails Opened</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left: Attributes -->
+        <div class="col-md-4">
+            <div class="card-dark">
+                <div class="section-title">Profile Attributes</div>
+                <div class="attr-row">
+                    <i class="bi bi-calendar3 attr-icon"></i>
+                    <div>
+                        <div class="attr-label">Date of Birth</div>
+                        <div class="attr-val">{{ customer.dob or '—' }}</div>
+                    </div>
+                </div>
+                <div class="attr-row">
+                    <i class="bi bi-geo-alt attr-icon"></i>
+                    <div>
+                        <div class="attr-label">Last Visit</div>
+                        <div class="attr-val">{{ customer.last_visit.strftime('%b %d, %Y') if customer.last_visit else '—' }}</div>
+                    </div>
+                </div>
+                <div class="attr-row">
+                    <i class="bi bi-tags attr-icon"></i>
+                    <div>
+                        <div class="attr-label">Tags / Segments</div>
+                        <div class="mt-1">
+                            {% if customer.tags %}
+                                {% for tag in customer.tags.split(',') %}
+                                    {% if tag.strip() %}<span class="tag-pill">{{ tag.strip() }}</span>{% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <span class="attr-val">—</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% if customer.notes %}
+                <div class="attr-row">
+                    <i class="bi bi-sticky attr-icon"></i>
+                    <div>
+                        <div class="attr-label">Notes</div>
+                        <div class="attr-val" style="white-space:pre-wrap;font-weight:400;font-size:0.82rem;color:#9090b0;">{{ customer.notes }}</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Journey Memberships -->
+            <div class="card-dark">
+                <div class="section-title">Journey Memberships</div>
+                {% if journey_memberships %}
+                    {% for m in journey_memberships %}
+                    <div style="margin-bottom:16px;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div style="font-size:0.85rem;font-weight:700;color:#e2e2f0;">{{ m.journey.name }}</div>
+                            {% if m.cj.completed %}
+                            <span class="journey-status completed-badge">✓ Done</span>
+                            {% elif m.cj.active %}
+                            <span class="journey-status active-badge">● Active</span>
+                            {% else %}
+                            <span class="journey-status" style="color:#6b6b8a;">Paused</span>
+                            {% endif %}
+                        </div>
+                        <div style="font-size:0.72rem;color:#6b6b8a;margin-top:2px;">Step {{ m.progress }} of {{ m.steps_total }}</div>
+                        <div class="journey-bar-wrap">
+                            <div class="journey-bar" style="width:{{ ((m.progress / m.steps_total * 100) if m.steps_total else 0) | int }}%;"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="font-size:0.82rem;color:#6b6b8a;">Not enrolled in any journeys.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right: Message Timeline -->
+        <div class="col-md-8">
+            <div class="card-dark">
+                <div class="section-title">Message Timeline <span style="color:#3d3d5c;font-weight:400;">(last 50)</span></div>
+                {% if campaigns %}
+                    {% for c in campaigns %}
+                    <div class="timeline-item">
+                        <div class="timeline-dot" style="background:{% if c.status == 'sent' %}#7c6fff{% elif c.status == 'failed' %}#f87171{% else %}#3d3d5c{% endif %};"></div>
+                        <div style="flex:1;min-width:0;">
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="tl-type">{{ c.campaign_type | replace('_',' ') | title }}</span>
+                                {% if c.open_count and c.open_count > 0 %}<span class="open-badge">✓ Opened</span>{% endif %}
+                                {% if c.click_count and c.click_count > 0 %}<span class="click-badge">↗ Clicked</span>{% endif %}
+                                {% if c.status == 'failed' %}<span style="background:rgba(248,113,113,0.15);color:#f87171;border-radius:10px;padding:1px 7px;font-size:0.65rem;font-weight:700;">Failed</span>{% endif %}
+                            </div>
+                            <div class="tl-msg">{{ c.message[:120] }}{% if c.message|length > 120 %}…{% endif %}</div>
+                            <div class="tl-meta">{{ c.created_at.strftime('%b %d, %Y %I:%M %p') }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="font-size:0.85rem;color:#6b6b8a;text-align:center;padding:30px 0;">No messages sent yet.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

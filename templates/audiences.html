@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audiences — Revvio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #09090f; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .topbar { background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .page-wrap { max-width: 1100px; margin: 0 auto; padding: 36px 20px 80px; }
+        .page-title { font-size: 1.6rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+        .page-sub { color: #6b6b8a; font-size: 0.85rem; margin-top: 4px; }
+
+        .btn-new { background: linear-gradient(135deg, #7c6fff, #a855f7); border: none; color: #fff; font-weight: 700; padding: 10px 22px; border-radius: 10px; font-size: 0.9rem; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-new:hover { color: #fff; opacity: 0.88; }
+
+        .audience-card { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 24px; margin-bottom: 16px; transition: border 0.15s; }
+        .audience-card:hover { border-color: rgba(124,111,255,0.3); }
+        .aud-name { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .aud-desc { font-size: 0.82rem; color: #6b6b8a; margin-top: 3px; }
+
+        .size-pill { background: linear-gradient(135deg, rgba(124,111,255,0.15), rgba(168,85,247,0.1)); border: 1px solid rgba(124,111,255,0.25); border-radius: 14px; padding: 8px 20px; text-align: center; min-width: 90px; }
+        .size-num { font-size: 1.6rem; font-weight: 800; color: #a78bfa; line-height: 1; }
+        .size-lbl { font-size: 0.65rem; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.07em; }
+
+        .rule-chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); border-radius: 20px; padding: 3px 10px; font-size: 0.72rem; color: #9090b0; margin: 2px; }
+
+        .btn-sm-action { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); color: #9090b0; border-radius: 7px; padding: 5px 12px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.15s; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-sm-action:hover { background: rgba(255,255,255,0.1); color: #e2e2f0; }
+        .btn-danger-sm { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); color: #f87171; }
+        .btn-danger-sm:hover { background: rgba(248,113,113,0.2); }
+        .btn-enroll { background: rgba(124,111,255,0.12); border: 1px solid rgba(124,111,255,0.25); color: #a78bfa; }
+        .btn-enroll:hover { background: rgba(124,111,255,0.2); }
+
+        .enroll-dropdown { display: none; position: absolute; z-index: 100; right: 0; top: 100%; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 12px; min-width: 260px; margin-top: 6px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+        .enroll-dropdown.show { display: block; }
+        .enroll-select { background: #09090f; border: 1px solid rgba(255,255,255,0.1); color: #e2e2f0; border-radius: 8px; padding: 8px 10px; font-size: 0.82rem; width: 100%; margin-bottom: 8px; }
+        .btn-enroll-go { background: linear-gradient(135deg, #7c6fff, #a855f7); border: none; color: #fff; font-weight: 700; padding: 8px 14px; border-radius: 8px; font-size: 0.8rem; width: 100%; cursor: pointer; }
+
+        .empty-state { text-align: center; padding: 60px 20px; }
+        .empty-icon { font-size: 3rem; margin-bottom: 16px; }
+        .empty-title { font-size: 1.2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+        .empty-sub { color: #6b6b8a; font-size: 0.88rem; margin-bottom: 24px; }
+        .alert-s { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: #4ade80; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; }
+        .alert-e { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: #f87171; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; }
+        a.back-link { color: #6b6b8a; font-size: 0.82rem; text-decoration: none; }
+        a.back-link:hover { color: #a78bfa; }
+
+        /* Rule field labels */
+        .field-map { font-size: 0.72rem; color: #9090b0; }
+    </style>
+</head>
+<body>
+<div class="topbar">
+    <span class="brand">Revvio <span style="font-size:0.6rem;background:linear-gradient(135deg,#7c6fff,#a855f7);color:#fff;border-radius:4px;padding:2px 6px;margin-left:6px;font-weight:700;">AUDIENCES</span></span>
+    <div class="d-flex align-items-center gap-3">
+        <a href="/audiences/create" class="btn-new"><i class="bi bi-plus-circle-fill"></i> New Audience</a>
+        <a href="/dashboard" class="back-link"><i class="bi bi-arrow-left"></i> Dashboard</a>
+    </div>
+</div>
+
+<div class="page-wrap">
+    <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4">
+        <div>
+            <div class="page-title">👥 Audiences</div>
+            <p class="page-sub">Create rule-based customer segments and enroll them into journeys — just like Adobe AJO.</p>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="alert-{{ 's' if cat != 'error' else 'e' }}">{{ msg }}</div>
+    {% endfor %}{% endif %}
+    {% endwith %}
+
+    {% if audiences %}
+        {% for aud in audiences %}
+        {% set size = audience_sizes.get(aud.id, 0) %}
+        <div class="audience-card">
+            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+                <div style="flex:1;min-width:0;">
+                    <div class="aud-name">{{ aud.name }}</div>
+                    {% if aud.description %}<div class="aud-desc">{{ aud.description }}</div>{% endif %}
+
+                    <!-- Rule chips -->
+                    <div class="mt-2">
+                        {% set rules = aud.rules | from_json %}
+                        {% if rules %}
+                            {% for r in rules %}
+                            <span class="rule-chip">
+                                {% if r.field == 'visit_count' %}Visits
+                                {% elif r.field == 'loyalty_points' %}Points
+                                {% elif r.field == 'days_since_visit' %}Days since visit
+                                {% elif r.field == 'days_since_signup' %}Days since signup
+                                {% elif r.field == 'tag' %}Tag
+                                {% elif r.field == 'birthday_this_month' %}Birthday this month
+                                {% elif r.field == 'has_email' %}Has email
+                                {% elif r.field == 'has_phone' %}Has phone
+                                {% else %}{{ r.field }}{% endif %}
+                                {% if r.op == 'gte' %}≥{% elif r.op == 'lte' %}≤{% elif r.op == 'eq' %}={% elif r.op == 'contains' %}contains{% elif r.op == 'not_contains' %}not{% endif %}
+                                {% if r.value %}{{ r.value }}{% endif %}
+                            </span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="rule-chip">All customers</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="size-pill">
+                        <div class="size-num">{{ size }}</div>
+                        <div class="size-lbl">Members</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex gap-2 flex-wrap mt-3 align-items-center" style="position:relative;">
+                <a href="/customers?audience={{ aud.id }}" class="btn-sm-action"><i class="bi bi-eye"></i> View Members</a>
+
+                <!-- Enroll in Journey dropdown -->
+                {% if journeys %}
+                <div style="position:relative;">
+                    <button class="btn-sm-action btn-enroll" onclick="toggleEnroll({{ aud.id }})"><i class="bi bi-signpost-split-fill"></i> Enroll in Journey</button>
+                    <div class="enroll-dropdown" id="enroll_{{ aud.id }}">
+                        <form method="POST" action="/audiences/{{ aud.id }}/enroll">
+                            <div style="font-size:0.75rem;color:#6b6b8a;margin-bottom:8px;font-weight:600;">Select journey to enroll {{ size }} customers:</div>
+                            <select name="journey_id" class="enroll-select" required>
+                                <option value="">— Choose journey —</option>
+                                {% for j in journeys %}
+                                <option value="{{ j.id }}">{{ j.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn-enroll-go">🚀 Enroll {{ size }} Customers</button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                <form method="POST" action="/audiences/{{ aud.id }}/delete" style="display:inline;" onsubmit="return confirm('Delete audience?')">
+                    <button class="btn-sm-action btn-danger-sm" type="submit"><i class="bi bi-trash"></i> Delete</button>
+                </form>
+
+                <span style="font-size:0.72rem;color:#3d3d5c;margin-left:auto;">Created {{ aud.created_at.strftime('%b %d, %Y') }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">👥</div>
+            <div class="empty-title">No audiences yet</div>
+            <div class="empty-sub">Create rule-based segments like "VIP customers", "Win-back candidates", or "Birthday this month" — then enroll them into journeys automatically.</div>
+            <a href="/audiences/create" class="btn-new">+ Create Your First Audience</a>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function toggleEnroll(id) {
+    document.querySelectorAll('.enroll-dropdown').forEach(d => {
+        if (d.id !== 'enroll_' + id) d.classList.remove('show');
+    });
+    document.getElementById('enroll_' + id).classList.toggle('show');
+}
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('[onclick^="toggleEnroll"]') && !e.target.closest('.enroll-dropdown')) {
+        document.querySelectorAll('.enroll-dropdown').forEach(d => d.classList.remove('show'));
+    }
+});
+</script>
+</body>
+</html>

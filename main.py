@@ -262,6 +262,8 @@ class JourneyStep(db.Model):
     use_ai = db.Column(db.Boolean, default=True)
     channel = db.Column(db.String(20), default="email")  # email, sms, both
     condition = db.Column(db.String(50), default="none")  # none, visited, not_visited
+    sms_fallback = db.Column(db.Boolean, default=False)      # send SMS if email not opened
+    sms_fallback_days = db.Column(db.Integer, default=2)     # days to wait before checking
 
 class CustomerJourney(db.Model):
     __tablename__ = "customer_journeys"
@@ -274,6 +276,18 @@ class CustomerJourney(db.Model):
     next_step_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed = db.Column(db.Boolean, default=False)
     active = db.Column(db.Boolean, default=True)
+    last_campaign_id = db.Column(db.Integer, db.ForeignKey("campaigns.id"), nullable=True)
+    waiting_for_open = db.Column(db.Boolean, default=False)  # True = sent email, checking open
+    open_check_at = db.Column(db.DateTime, nullable=True)    # when to check if email was opened
+
+class Audience(db.Model):
+    __tablename__ = "audiences"
+    id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    rules = db.Column(db.Text, default="[]")  # JSON array of rule objects
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class CampaignTypeModel(db.Model):
     __tablename__ = "campaign_type_options"
@@ -319,6 +333,12 @@ with app.app_context():
         "CREATE TABLE IF NOT EXISTS journeys (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), name VARCHAR(200), description TEXT, trigger VARCHAR(50) DEFAULT 'signup', active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT NOW())",
         "CREATE TABLE IF NOT EXISTS journey_steps (id SERIAL PRIMARY KEY, journey_id INTEGER REFERENCES journeys(id), step_order INTEGER DEFAULT 0, delay_days INTEGER DEFAULT 0, message_type VARCHAR(50) DEFAULT 'promotion', message_text TEXT, use_ai BOOLEAN DEFAULT TRUE, channel VARCHAR(20) DEFAULT 'email', condition VARCHAR(50) DEFAULT 'none')",
         "CREATE TABLE IF NOT EXISTS customer_journeys (id SERIAL PRIMARY KEY, journey_id INTEGER REFERENCES journeys(id), customer_id INTEGER REFERENCES customers(id), business_id INTEGER REFERENCES businesses(id), next_step_order INTEGER DEFAULT 0, enrolled_at TIMESTAMP DEFAULT NOW(), next_step_at TIMESTAMP DEFAULT NOW(), completed BOOLEAN DEFAULT FALSE, active BOOLEAN DEFAULT TRUE)",
+        "ALTER TABLE journey_steps ADD COLUMN IF NOT EXISTS sms_fallback BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE journey_steps ADD COLUMN IF NOT EXISTS sms_fallback_days INTEGER DEFAULT 2",
+        "ALTER TABLE customer_journeys ADD COLUMN IF NOT EXISTS last_campaign_id INTEGER REFERENCES campaigns(id)",
+        "ALTER TABLE customer_journeys ADD COLUMN IF NOT EXISTS waiting_for_open BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE customer_journeys ADD COLUMN IF NOT EXISTS open_check_at TIMESTAMP",
+        "CREATE TABLE IF NOT EXISTS audiences (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), name VARCHAR(200), description TEXT, rules TEXT DEFAULT '[]', created_at TIMESTAMP DEFAULT NOW())",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -369,6 +389,14 @@ with app.app_context():
 # ============================================
 # HELPERS
 # ============================================
+
+@app.template_filter('from_json')
+def from_json_filter(s):
+    import json as _json
+    try:
+        return _json.loads(s or "[]")
+    except Exception:
+        return []
 
 def get_campaign_types():
     types = CampaignTypeModel.query.filter_by(active=True).order_by(CampaignTypeModel.sort_order, CampaignTypeModel.label).all()
@@ -534,6 +562,7 @@ def _send_auto_campaign(business, customer, campaign_type, message):
     elif customer.phone:
         success = send_sms(customer.phone, message)
         campaign.status = "sent" if success else "failed"
+    return campaign
 
 def run_automations(business_id):
     """Run all active automation rules for a business."""
@@ -667,6 +696,24 @@ def process_journeys(business_id=None):
             if not business:
                 continue
             profile = BusinessProfile.query.filter_by(business_id=cj.business_id).first()
+
+            # --- Open-check phase: was waiting to see if email was opened ---
+            if cj.waiting_for_open and cj.open_check_at and cj.open_check_at <= now:
+                cj.waiting_for_open = False
+                if cj.last_campaign_id:
+                    sent_campaign = Campaign.query.get(cj.last_campaign_id)
+                    if sent_campaign and sent_campaign.open_count == 0 and customer.phone:
+                        # Email was not opened — send SMS fallback using same message
+                        sms_msg = sent_campaign.message
+                        send_sms(customer.phone, sms_msg)
+                # Advance to next step
+                next_step = JourneyStep.query.filter_by(journey_id=journey.id, step_order=cj.next_step_order).first()
+                if next_step:
+                    cj.next_step_at = now + timedelta(days=next_step.delay_days)
+                else:
+                    cj.completed = True
+                continue
+
             step = JourneyStep.query.filter_by(journey_id=journey.id, step_order=cj.next_step_order).first()
             if not step:
                 cj.completed = True
@@ -681,6 +728,7 @@ def process_journeys(business_id=None):
                 ref = customer.last_visit or customer.created_at
                 if (now - ref).days <= 7:
                     skip = True
+            sent_campaign = None
             if not skip:
                 lang = profile.language if profile else "English"
                 cuisine = profile.cuisine_type if profile else ""
@@ -693,14 +741,23 @@ def process_journeys(business_id=None):
                 else:
                     msg = (step.message_text or "").replace("{name}", customer.first_name).replace("{business}", business.business_name)
                 if msg:
-                    _send_auto_campaign(business, customer, step.message_type, msg)
-            # Advance
-            cj.next_step_order += 1
-            next_step = JourneyStep.query.filter_by(journey_id=journey.id, step_order=cj.next_step_order).first()
-            if next_step:
-                cj.next_step_at = now + timedelta(days=next_step.delay_days)
+                    sent_campaign = _send_auto_campaign(business, customer, step.message_type, msg)
+            # Advance — if email step with SMS fallback, enter open-check mode
+            if (not skip and sent_campaign and step.channel == "email"
+                    and getattr(step, "sms_fallback", False) and customer.phone):
+                cj.last_campaign_id = sent_campaign.id
+                cj.waiting_for_open = True
+                cj.open_check_at = now + timedelta(days=step.sms_fallback_days or 2)
+                cj.next_step_order += 1
+                # next_step_at is controlled by open_check_at; set it far enough to avoid premature re-fire
+                cj.next_step_at = cj.open_check_at
             else:
-                cj.completed = True
+                cj.next_step_order += 1
+                next_step = JourneyStep.query.filter_by(journey_id=journey.id, step_order=cj.next_step_order).first()
+                if next_step:
+                    cj.next_step_at = now + timedelta(days=next_step.delay_days)
+                else:
+                    cj.completed = True
         db.session.commit()
     except Exception as e:
         db.session.rollback()
@@ -2716,6 +2773,8 @@ def create_journey():
         step_use_ai = request.form.getlist("step_use_ai[]")
         step_channels = request.form.getlist("step_channel[]")
         step_conditions = request.form.getlist("step_condition[]")
+        step_sms_fallback = request.form.getlist("step_sms_fallback[]")  # contains step index if checked
+        step_sms_fallback_days = request.form.getlist("step_sms_fallback_days[]")
         for i in range(len(step_delays)):
             step = JourneyStep(
                 journey_id=journey.id,
@@ -2726,6 +2785,8 @@ def create_journey():
                 use_ai=(str(i) in step_use_ai),
                 channel=step_channels[i] if i < len(step_channels) else "email",
                 condition=step_conditions[i] if i < len(step_conditions) else "none",
+                sms_fallback=(str(i) in step_sms_fallback),
+                sms_fallback_days=int(step_sms_fallback_days[i] or 2) if i < len(step_sms_fallback_days) else 2,
             )
             db.session.add(step)
         try:
@@ -2764,6 +2825,226 @@ def delete_journey(journey_id):
         db.session.commit()
         flash("Journey deleted.", "success")
     return redirect("/journeys")
+
+
+# ── CUSTOMER PROFILE (360° view like AJO Profile) ──────────────────────────
+@app.route("/customers/<int:customer_id>/profile")
+def customer_profile(customer_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    customer = Customer.query.filter_by(id=customer_id, business_id=b.id).first_or_404()
+    # Campaign history for this customer
+    campaigns = Campaign.query.filter_by(
+        business_id=b.id, customer_email=customer.email
+    ).order_by(Campaign.created_at.desc()).limit(50).all() if customer.email else []
+    # Journey memberships
+    journey_memberships = []
+    cjs = CustomerJourney.query.filter_by(customer_id=customer.id, business_id=b.id).all()
+    for cj in cjs:
+        journey = Journey.query.get(cj.journey_id)
+        if journey:
+            steps_total = JourneyStep.query.filter_by(journey_id=journey.id).count()
+            journey_memberships.append({
+                "journey": journey,
+                "cj": cj,
+                "steps_total": steps_total,
+                "progress": min(cj.next_step_order, steps_total),
+            })
+    return render_template("customer_profile.html", customer=customer, business=b,
+                           campaigns=campaigns, journey_memberships=journey_memberships)
+
+
+# ── AUDIENCES (like AJO Audiences / Segments) ───────────────────────────────
+def compute_audience_members(audience, business_id):
+    """Evaluate JSON rules against all customers and return matching list."""
+    import json as _json
+    try:
+        rules = _json.loads(audience.rules or "[]")
+    except Exception:
+        rules = []
+    customers = Customer.query.filter_by(business_id=business_id, unsubscribed=False).all()
+    if not rules:
+        return customers
+    now = datetime.utcnow()
+    matched = []
+    for c in customers:
+        ok = True
+        for rule in rules:
+            field = rule.get("field", "")
+            op = rule.get("op", "")
+            val = rule.get("value", "")
+            try:
+                if field == "visit_count":
+                    cv = c.visit_count or 0
+                    val = int(val)
+                    if op == "gte" and not (cv >= val): ok = False
+                    elif op == "lte" and not (cv <= val): ok = False
+                    elif op == "eq" and not (cv == val): ok = False
+                elif field == "loyalty_points":
+                    cv = c.loyalty_points or 0
+                    val = int(val)
+                    if op == "gte" and not (cv >= val): ok = False
+                    elif op == "lte" and not (cv <= val): ok = False
+                elif field == "days_since_visit":
+                    ref = c.last_visit or c.created_at
+                    days = (now - ref).days
+                    val = int(val)
+                    if op == "gte" and not (days >= val): ok = False
+                    elif op == "lte" and not (days <= val): ok = False
+                elif field == "days_since_signup":
+                    days = (now - c.created_at).days
+                    val = int(val)
+                    if op == "gte" and not (days >= val): ok = False
+                    elif op == "lte" and not (days <= val): ok = False
+                elif field == "tag":
+                    tags = [t.strip().lower() for t in (c.tags or "").split(",")]
+                    if op == "contains" and val.lower() not in tags: ok = False
+                    elif op == "not_contains" and val.lower() in tags: ok = False
+                elif field == "birthday_this_month":
+                    if c.dob:
+                        try:
+                            month = int(c.dob.split("-")[1]) if "-" in c.dob else int(c.dob.split("/")[1])
+                            if month != now.month: ok = False
+                        except Exception: ok = False
+                    else:
+                        ok = False
+                elif field == "has_email":
+                    if op == "eq" and val == "true" and not c.email: ok = False
+                    elif op == "eq" and val == "false" and c.email: ok = False
+                elif field == "has_phone":
+                    if op == "eq" and val == "true" and not c.phone: ok = False
+                    elif op == "eq" and val == "false" and c.phone: ok = False
+            except Exception:
+                pass
+            if not ok:
+                break
+        if ok:
+            matched.append(c)
+    return matched
+
+
+@app.route("/audiences")
+def audiences():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    all_audiences = Audience.query.filter_by(business_id=b.id).order_by(Audience.created_at.desc()).all()
+    audience_sizes = {}
+    for a in all_audiences:
+        audience_sizes[a.id] = len(compute_audience_members(a, b.id))
+    all_journeys = Journey.query.filter_by(business_id=b.id, active=True).all()
+    return render_template("audiences.html", audiences=all_audiences,
+                           audience_sizes=audience_sizes, journeys=all_journeys)
+
+
+@app.route("/audiences/create", methods=["GET", "POST"])
+def create_audience():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    if request.method == "POST":
+        import json as _json
+        name = request.form.get("name", "").strip()
+        description = request.form.get("description", "").strip()
+        fields = request.form.getlist("rule_field[]")
+        ops = request.form.getlist("rule_op[]")
+        vals = request.form.getlist("rule_value[]")
+        rules = []
+        for f, o, v in zip(fields, ops, vals):
+            if f and o:
+                rules.append({"field": f, "op": o, "value": v})
+        if not name:
+            flash("Audience name is required.", "error")
+        else:
+            aud = Audience(
+                business_id=b.id,
+                name=name,
+                description=description,
+                rules=_json.dumps(rules),
+            )
+            db.session.add(aud)
+            db.session.commit()
+            flash(f"Audience '{name}' created!", "success")
+            return redirect("/audiences")
+    return render_template("create_audience.html")
+
+
+@app.route("/audiences/<int:audience_id>/delete", methods=["POST"])
+def delete_audience(audience_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    aud = Audience.query.filter_by(id=audience_id, business_id=b.id).first()
+    if aud:
+        db.session.delete(aud)
+        db.session.commit()
+        flash("Audience deleted.", "success")
+    return redirect("/audiences")
+
+
+@app.route("/audiences/<int:audience_id>/enroll", methods=["POST"])
+def enroll_audience(audience_id):
+    """Enroll all audience members into a selected journey."""
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    aud = Audience.query.filter_by(id=audience_id, business_id=b.id).first_or_404()
+    journey_id = request.form.get("journey_id", type=int)
+    if not journey_id:
+        flash("Please select a journey.", "error")
+        return redirect("/audiences")
+    journey = Journey.query.filter_by(id=journey_id, business_id=b.id).first_or_404()
+    members = compute_audience_members(aud, b.id)
+    enrolled = 0
+    now = datetime.utcnow()
+    for customer in members:
+        existing = CustomerJourney.query.filter_by(journey_id=journey.id, customer_id=customer.id).first()
+        if existing:
+            continue
+        first_step = JourneyStep.query.filter_by(journey_id=journey.id, step_order=0).first()
+        delay = first_step.delay_days if first_step else 0
+        cj = CustomerJourney(
+            journey_id=journey.id,
+            customer_id=customer.id,
+            business_id=b.id,
+            next_step_order=0,
+            enrolled_at=now,
+            next_step_at=now + timedelta(days=delay),
+        )
+        db.session.add(cj)
+        enrolled += 1
+    db.session.commit()
+    flash(f"Enrolled {enrolled} customers from '{aud.name}' into journey '{journey.name}'.", "success")
+    return redirect("/audiences")
+
+
+@app.route("/audiences/<int:audience_id>/preview")
+def preview_audience(audience_id):
+    """Return JSON list of matching customer names/emails for live preview."""
+    b = current_business()
+    if not b:
+        return {"error": "unauthorized"}, 401
+    aud = Audience.query.filter_by(id=audience_id, business_id=b.id).first_or_404()
+    members = compute_audience_members(aud, b.id)
+    return {"count": len(members), "members": [
+        {"name": f"{c.first_name} {c.last_name or ''}".strip(), "email": c.email or "", "phone": c.phone or ""}
+        for c in members[:20]
+    ]}
+
+
+@app.route("/audiences/preview-rules", methods=["POST"])
+def preview_audience_rules():
+    """Live-preview audience size as user builds rules."""
+    import json as _json
+    b = current_business()
+    if not b:
+        return {"error": "unauthorized"}, 401
+    data = request.get_json(silent=True) or {}
+    rules_raw = data.get("rules", [])
+    fake_aud = type("A", (), {"rules": _json.dumps(rules_raw)})()
+    members = compute_audience_members(fake_aud, b.id)
+    return {"count": len(members)}
 
 
 @app.route("/analytics")

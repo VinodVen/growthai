@@ -102,6 +102,9 @@
                                 {% endif %}
                             </td>
                             <td>
+                                <a href="/customers/{{ customer.id }}/profile" class="btn btn-sm btn-outline-secondary me-1" title="View Profile">
+                                    <i class="bi bi-person-circle"></i>
+                                </a>
                                 <button class="btn btn-sm btn-outline-primary me-1"
                                     data-id="{{ customer.id }}"
                                     data-first="{{ customer.first_name }}"

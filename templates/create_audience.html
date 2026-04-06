@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Audience — Revvio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #09090f; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .topbar { background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .page-wrap { max-width: 780px; margin: 0 auto; padding: 36px 20px 80px; }
+        .page-title { font-size: 1.5rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+        .page-sub { color: #6b6b8a; font-size: 0.85rem; margin-top: 4px; }
+
+        .card-dark { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+        .field-label { font-size: 0.72rem; font-weight: 700; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; display: block; }
+        .ctrl { background: #09090f; border: 1px solid rgba(255,255,255,0.1); color: #e2e2f0; border-radius: 8px; padding: 9px 12px; font-size: 0.88rem; width: 100%; outline: none; transition: border 0.15s; }
+        .ctrl:focus { border-color: rgba(124,111,255,0.5); }
+
+        .rule-card { background: #1a1a2e; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; margin-bottom: 10px; position: relative; }
+        .btn-remove-rule { position: absolute; top: 10px; right: 12px; background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); color: #f87171; border-radius: 6px; padding: 3px 9px; font-size: 0.72rem; cursor: pointer; }
+        .btn-add-rule { background: rgba(124,111,255,0.1); border: 1px solid rgba(124,111,255,0.25); color: #a78bfa; border-radius: 8px; padding: 8px 16px; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-add-rule:hover { background: rgba(124,111,255,0.18); }
+
+        .btn-save { background: linear-gradient(135deg, #7c6fff, #a855f7); border: none; color: #fff; font-weight: 700; padding: 12px 32px; border-radius: 12px; font-size: 1rem; cursor: pointer; width: 100%; }
+        .btn-save:hover { opacity: 0.9; }
+
+        .preview-box { background: rgba(124,111,255,0.08); border: 1px solid rgba(124,111,255,0.2); border-radius: 12px; padding: 14px 18px; margin-top: 14px; display: flex; align-items: center; gap: 14px; }
+        .preview-count { font-size: 2rem; font-weight: 800; color: #a78bfa; line-height: 1; }
+        .preview-label { font-size: 0.82rem; color: #9090b0; }
+
+        .template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-bottom: 20px; }
+        .tmpl-card { background: #1a1a2e; border: 1.5px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; cursor: pointer; transition: all 0.15s; }
+        .tmpl-card:hover { border-color: rgba(124,111,255,0.4); background: #1f1f35; }
+        .tmpl-icon { font-size: 1.4rem; margin-bottom: 6px; }
+        .tmpl-name { font-size: 0.85rem; font-weight: 700; color: #e2e2f0; }
+        .tmpl-desc { font-size: 0.72rem; color: #6b6b8a; margin-top: 2px; }
+
+        a.back-link { color: #6b6b8a; font-size: 0.82rem; text-decoration: none; }
+        a.back-link:hover { color: #a78bfa; }
+    </style>
+</head>
+<body>
+<div class="topbar">
+    <span class="brand">Revvio <span style="font-size:0.6rem;background:linear-gradient(135deg,#7c6fff,#a855f7);color:#fff;border-radius:4px;padding:2px 6px;margin-left:6px;font-weight:700;">AUDIENCES</span></span>
+    <a href="/audiences" class="back-link"><i class="bi bi-arrow-left"></i> Back to Audiences</a>
+</div>
+
+<div class="page-wrap">
+    <div class="mb-4">
+        <div class="page-title">👥 Create Audience</div>
+        <p class="page-sub">Define rules to automatically group your customers into a reusable segment.</p>
+    </div>
+
+    <!-- Quick templates -->
+    <div class="card-dark">
+        <div class="field-label" style="margin-bottom:12px;">Quick Templates</div>
+        <div class="template-grid">
+            <div class="tmpl-card" onclick="loadTemplate('vip')">
+                <div class="tmpl-icon">⭐</div>
+                <div class="tmpl-name">VIP Customers</div>
+                <div class="tmpl-desc">5+ visits or 500+ points</div>
+            </div>
+            <div class="tmpl-card" onclick="loadTemplate('winback')">
+                <div class="tmpl-icon">💔</div>
+                <div class="tmpl-name">Win-Back</div>
+                <div class="tmpl-desc">No visit in 30+ days</div>
+            </div>
+            <div class="tmpl-card" onclick="loadTemplate('birthday')">
+                <div class="tmpl-icon">🎂</div>
+                <div class="tmpl-name">Birthday This Month</div>
+                <div class="tmpl-desc">Birthday in current month</div>
+            </div>
+            <div class="tmpl-card" onclick="loadTemplate('new')">
+                <div class="tmpl-icon">🌱</div>
+                <div class="tmpl-name">New Customers</div>
+                <div class="tmpl-desc">Signed up in last 7 days</div>
+            </div>
+            <div class="tmpl-card" onclick="loadTemplate('loyal')">
+                <div class="tmpl-icon">🔁</div>
+                <div class="tmpl-name">Loyal Regulars</div>
+                <div class="tmpl-desc">3+ visits, visited recently</div>
+            </div>
+            <div class="tmpl-card" onclick="loadTemplate('sms_only')">
+                <div class="tmpl-icon">📱</div>
+                <div class="tmpl-name">SMS Only</div>
+                <div class="tmpl-desc">Has phone, no email</div>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" id="audienceForm">
+        <!-- Name & Description -->
+        <div class="card-dark">
+            <div class="row g-3">
+                <div class="col-md-7">
+                    <label class="field-label">Audience Name *</label>
+                    <input type="text" class="ctrl" name="name" id="aud_name" placeholder="e.g. VIP Customers" required>
+                </div>
+                <div class="col-md-5">
+                    <label class="field-label">Description</label>
+                    <input type="text" class="ctrl" name="description" id="aud_desc" placeholder="Optional note">
+                </div>
+            </div>
+        </div>
+
+        <!-- Rules -->
+        <div class="card-dark">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <div style="font-size:0.95rem;font-weight:700;color:#fff;">Membership Rules</div>
+                    <div style="font-size:0.78rem;color:#6b6b8a;margin-top:2px;">Customer must match ALL rules below (AND logic)</div>
+                </div>
+                <button type="button" class="btn-add-rule" onclick="addRule()"><i class="bi bi-plus-circle"></i> Add Rule</button>
+            </div>
+
+            <div id="rulesContainer"></div>
+
+            <!-- Live preview -->
+            <div class="preview-box" id="previewBox">
+                <div>
+                    <div class="preview-count" id="previewCount">—</div>
+                </div>
+                <div class="preview-label">customers match your rules right now</div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-save">✓ Create Audience</button>
+    </form>
+</div>
+
+<script>
+let ruleCount = 0;
+
+const fieldOptions = [
+    { value: 'visit_count',       label: 'Visit Count',           ops: ['gte','lte','eq'],       placeholder: '5',  type: 'number' },
+    { value: 'loyalty_points',    label: 'Loyalty Points',        ops: ['gte','lte'],             placeholder: '100',type: 'number' },
+    { value: 'days_since_visit',  label: 'Days Since Last Visit', ops: ['gte','lte'],             placeholder: '30', type: 'number' },
+    { value: 'days_since_signup', label: 'Days Since Signup',     ops: ['gte','lte'],             placeholder: '7',  type: 'number' },
+    { value: 'tag',               label: 'Tag / Label',           ops: ['contains','not_contains'],placeholder: 'VIP', type: 'text' },
+    { value: 'birthday_this_month',label: 'Birthday This Month',  ops: ['eq'],                   placeholder: '',   type: 'none' },
+    { value: 'has_email',         label: 'Has Email',             ops: ['eq'],                   placeholder: '',   type: 'bool' },
+    { value: 'has_phone',         label: 'Has Phone',             ops: ['eq'],                   placeholder: '',   type: 'bool' },
+];
+
+const opLabels = { gte: '≥ is at least', lte: '≤ is at most', eq: '= equals', contains: 'contains', not_contains: 'does not contain' };
+
+function addRule(data = {}) {
+    const i = ruleCount++;
+    const container = document.getElementById('rulesContainer');
+    const div = document.createElement('div');
+    div.className = 'rule-card';
+    div.id = `rule_${i}`;
+
+    const fieldSel = fieldOptions.map(f =>
+        `<option value="${f.value}" ${data.field === f.value ? 'selected' : ''}>${f.label}</option>`
+    ).join('');
+
+    div.innerHTML = `
+        <button type="button" class="btn-remove-rule" onclick="removeRule(${i})">✕</button>
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="field-label">Field</label>
+                <select class="ctrl" name="rule_field[]" id="rf_${i}" onchange="onFieldChange(${i})">
+                    ${fieldSel}
+                </select>
+            </div>
+            <div class="col-md-3" id="op_col_${i}">
+                <label class="field-label">Operator</label>
+                <select class="ctrl" name="rule_op[]" id="ro_${i}"></select>
+            </div>
+            <div class="col-md-4" id="val_col_${i}">
+                <label class="field-label">Value</label>
+                <input type="text" class="ctrl" name="rule_value[]" id="rv_${i}" value="${data.value || ''}" oninput="debouncedPreview()">
+            </div>
+        </div>
+    `;
+    container.appendChild(div);
+    // Set initial field
+    if (data.field) document.getElementById(`rf_${i}`).value = data.field;
+    onFieldChange(i, data.op, data.value);
+    debouncedPreview();
+}
+
+function onFieldChange(i, presetOp, presetVal) {
+    const fieldVal = document.getElementById(`rf_${i}`).value;
+    const fdef = fieldOptions.find(f => f.value === fieldVal) || fieldOptions[0];
+    const opSel = document.getElementById(`ro_${i}`);
+    opSel.innerHTML = fdef.ops.map(o => `<option value="${o}" ${presetOp === o ? 'selected' : ''}>${opLabels[o]}</option>`).join('');
+    const valInput = document.getElementById(`rv_${i}`);
+    const valCol = document.getElementById(`val_col_${i}`);
+    if (fdef.type === 'none') {
+        valCol.style.display = 'none';
+        valInput.value = 'true';
+    } else if (fdef.type === 'bool') {
+        valCol.innerHTML = `<label class="field-label">Value</label><select class="ctrl" name="rule_value[]" id="rv_${i}" oninput="debouncedPreview()"><option value="true">Yes / Has it</option><option value="false">No / Missing</option></select>`;
+        if (presetVal) document.getElementById(`rv_${i}`).value = presetVal;
+    } else {
+        valCol.style.display = '';
+        valInput.type = fdef.type;
+        valInput.placeholder = fdef.placeholder;
+        if (presetVal !== undefined) valInput.value = presetVal;
+    }
+    debouncedPreview();
+}
+
+function removeRule(i) {
+    const el = document.getElementById(`rule_${i}`);
+    if (el) el.remove();
+    debouncedPreview();
+}
+
+// Live preview
+let debounceTimer;
+function debouncedPreview() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(livePreview, 400);
+}
+
+function livePreview() {
+    const fields = [...document.querySelectorAll('[name="rule_field[]"]')].map(e => e.value);
+    const ops    = [...document.querySelectorAll('[name="rule_op[]"]')].map(e => e.value);
+    const vals   = [...document.querySelectorAll('[name="rule_value[]"]')].map(e => e.value);
+    const rules  = fields.map((f, idx) => ({ field: f, op: ops[idx], value: vals[idx] }));
+    fetch('/audiences/preview-rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rules })
+    }).then(r => r.json()).then(d => {
+        document.getElementById('previewCount').textContent = d.count ?? '—';
+    }).catch(() => {});
+}
+
+// Templates
+const templates = {
+    vip:      { name: 'VIP Customers',      desc: 'High-value repeat customers', rules: [{ field:'visit_count', op:'gte', value:'5' }] },
+    winback:  { name: 'Win-Back Candidates',desc: 'Haven't visited recently',    rules: [{ field:'days_since_visit', op:'gte', value:'30' }] },
+    birthday: { name: 'Birthday This Month',desc: 'Celebrate their big day',     rules: [{ field:'birthday_this_month', op:'eq', value:'true' }] },
+    new:      { name: 'New Customers',      desc: 'Joined in the last 7 days',   rules: [{ field:'days_since_signup', op:'lte', value:'7' }] },
+    loyal:    { name: 'Loyal Regulars',     desc: '3+ visits, active recently',  rules: [{ field:'visit_count', op:'gte', value:'3' }, { field:'days_since_visit', op:'lte', value:'14' }] },
+    sms_only: { name: 'SMS-Only Customers', desc: 'Phone yes, email missing',    rules: [{ field:'has_phone', op:'eq', value:'true' }, { field:'has_email', op:'eq', value:'false' }] },
+};
+
+function loadTemplate(key) {
+    const t = templates[key];
+    if (!t) return;
+    document.getElementById('aud_name').value = t.name;
+    document.getElementById('aud_desc').value = t.desc;
+    document.getElementById('rulesContainer').innerHTML = '';
+    ruleCount = 0;
+    t.rules.forEach(r => addRule(r));
+}
+
+// Add one blank rule on load
+addRule();
+</script>
+</body>
+</html>
