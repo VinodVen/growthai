@@ -302,9 +302,14 @@ class CampaignTypeModel(db.Model):
     sort_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-with app.app_context():
-    db.create_all()
-    # Safely add columns that may be missing from existing PostgreSQL databases (skip for SQLite)
+def _run_migrations():
+    """Run DB migrations in background so startup doesn't block gunicorn."""
+    import time
+    time.sleep(2)  # let app fully start first
+    with app.app_context():
+        _do_migrations()
+
+def _do_migrations():
     from sqlalchemy import text
     migrations = [
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS address VARCHAR(300)",
@@ -392,6 +397,10 @@ with app.app_context():
                 changed = True
         if changed:
             db.session.commit()
+
+with app.app_context():
+    db.create_all()
+    _do_migrations()
 
 # ============================================
 # HELPERS
