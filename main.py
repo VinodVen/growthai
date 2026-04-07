@@ -249,6 +249,10 @@ class Journey(db.Model):
     trigger = db.Column(db.String(50), default="signup")  # signup, birthday, winback, manual
     active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # AJO-style controls
+    allow_reentry = db.Column(db.Boolean, default=False)       # re-enroll after completion
+    freq_cap_per_week = db.Column(db.Integer, default=0)       # 0 = no cap
+    goal = db.Column(db.String(50), default="none")            # none, visit, email_open
     journey_steps = db.relationship("JourneyStep", backref="journey", lazy=True, order_by="JourneyStep.step_order")
 
 class JourneyStep(db.Model):
@@ -339,6 +343,9 @@ with app.app_context():
         "ALTER TABLE customer_journeys ADD COLUMN IF NOT EXISTS waiting_for_open BOOLEAN DEFAULT FALSE",
         "ALTER TABLE customer_journeys ADD COLUMN IF NOT EXISTS open_check_at TIMESTAMP",
         "CREATE TABLE IF NOT EXISTS audiences (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), name VARCHAR(200), description TEXT, rules TEXT DEFAULT '[]', created_at TIMESTAMP DEFAULT NOW())",
+        "ALTER TABLE journeys ADD COLUMN IF NOT EXISTS allow_reentry BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE journeys ADD COLUMN IF NOT EXISTS freq_cap_per_week INTEGER DEFAULT 0",
+        "ALTER TABLE journeys ADD COLUMN IF NOT EXISTS goal VARCHAR(50) DEFAULT 'none'",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -697,6 +704,31 @@ def process_journeys(business_id=None):
                 continue
             profile = BusinessProfile.query.filter_by(business_id=cj.business_id).first()
 
+            # --- Goal achievement: exit journey early if goal met ---
+            goal = getattr(journey, 'goal', 'none') or 'none'
+            if goal == 'visit' and customer.last_visit and (now - customer.last_visit).days <= 3:
+                cj.completed = True
+                continue
+            if goal == 'email_open' and cj.last_campaign_id:
+                gc = Campaign.query.get(cj.last_campaign_id)
+                if gc and gc.open_count and gc.open_count > 0:
+                    cj.completed = True
+                    continue
+
+            # --- Frequency cap: skip if customer received too many messages this week ---
+            freq_cap = getattr(journey, 'freq_cap_per_week', 0) or 0
+            if freq_cap > 0:
+                week_ago = now - timedelta(days=7)
+                recent = Campaign.query.filter(
+                    Campaign.business_id == cj.business_id,
+                    Campaign.customer_email == customer.email,
+                    Campaign.created_at >= week_ago,
+                    Campaign.status == 'sent'
+                ).count()
+                if recent >= freq_cap:
+                    cj.next_step_at = now + timedelta(days=1)
+                    continue
+
             # --- Open-check phase: was waiting to see if email was opened ---
             if cj.waiting_for_open and cj.open_check_at and cj.open_check_at <= now:
                 cj.waiting_for_open = False
@@ -758,6 +790,29 @@ def process_journeys(business_id=None):
                     cj.next_step_at = now + timedelta(days=next_step.delay_days)
                 else:
                     cj.completed = True
+
+        # --- Re-entry: re-enroll completed customers if allow_reentry is on ---
+        reentry_journeys = Journey.query.filter_by(active=True).filter(
+            Journey.allow_reentry == True
+        ).all()
+        if business_id:
+            reentry_journeys = [j for j in reentry_journeys if j.business_id == business_id]
+        for journey in reentry_journeys:
+            completed_cjs = CustomerJourney.query.filter_by(
+                journey_id=journey.id, completed=True, active=True
+            ).all()
+            for cj in completed_cjs:
+                # Re-enroll only if 30+ days since last completion
+                if cj.next_step_at and (now - cj.next_step_at).days < 30:
+                    continue
+                first_step = JourneyStep.query.filter_by(journey_id=journey.id, step_order=0).first()
+                cj.next_step_order = 0
+                cj.completed = False
+                cj.waiting_for_open = False
+                cj.last_campaign_id = None
+                cj.enrolled_at = now
+                cj.next_step_at = now + timedelta(days=first_step.delay_days if first_step else 0)
+
         db.session.commit()
     except Exception as e:
         db.session.rollback()
@@ -2762,7 +2817,11 @@ def create_journey():
         if not name:
             flash("Journey name is required.", "error")
             return redirect("/journeys/create")
-        journey = Journey(business_id=b.id, name=name, description=description, trigger=trigger, active=True)
+        allow_reentry = request.form.get("allow_reentry") == "1"
+        freq_cap = int(request.form.get("freq_cap_per_week") or 0)
+        goal = request.form.get("goal", "none")
+        journey = Journey(business_id=b.id, name=name, description=description, trigger=trigger, active=True,
+                          allow_reentry=allow_reentry, freq_cap_per_week=freq_cap, goal=goal)
         db.session.add(journey)
         db.session.flush()
         # Save steps
@@ -2825,6 +2884,38 @@ def delete_journey(journey_id):
         db.session.commit()
         flash("Journey deleted.", "success")
     return redirect("/journeys")
+
+
+# ── JOURNEY ANALYTICS ───────────────────────────────────────────────────────
+@app.route("/journeys/<int:journey_id>/analytics")
+def journey_analytics(journey_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    journey = Journey.query.filter_by(id=journey_id, business_id=b.id).first_or_404()
+    steps = JourneyStep.query.filter_by(journey_id=journey.id).order_by(JourneyStep.step_order).all()
+    all_cjs = CustomerJourney.query.filter_by(journey_id=journey.id, business_id=b.id).all()
+    total_enrolled = len(all_cjs)
+    total_completed = sum(1 for cj in all_cjs if cj.completed)
+    total_active = sum(1 for cj in all_cjs if not cj.completed and cj.active)
+    # Per-step counts: how many customers are AT or PAST each step
+    step_stats = []
+    for step in steps:
+        reached = sum(1 for cj in all_cjs if cj.next_step_order > step.step_order or cj.completed)
+        step_stats.append({"step": step, "reached": reached,
+                           "pct": round(reached / total_enrolled * 100) if total_enrolled else 0})
+    # Recent enrollees
+    recent = sorted(all_cjs, key=lambda c: c.enrolled_at, reverse=True)[:10]
+    recent_data = []
+    for cj in recent:
+        customer = Customer.query.get(cj.customer_id)
+        if customer:
+            recent_data.append({"customer": customer, "cj": cj,
+                                 "steps_total": len(steps),
+                                 "progress": min(cj.next_step_order, len(steps))})
+    return render_template("journey_analytics.html", journey=journey, steps=steps,
+                           total_enrolled=total_enrolled, total_completed=total_completed,
+                           total_active=total_active, step_stats=step_stats, recent=recent_data)
 
 
 # ── CUSTOMER PROFILE (360° view like AJO Profile) ──────────────────────────

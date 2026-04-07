@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ journey.name }} — Analytics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #09090f; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .topbar { background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .page-wrap { max-width: 1000px; margin: 0 auto; padding: 36px 20px 80px; }
+        .page-title { font-size: 1.5rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+        .page-sub { color: #6b6b8a; font-size: 0.85rem; margin-top: 4px; }
+
+        .stat-card { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 22px; text-align: center; }
+        .stat-num { font-size: 2rem; font-weight: 800; color: #fff; line-height: 1; }
+        .stat-lbl { font-size: 0.68rem; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 5px; }
+
+        .card-dark { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 22px; margin-bottom: 20px; }
+        .section-title { font-size: 0.72rem; font-weight: 700; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+
+        /* Funnel */
+        .funnel-step { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .funnel-step:last-child { border-bottom: none; }
+        .step-num { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg,#7c6fff,#a855f7); display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 800; color: #fff; flex-shrink: 0; }
+        .step-info { flex: 1; min-width: 0; }
+        .step-name { font-size: 0.88rem; font-weight: 700; color: #e2e2f0; }
+        .step-meta { font-size: 0.72rem; color: #6b6b8a; margin-top: 2px; }
+        .bar-wrap { flex: 2; background: rgba(255,255,255,0.05); border-radius: 100px; height: 8px; overflow: hidden; }
+        .bar-fill { background: linear-gradient(90deg,#7c6fff,#a855f7); height: 100%; border-radius: 100px; transition: width 0.6s ease; }
+        .step-pct { font-size: 0.88rem; font-weight: 700; color: #a78bfa; width: 40px; text-align: right; flex-shrink: 0; }
+        .step-count { font-size: 0.78rem; color: #6b6b8a; width: 60px; text-align: right; flex-shrink: 0; }
+
+        /* Settings chips */
+        .setting-chip { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); border-radius: 20px; padding: 4px 12px; font-size: 0.75rem; color: #9090b0; margin: 3px; }
+        .setting-chip.on { background: rgba(124,111,255,0.12); border-color: rgba(124,111,255,0.25); color: #a78bfa; }
+
+        /* Recent table */
+        .mini-table { width: 100%; border-collapse: collapse; }
+        .mini-table th { font-size: 0.68rem; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.07em; padding: 0 0 10px; font-weight: 700; }
+        .mini-table td { font-size: 0.82rem; color: #c0c0d8; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .mini-table tr:last-child td { border-bottom: none; }
+        .prog-wrap { width: 80px; background: rgba(255,255,255,0.05); border-radius: 100px; height: 5px; display: inline-block; overflow: hidden; }
+        .prog-fill { background: #7c6fff; height: 100%; border-radius: 100px; }
+
+        a.back-link { color: #6b6b8a; font-size: 0.82rem; text-decoration: none; }
+        a.back-link:hover { color: #a78bfa; }
+        .active-badge { background: rgba(34,197,94,0.15); color: #4ade80; border-radius: 20px; padding: 2px 9px; font-size: 0.68rem; font-weight: 700; }
+        .done-badge { background: rgba(96,165,250,0.15); color: #60a5fa; border-radius: 20px; padding: 2px 9px; font-size: 0.68rem; font-weight: 700; }
+    </style>
+</head>
+<body>
+<div class="topbar">
+    <span class="brand">Revvio <span style="font-size:0.6rem;background:linear-gradient(135deg,#7c6fff,#a855f7);color:#fff;border-radius:4px;padding:2px 6px;margin-left:6px;font-weight:700;">JOURNEY ANALYTICS</span></span>
+    <a href="/journeys" class="back-link"><i class="bi bi-arrow-left"></i> All Journeys</a>
+</div>
+
+<div class="page-wrap">
+    <div class="mb-4">
+        <div class="page-title">{{ journey.name }}</div>
+        <p class="page-sub">
+            Trigger:
+            {% if journey.trigger == 'signup' %}👋 Customer Signs Up
+            {% elif journey.trigger == 'birthday' %}🎂 Customer Birthday
+            {% elif journey.trigger == 'winback' %}💔 30 Days Inactive
+            {% else %}⚡ Manual{% endif %}
+            &nbsp;·&nbsp;
+            <span class="setting-chip {% if journey.allow_reentry %}on{% endif %}">
+                🔁 Re-entry {{ 'ON' if journey.allow_reentry else 'OFF' }}
+            </span>
+            {% if journey.freq_cap_per_week %}
+            <span class="setting-chip on">🚦 Cap: {{ journey.freq_cap_per_week }}/week</span>
+            {% endif %}
+            {% if journey.goal and journey.goal != 'none' %}
+            <span class="setting-chip on">🎯 Goal: {{ journey.goal | replace('_',' ') | title }}</span>
+            {% endif %}
+        </p>
+    </div>
+
+    <!-- Top stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-num">{{ total_enrolled }}</div>
+                <div class="stat-lbl">Total Enrolled</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-num" style="color:#a78bfa;">{{ total_active }}</div>
+                <div class="stat-lbl">In Progress</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-num" style="color:#4ade80;">{{ total_completed }}</div>
+                <div class="stat-lbl">Completed</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card">
+                <div class="stat-num" style="color:#60a5fa;">{{ steps | length }}</div>
+                <div class="stat-lbl">Steps</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Funnel / Step-by-step -->
+    <div class="card-dark">
+        <div class="section-title">Journey Funnel — Step Completion</div>
+
+        <!-- Entry node -->
+        <div class="funnel-step">
+            <div class="step-num" style="background:rgba(255,255,255,0.1);">▶</div>
+            <div class="step-info">
+                <div class="step-name">Entry</div>
+                <div class="step-meta">Journey start</div>
+            </div>
+            <div class="bar-wrap"><div class="bar-fill" style="width:100%;"></div></div>
+            <div class="step-pct">100%</div>
+            <div class="step-count">{{ total_enrolled }}</div>
+        </div>
+
+        {% for s in step_stats %}
+        <div class="funnel-step">
+            <div class="step-num">{{ loop.index }}</div>
+            <div class="step-info">
+                <div class="step-name">{{ s.step.message_type | replace('_',' ') | title }}
+                    {% if s.step.channel == 'email' %}📧{% elif s.step.channel == 'sms' %}📱{% else %}📧+📱{% endif %}
+                    {% if s.step.use_ai %}🤖{% endif %}
+                </div>
+                <div class="step-meta">+{{ s.step.delay_days }}d delay
+                    {% if s.step.sms_fallback %} · SMS fallback if no open{% endif %}
+                    {% if s.step.condition != 'none' %} · Condition: {{ s.step.condition | replace('_',' ') }}{% endif %}
+                </div>
+            </div>
+            <div class="bar-wrap"><div class="bar-fill" style="width:{{ s.pct }}%;"></div></div>
+            <div class="step-pct">{{ s.pct }}%</div>
+            <div class="step-count">{{ s.reached }}</div>
+        </div>
+        {% endfor %}
+
+        <!-- Exit node -->
+        <div class="funnel-step">
+            <div class="step-num" style="background:rgba(34,197,94,0.2);color:#4ade80;">✓</div>
+            <div class="step-info">
+                <div class="step-name" style="color:#4ade80;">Exit / Completed</div>
+                <div class="step-meta">All steps done</div>
+            </div>
+            <div class="bar-wrap"><div class="bar-fill" style="width:{{ (total_completed / total_enrolled * 100) | int if total_enrolled else 0 }}%;background:rgba(34,197,94,0.6);"></div></div>
+            <div class="step-pct" style="color:#4ade80;">{{ ((total_completed / total_enrolled * 100) | int) if total_enrolled else 0 }}%</div>
+            <div class="step-count">{{ total_completed }}</div>
+        </div>
+    </div>
+
+    <!-- Recent enrollees -->
+    {% if recent %}
+    <div class="card-dark">
+        <div class="section-title">Recent Enrollees</div>
+        <table class="mini-table">
+            <thead>
+                <tr>
+                    <th>Customer</th>
+                    <th>Enrolled</th>
+                    <th>Progress</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in recent %}
+                <tr>
+                    <td>
+                        <a href="/customers/{{ r.customer.id }}/profile" style="color:#a78bfa;text-decoration:none;font-weight:600;">
+                            {{ r.customer.first_name }} {{ r.customer.last_name or '' }}
+                        </a>
+                        <div style="font-size:0.7rem;color:#6b6b8a;">{{ r.customer.email or r.customer.phone or '—' }}</div>
+                    </td>
+                    <td style="color:#6b6b8a;font-size:0.78rem;">{{ r.cj.enrolled_at.strftime('%b %d, %Y') }}</td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span class="prog-wrap"><span class="prog-fill" style="width:{{ ((r.progress / r.steps_total * 100) | int) if r.steps_total else 0 }}%;"></span></span>
+                            <span style="font-size:0.72rem;color:#6b6b8a;">{{ r.progress }}/{{ r.steps_total }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if r.cj.completed %}<span class="done-badge">✓ Done</span>
+                        {% elif r.cj.active %}<span class="active-badge">● Active</span>
+                        {% else %}<span style="font-size:0.7rem;color:#6b6b8a;">Paused</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+</body>
+</html>

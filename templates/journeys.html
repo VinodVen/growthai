@@ -93,15 +93,20 @@
                         {% endif %}
                     </div>
                     {% if j.description %}<div class="journey-desc">{{ j.description }}</div>{% endif %}
-                    <div class="trigger-badge">
-                        {% if j.trigger == 'signup' %}👋 Trigger: Customer Signs Up
-                        {% elif j.trigger == 'birthday' %}🎂 Trigger: Customer Birthday
-                        {% elif j.trigger == 'winback' %}💔 Trigger: 30 Days Inactive
-                        {% else %}⚡ Trigger: Manual
-                        {% endif %}
+                    <div class="d-flex flex-wrap gap-1 align-items-center">
+                        <div class="trigger-badge">
+                            {% if j.trigger == 'signup' %}👋 Customer Signs Up
+                            {% elif j.trigger == 'birthday' %}🎂 Birthday
+                            {% elif j.trigger == 'winback' %}💔 30 Days Inactive
+                            {% else %}⚡ Manual{% endif %}
+                        </div>
+                        {% if j.allow_reentry %}<span class="trigger-badge" style="background:rgba(96,165,250,0.1);border-color:rgba(96,165,250,0.25);color:#60a5fa;">🔁 Re-entry</span>{% endif %}
+                        {% if j.freq_cap_per_week %}<span class="trigger-badge" style="background:rgba(251,146,60,0.1);border-color:rgba(251,146,60,0.25);color:#fb923c;">🚦 {{ j.freq_cap_per_week }}/wk cap</span>{% endif %}
+                        {% if j.goal and j.goal != 'none' %}<span class="trigger-badge" style="background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.25);color:#4ade80;">🎯 Goal: {{ j.goal | replace('_',' ') | title }}</span>{% endif %}
                     </div>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
+                    <a href="/journeys/{{ j.id }}/analytics" class="btn-sm-action" style="color:#a78bfa;border-color:rgba(124,111,255,0.25);background:rgba(124,111,255,0.08);"><i class="bi bi-bar-chart-fill"></i> Analytics</a>
                     <form method="POST" action="/journeys/{{ j.id }}/toggle" style="display:inline;">
                         <button class="btn-sm-action" type="submit">{{ '⏸ Pause' if j.active else '▶ Activate' }}</button>
                     </form>
