@@ -1530,13 +1530,33 @@ def demo_logout():
         return redirect("/login")
     return redirect("/register")
 
+def _dashboard_background(business_id):
+    """Run slow autopilot tasks in background thread — never blocks the HTTP response."""
+    import threading
+    def _work():
+        with app.app_context():
+            try:
+                b = Business.query.get(business_id)
+                if not b:
+                    return
+                profile = BusinessProfile.query.filter_by(business_id=business_id).first()
+                today = datetime.utcnow()
+                process_scheduled_campaigns()
+                run_automations(business_id)
+                if profile and profile.setup_complete:
+                    _run_profile_autopilot(b, profile)
+                    _maybe_send_weekly_summary(b, profile, today)
+                process_journeys(business_id)
+            except Exception as e:
+                print(f"Background dashboard error: {e}")
+    t = threading.Thread(target=_work, daemon=True)
+    t.start()
+
 @app.route("/dashboard")
 def dashboard():
     b = current_business()
     if not b:
         return redirect("/login")
-    process_scheduled_campaigns()
-    run_automations(b.id)
     today = datetime.utcnow()
 
     # Redirect new businesses that haven't completed onboarding
@@ -1544,11 +1564,8 @@ def dashboard():
     if not profile or not profile.setup_complete:
         return redirect("/onboarding")
 
-    # Run AI autopilot (profile-based automations)
-    _run_profile_autopilot(b, profile)
-
-    # Send weekly summary every Monday (throttled — once per week)
-    _maybe_send_weekly_summary(b, profile, today)
+    # Run autopilot in background — never blocks the page load
+    _dashboard_background(b.id)
 
     total_customers = Customer.query.filter_by(business_id=b.id).count()
     total_campaigns = Campaign.query.filter_by(business_id=b.id).count()
