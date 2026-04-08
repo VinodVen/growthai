@@ -191,6 +191,7 @@ class Customer(db.Model):
     sms_opted_in = db.Column(db.Boolean, default=False)    # TCPA compliance
     sms_opted_in_at = db.Column(db.DateTime, nullable=True)
     sms_opt_in_ip = db.Column(db.String(60), nullable=True)
+    checkin_token = db.Column(db.String(64), nullable=True)  # unique token for QR scanner
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Campaign(db.Model):
@@ -375,6 +376,7 @@ def _do_migrations():
         "ALTER TABLE journeys ADD COLUMN IF NOT EXISTS goal VARCHAR(50) DEFAULT 'none'",
         "CREATE TABLE IF NOT EXISTS journey_logs (id SERIAL PRIMARY KEY, journey_id INTEGER REFERENCES journeys(id), customer_id INTEGER REFERENCES customers(id), business_id INTEGER REFERENCES businesses(id), event VARCHAR(50), detail TEXT, step_order INTEGER, created_at TIMESTAMP DEFAULT NOW())",
         "CREATE TABLE IF NOT EXISTS suppression_list (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), email VARCHAR(200), phone VARCHAR(50), reason VARCHAR(200) DEFAULT 'manual', created_at TIMESTAMP DEFAULT NOW())",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS checkin_token VARCHAR(64)",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -4015,6 +4017,113 @@ def log_visit(customer_id):
     except Exception:
         db.session.rollback()
         return jsonify({"ok": False}), 500
+
+
+# ── LOYALTY SCANNER ──────────────────────────────────────────────────────────
+
+@app.route("/scanner")
+def scanner():
+    """Staff-facing QR code scanner page."""
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    return render_template("scanner.html", business=b)
+
+
+@app.route("/checkin/<token>")
+def checkin_by_token(token):
+    """Customer QR code check-in — logs visit and shows loyalty card."""
+    c = Customer.query.filter_by(checkin_token=token).first()
+    if not c:
+        return "Invalid QR code", 404
+    b = Business.query.get(c.business_id)
+    c.visit_count    = (c.visit_count or 0) + 1
+    c.last_visit     = datetime.now(timezone.utc)
+    c.loyalty_points = (c.loyalty_points or 0) + 10
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+    reward_visits = (profile.loyalty_reward_visits if profile else 5) or 5
+    return render_template("checkin_success.html", customer=c, business=b,
+                           reward_visits=reward_visits)
+
+
+@app.route("/customer/<int:customer_id>/loyalty-card")
+def loyalty_card(customer_id):
+    """Show the customer's personal loyalty QR card — they save this to show at the restaurant."""
+    import secrets
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    c = Customer.query.filter_by(id=customer_id, business_id=b.id).first_or_404()
+    # Generate a token if one doesn't exist yet
+    if not c.checkin_token:
+        c.checkin_token = secrets.token_urlsafe(32)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+    profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+    reward_visits = (profile.loyalty_reward_visits if profile else 5) or 5
+    checkin_url = request.host_url.rstrip("/") + f"/checkin/{c.checkin_token}"
+    return render_template("loyalty_card.html", customer=c, business=b,
+                           checkin_url=checkin_url, reward_visits=reward_visits)
+
+
+@app.route("/checkin-api/<token>", methods=["POST"])
+def checkin_api(token):
+    """JSON API used by the scanner page to log a visit by QR token."""
+    c = Customer.query.filter_by(checkin_token=token).first()
+    if not c:
+        return jsonify({"ok": False, "error": "Invalid QR code"}), 404
+    b = Business.query.get(c.business_id)
+    profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+    reward_visits = (profile.loyalty_reward_visits if profile else 5) or 5
+    c.visit_count    = (c.visit_count or 0) + 1
+    c.last_visit     = datetime.now(timezone.utc)
+    c.loyalty_points = (c.loyalty_points or 0) + 10
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": "DB error"}), 500
+    return jsonify({
+        "ok": True,
+        "name": f"{c.first_name} {c.last_name or ''}".strip(),
+        "contact": c.email or c.phone or "",
+        "visits": c.visit_count,
+        "points": c.loyalty_points,
+        "reward_visits": reward_visits,
+    })
+
+
+@app.route("/scanner/lookup")
+def scanner_lookup():
+    """Search customers by name/email/phone for manual check-in."""
+    b = current_business()
+    if not b:
+        return jsonify({"customers": []})
+    q = request.args.get("q", "").strip()
+    if not q or len(q) < 2:
+        return jsonify({"customers": []})
+    like = f"%{q}%"
+    results = Customer.query.filter(
+        Customer.business_id == b.id,
+        db.or_(
+            Customer.first_name.ilike(like),
+            Customer.last_name.ilike(like),
+            Customer.email.ilike(like),
+            Customer.phone.ilike(like),
+        )
+    ).limit(8).all()
+    return jsonify({"customers": [
+        {"id": c.id,
+         "name": f"{c.first_name} {c.last_name or ''}".strip(),
+         "contact": c.email or c.phone or ""}
+        for c in results
+    ]})
 
 
 @app.route("/twilio/webhook", methods=["POST"])

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loyalty Card — {{ customer.first_name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: #09090f;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #e2e2f0; padding: 24px 16px 60px;
+        }
+        .page-wrap { max-width: 420px; margin: 0 auto; }
+        .back-link { color: #6b6b8a; font-size: 0.82rem; text-decoration: none; display: inline-block; margin-bottom: 20px; }
+        .back-link:hover { color: #a78bfa; }
+
+        .loyalty-card {
+            background: linear-gradient(135deg, #1a1040 0%, #0f0f2a 60%, #1a0a2e 100%);
+            border: 1px solid rgba(124,111,255,0.25);
+            border-radius: 20px; padding: 28px 24px; text-align: center;
+            box-shadow: 0 0 40px rgba(124,111,255,0.12);
+        }
+        .card-brand { font-size: 0.75rem; font-weight: 700; color: #a78bfa; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+        .card-biz { font-size: 1.2rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+        .card-owner { font-size: 0.85rem; color: #9090b0; margin-bottom: 20px; }
+
+        .qr-wrap {
+            background: #fff; border-radius: 14px; padding: 16px;
+            display: inline-block; margin-bottom: 20px;
+        }
+        #qr-img { display: block; }
+
+        .stat-row { display: flex; justify-content: center; gap: 28px; margin-bottom: 20px; }
+        .stat { text-align: center; }
+        .stat-num { font-size: 1.8rem; font-weight: 900; color: #fff; line-height: 1; }
+        .stat-lbl { font-size: 0.65rem; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 2px; }
+
+        .reward-bar-bg { background: rgba(255,255,255,0.08); border-radius: 20px; height: 8px; overflow: hidden; margin-bottom: 4px; }
+        .reward-bar-fill { background: linear-gradient(90deg, #7c6fff, #a855f7); height: 100%; border-radius: 20px; }
+        .reward-label { font-size: 0.72rem; color: #6b6b8a; display: flex; justify-content: space-between; }
+
+        .card-instruction { font-size: 0.78rem; color: #6b6b8a; margin-top: 18px; line-height: 1.5; }
+
+        .save-btn { background: linear-gradient(135deg, #7c6fff, #a855f7); border: none; color: #fff; font-weight: 700; padding: 12px 28px; border-radius: 12px; font-size: 0.95rem; width: 100%; margin-top: 20px; cursor: pointer; }
+        .save-btn:hover { opacity: 0.88; }
+        .share-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #9090b0; border-radius: 12px; padding: 10px 28px; font-size: 0.88rem; width: 100%; margin-top: 10px; cursor: pointer; }
+        .share-btn:hover { background: rgba(255,255,255,0.09); color: #e2e2f0; }
+    </style>
+</head>
+<body>
+<div class="page-wrap">
+    <a href="/customers/{{ customer.id }}/profile" class="back-link">← Back to Profile</a>
+
+    <div class="loyalty-card" id="loyalty-card">
+        <div class="card-brand">Loyalty Card</div>
+        <div class="card-biz">{{ business.business_name }}</div>
+        <div class="card-owner">{{ customer.first_name }} {{ customer.last_name or '' }}</div>
+
+        <div class="qr-wrap">
+            <img id="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ checkin_url | urlencode }}&bgcolor=ffffff&color=000000&margin=2" width="200" height="200" alt="QR Code">
+        </div>
+
+        <div class="stat-row">
+            <div class="stat">
+                <div class="stat-num">{{ customer.visit_count or 0 }}</div>
+                <div class="stat-lbl">Visits</div>
+            </div>
+            <div class="stat">
+                <div class="stat-num">{{ customer.loyalty_points or 0 }}</div>
+                <div class="stat-lbl">Points</div>
+            </div>
+            <div class="stat">
+                <div class="stat-num">{{ reward_visits }}</div>
+                <div class="stat-lbl">For Reward</div>
+            </div>
+        </div>
+
+        {% set visits_mod = (customer.visit_count or 0) % reward_visits %}
+        {% set pct = [visits_mod * 100 // reward_visits, 100] | min %}
+        <div class="reward-bar-bg">
+            <div class="reward-bar-fill" style="width: {{ pct }}%"></div>
+        </div>
+        <div class="reward-label">
+            <span>{{ visits_mod }} of {{ reward_visits }}</span>
+            <span>{{ reward_visits - visits_mod if visits_mod > 0 else reward_visits }} visits to reward 🎁</span>
+        </div>
+
+        <div class="card-instruction">
+            Show this QR code to staff at check-in.<br>Each visit earns +10 points.
+        </div>
+    </div>
+
+    <button class="save-btn" onclick="saveCard()">📲 Save / Screenshot Card</button>
+    <button class="share-btn" onclick="shareCard()">🔗 Share My Loyalty Link</button>
+</div>
+
+<script>
+function saveCard() {
+    alert('Take a screenshot to save your loyalty card!');
+}
+
+function shareCard() {
+    const url = '{{ checkin_url }}';
+    if (navigator.share) {
+        navigator.share({ title: 'My Loyalty Card — {{ business.business_name }}', url: url });
+    } else {
+        navigator.clipboard.writeText(url).then(() => alert('Link copied to clipboard!'));
+    }
+}
+</script>
+</body>
+</html>
