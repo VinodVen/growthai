@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duplicate Customers — Revvio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #09090f; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .topbar { background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .page-wrap { max-width: 960px; margin: 0 auto; padding: 36px 20px 80px; }
+        .page-title { font-size: 1.5rem; font-weight: 800; color: #fff; }
+        .page-sub { color: #6b6b8a; font-size: 0.85rem; margin-top: 4px; }
+        .card-dark { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 22px; margin-bottom: 16px; }
+        a.back-link { color: #6b6b8a; font-size: 0.82rem; text-decoration: none; }
+        a.back-link:hover { color: #a78bfa; }
+
+        .alert-s { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: #4ade80; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; }
+        .alert-e { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: #f87171; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; }
+
+        .dup-reason { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #fb923c; margin-bottom: 12px; }
+        .dup-table { width: 100%; border-collapse: collapse; }
+        .dup-table th { font-size: 0.68rem; font-weight: 700; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.07em; padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .dup-table td { padding: 10px 10px; font-size: 0.83rem; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+        .dup-table tr:last-child td { border-bottom: none; }
+        .radio-col { width: 40px; text-align: center; }
+        .radio-keep { accent-color: #7c6fff; width: 16px; height: 16px; cursor: pointer; }
+        .customer-name { font-weight: 700; color: #fff; }
+        .customer-meta { font-size: 0.74rem; color: #6b6b8a; }
+
+        .btn-merge { background: linear-gradient(135deg, #7c6fff, #a855f7); border: none; color: #fff; font-weight: 700; padding: 8px 20px; border-radius: 8px; font-size: 0.82rem; cursor: pointer; }
+        .btn-merge:hover { opacity: 0.88; }
+
+        .info-box { background: rgba(96,165,250,0.08); border: 1px solid rgba(96,165,250,0.2); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; font-size: 0.83rem; color: #60a5fa; }
+        .badge-pts { background: rgba(124,111,255,0.15); color: #a78bfa; border-radius: 6px; padding: 2px 8px; font-size: 0.72rem; font-weight: 700; }
+    </style>
+</head>
+<body>
+<div class="topbar">
+    <span class="brand">Revvio <span style="font-size:0.6rem;background:linear-gradient(135deg,#fb923c,#f97316);color:#fff;border-radius:4px;padding:2px 6px;margin-left:6px;font-weight:700;">DUPLICATES</span></span>
+    <div class="d-flex gap-3 align-items-center">
+        <a href="/customers" class="back-link"><i class="bi bi-people-fill"></i> Customers</a>
+        <a href="/dashboard" class="back-link"><i class="bi bi-arrow-left"></i> Dashboard</a>
+    </div>
+</div>
+
+<div class="page-wrap">
+    <div class="mb-4">
+        <div class="page-title">🔍 Duplicate Detection</div>
+        <div class="page-sub">{{ total }} duplicate group(s) found — merge to keep a single unified profile per customer</div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="alert-{{ 's' if cat != 'error' else 'e' }}">{{ msg }}</div>
+    {% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="info-box">
+        <i class="bi bi-info-circle-fill"></i> Like AJO Identity Merge — select which record to <strong>keep</strong> (primary), the others are merged into it. Visit history, loyalty points, and journey memberships are combined.
+    </div>
+
+    {% if duplicates %}
+        {% for group in duplicates %}
+        <div class="card-dark">
+            <div class="dup-reason"><i class="bi bi-exclamation-triangle-fill"></i> {{ group.reason }}</div>
+            <form method="POST" action="/customers/merge">
+                <table class="dup-table">
+                    <thead>
+                        <tr>
+                            <th class="radio-col">Keep</th>
+                            <th>Customer</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Visits</th>
+                            <th>Points</th>
+                            <th>Joined</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in group.customers %}
+                        <tr>
+                            <td class="radio-col">
+                                <input type="radio" class="radio-keep" name="keep_id" value="{{ c.id }}" {% if loop.first %}checked{% endif %}>
+                                <input type="hidden" name="merge_ids" value="{{ c.id }}">
+                            </td>
+                            <td>
+                                <div class="customer-name">
+                                    <a href="/customers/{{ c.id }}/profile" style="color:#fff;text-decoration:none;">{{ c.first_name }} {{ c.last_name or '' }}</a>
+                                </div>
+                                <div class="customer-meta">ID #{{ c.id }}</div>
+                            </td>
+                            <td style="color:#60a5fa;font-size:0.82rem;">{{ c.email or '—' }}</td>
+                            <td style="color:#4ade80;font-size:0.82rem;">{{ c.phone or '—' }}</td>
+                            <td style="color:#e2e2f0;">{{ c.visit_count or 0 }}</td>
+                            <td><span class="badge-pts">{{ c.loyalty_points or 0 }} pts</span></td>
+                            <td class="customer-meta">{{ c.created_at.strftime('%b %d, %Y') if c.created_at else '—' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="mt-3 d-flex justify-content-end">
+                    <button type="submit" class="btn-merge" onclick="return confirm('Merge these customers? This cannot be undone.')">
+                        <i class="bi bi-diagram-2-fill"></i> Merge — Keep Selected as Primary
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="card-dark" style="text-align:center;padding:50px 20px;color:#6b6b8a;">
+            <div style="font-size:2.5rem;margin-bottom:12px;">✅</div>
+            <div style="font-weight:700;color:#4ade80;font-size:1rem;margin-bottom:6px;">No duplicates found</div>
+            <div style="font-size:0.85rem;">All customers have unique emails and phone numbers.</div>
+        </div>
+    {% endif %}
+</div>
+</body>
+</html>

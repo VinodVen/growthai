@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Journey — {{ journey.name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #09090f; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .topbar { background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .page-wrap { max-width: 900px; margin: 0 auto; padding: 36px 20px 80px; }
+        .page-title { font-size: 1.5rem; font-weight: 800; color: #fff; }
+        .page-sub { color: #6b6b8a; font-size: 0.85rem; margin-top: 4px; }
+        .card-dark { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 24px; }
+        a.back-link { color: #6b6b8a; font-size: 0.82rem; text-decoration: none; }
+        a.back-link:hover { color: #a78bfa; }
+
+        .alert-s { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: #4ade80; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; }
+        .alert-e { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: #f87171; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; }
+
+        .field-label { font-size: 0.78rem; font-weight: 700; color: #9090b0; text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 6px; }
+        .ctrl { background: #1a1a2e; border: 1px solid rgba(255,255,255,0.1); color: #e2e2f0; border-radius: 8px; padding: 9px 13px; width: 100%; font-size: 0.88rem; }
+        .ctrl:focus { outline: none; border-color: rgba(124,111,255,0.5); background: #1e1e35; }
+
+        .btn-send { background: linear-gradient(135deg, #7c6fff, #a855f7); border: none; color: #fff; font-weight: 700; padding: 12px 28px; border-radius: 10px; font-size: 0.95rem; cursor: pointer; width: 100%; }
+        .btn-send:hover { opacity: 0.88; }
+
+        .step-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .step-card { background: #1a1a2e; border: 1.5px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: border 0.15s; }
+        .step-card:hover { border-color: rgba(124,111,255,0.3); }
+        .step-card.selected { border-color: #7c6fff; background: rgba(124,111,255,0.08); }
+        .step-card input[type="radio"] { display: none; }
+        .step-title { font-size: 0.88rem; font-weight: 700; color: #e2e2f0; }
+        .step-meta { font-size: 0.74rem; color: #6b6b8a; margin-top: 3px; }
+
+        .warning-box { background: rgba(251,146,60,0.08); border: 1px solid rgba(251,146,60,0.2); border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; font-size: 0.83rem; color: #fb923c; }
+    </style>
+</head>
+<body>
+<div class="topbar">
+    <span class="brand">Revvio <span style="font-size:0.6rem;background:linear-gradient(135deg,#7c6fff,#a855f7);color:#fff;border-radius:4px;padding:2px 6px;margin-left:6px;font-weight:700;">TEST MODE</span></span>
+    <div class="d-flex gap-3 align-items-center">
+        <a href="/journeys/{{ journey.id }}/logs" class="back-link"><i class="bi bi-list-ul"></i> Logs</a>
+        <a href="/journeys/{{ journey.id }}/analytics" class="back-link"><i class="bi bi-bar-chart-fill"></i> Analytics</a>
+        <a href="/journeys" class="back-link"><i class="bi bi-arrow-left"></i> Journeys</a>
+    </div>
+</div>
+
+<div class="page-wrap">
+    <div class="mb-4">
+        <div class="page-title">🧪 Journey Test Mode</div>
+        <div class="page-sub">{{ journey.name }} — send a real test message to a specific customer</div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="alert-{{ 's' if cat != 'error' else 'e' }}">{{ msg }}</div>
+    {% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="warning-box">
+        <i class="bi bi-exclamation-triangle-fill"></i> <strong>This sends a real message</strong> — use a test customer or your own email/phone to avoid accidentally messaging real guests.
+    </div>
+
+    {% if steps %}
+    <form method="POST">
+        <div class="card-dark mb-3">
+            <label class="field-label">1. Select Customer</label>
+            <select name="customer_id" class="ctrl" required>
+                <option value="">— choose a customer —</option>
+                {% for c in customers %}
+                <option value="{{ c.id }}">{{ c.first_name }} {{ c.last_name or '' }} — {{ c.email or c.phone or '?' }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="card-dark mb-3">
+            <label class="field-label">2. Select Step to Test</label>
+            <div class="step-list">
+                {% for step in steps %}
+                <label class="step-card" id="step-card-{{ loop.index0 }}" onclick="selectStep({{ loop.index0 }})">
+                    <input type="radio" name="step_order" value="{{ step.step_order }}" {% if loop.first %}checked{% endif %}>
+                    <div class="step-title">
+                        Step {{ loop.index }}: {{ step.message_type | replace('_',' ') | title }}
+                        {% if step.use_ai %}<span style="color:#a78bfa;font-size:0.75rem;"> 🤖 AI</span>{% endif %}
+                        {% if step.channel == 'email' %}<span style="color:#60a5fa;font-size:0.75rem;"> ✉️ Email</span>
+                        {% else %}<span style="color:#4ade80;font-size:0.75rem;"> 💬 SMS</span>{% endif %}
+                    </div>
+                    <div class="step-meta">Wait {{ step.delay_days }} day(s) after previous step
+                        {% if step.sms_fallback %} · SMS fallback in {{ step.sms_fallback_days }}d if not opened{% endif %}
+                    </div>
+                    {% if not step.use_ai and step.message_text %}
+                    <div style="margin-top:8px;font-size:0.78rem;color:#6b6b8a;background:#09090f;border-radius:6px;padding:8px 10px;">{{ step.message_text[:120] }}{% if step.message_text|length > 120 %}…{% endif %}</div>
+                    {% endif %}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <button type="submit" class="btn-send"><i class="bi bi-send-fill"></i> Send Test Message Now</button>
+    </form>
+    {% else %}
+    <div class="card-dark" style="text-align:center;padding:40px 0;color:#6b6b8a;font-size:0.88rem;">
+        This journey has no steps yet. <a href="/journeys/create" style="color:#a78bfa;">Add steps</a> first.
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function selectStep(idx) {
+    document.querySelectorAll('.step-card').forEach((c, i) => {
+        c.classList.toggle('selected', i === idx);
+        c.querySelector('input[type="radio"]').checked = (i === idx);
+    });
+}
+// Highlight first step by default
+document.addEventListener('DOMContentLoaded', () => selectStep(0));
+</script>
+</body>
+</html>

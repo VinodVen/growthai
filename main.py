@@ -284,6 +284,28 @@ class CustomerJourney(db.Model):
     waiting_for_open = db.Column(db.Boolean, default=False)  # True = sent email, checking open
     open_check_at = db.Column(db.DateTime, nullable=True)    # when to check if email was opened
 
+class JourneyLog(db.Model):
+    """Per-customer journey event log — like AJO journey diagnostics."""
+    __tablename__ = "journey_logs"
+    id = db.Column(db.Integer, primary_key=True)
+    journey_id = db.Column(db.Integer, db.ForeignKey("journeys.id"), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"), nullable=False)
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=False)
+    event = db.Column(db.String(50))   # enrolled, step_sent, skipped, freq_capped, goal_met, completed, suppressed
+    detail = db.Column(db.Text)        # human-readable reason
+    step_order = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class SuppressionList(db.Model):
+    """Global do-not-contact list — like AJO suppression."""
+    __tablename__ = "suppression_list"
+    id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=False)
+    email = db.Column(db.String(200), nullable=True)
+    phone = db.Column(db.String(50), nullable=True)
+    reason = db.Column(db.String(200), default="manual")  # manual, spam_complaint, bounce, unsubscribe
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class Audience(db.Model):
     __tablename__ = "audiences"
     id = db.Column(db.Integer, primary_key=True)
@@ -351,6 +373,8 @@ def _do_migrations():
         "ALTER TABLE journeys ADD COLUMN IF NOT EXISTS allow_reentry BOOLEAN DEFAULT FALSE",
         "ALTER TABLE journeys ADD COLUMN IF NOT EXISTS freq_cap_per_week INTEGER DEFAULT 0",
         "ALTER TABLE journeys ADD COLUMN IF NOT EXISTS goal VARCHAR(50) DEFAULT 'none'",
+        "CREATE TABLE IF NOT EXISTS journey_logs (id SERIAL PRIMARY KEY, journey_id INTEGER REFERENCES journeys(id), customer_id INTEGER REFERENCES customers(id), business_id INTEGER REFERENCES businesses(id), event VARCHAR(50), detail TEXT, step_order INTEGER, created_at TIMESTAMP DEFAULT NOW())",
+        "CREATE TABLE IF NOT EXISTS suppression_list (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), email VARCHAR(200), phone VARCHAR(50), reason VARCHAR(200) DEFAULT 'manual', created_at TIMESTAMP DEFAULT NOW())",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -685,11 +709,34 @@ def enroll_customer_in_journeys(customer, trigger="signup"):
                 next_step_at=now + timedelta(days=delay)
             )
             db.session.add(cj)
+            db.session.flush()
+            _log_journey(journey.id, customer.id, customer.business_id, "enrolled",
+                         f"Enrolled via trigger: {trigger}")
         db.session.commit()
     except Exception as e:
         db.session.rollback()
         print(f"Journey enroll error: {e}")
 
+
+def _log_journey(journey_id, customer_id, business_id, event, detail, step_order=None):
+    """Write a journey diagnostic log entry."""
+    try:
+        log = JourneyLog(journey_id=journey_id, customer_id=customer_id,
+                         business_id=business_id, event=event, detail=detail,
+                         step_order=step_order)
+        db.session.add(log)
+    except Exception:
+        pass
+
+def _is_suppressed(business_id, email=None, phone=None):
+    """Check global suppression list."""
+    if email:
+        if SuppressionList.query.filter_by(business_id=business_id, email=email).first():
+            return True
+    if phone:
+        if SuppressionList.query.filter_by(business_id=business_id, phone=phone).first():
+            return True
+    return False
 
 def process_journeys(business_id=None):
     """Run all due journey steps. Called by cron job daily."""
@@ -706,6 +753,8 @@ def process_journeys(business_id=None):
                 continue
             customer = Customer.query.get(cj.customer_id)
             if not customer or customer.unsubscribed:
+                _log_journey(cj.journey_id, cj.customer_id, cj.business_id, "suppressed",
+                             "Customer unsubscribed — removed from journey")
                 cj.active = False
                 continue
             business = Business.query.get(cj.business_id)
@@ -713,14 +762,25 @@ def process_journeys(business_id=None):
                 continue
             profile = BusinessProfile.query.filter_by(business_id=cj.business_id).first()
 
+            # --- Suppression list check (like AJO global suppression) ---
+            if _is_suppressed(cj.business_id, email=customer.email, phone=customer.phone):
+                _log_journey(cj.journey_id, cj.customer_id, cj.business_id, "suppressed",
+                             "On global suppression list — do not contact")
+                cj.active = False
+                continue
+
             # --- Goal achievement: exit journey early if goal met ---
             goal = getattr(journey, 'goal', 'none') or 'none'
             if goal == 'visit' and customer.last_visit and (now - customer.last_visit).days <= 3:
+                _log_journey(cj.journey_id, cj.customer_id, cj.business_id, "goal_met",
+                             "Goal achieved: customer visited restaurant within 3 days")
                 cj.completed = True
                 continue
             if goal == 'email_open' and cj.last_campaign_id:
                 gc = Campaign.query.get(cj.last_campaign_id)
                 if gc and gc.open_count and gc.open_count > 0:
+                    _log_journey(cj.journey_id, cj.customer_id, cj.business_id, "goal_met",
+                                 "Goal achieved: customer opened email")
                     cj.completed = True
                     continue
 
@@ -735,6 +795,8 @@ def process_journeys(business_id=None):
                     Campaign.status == 'sent'
                 ).count()
                 if recent >= freq_cap:
+                    _log_journey(cj.journey_id, cj.customer_id, cj.business_id, "freq_capped",
+                                 f"Frequency cap hit: {recent}/{freq_cap} messages this week — retrying tomorrow")
                     cj.next_step_at = now + timedelta(days=1)
                     continue
 
@@ -757,20 +819,28 @@ def process_journeys(business_id=None):
 
             step = JourneyStep.query.filter_by(journey_id=journey.id, step_order=cj.next_step_order).first()
             if not step:
+                _log_journey(cj.journey_id, cj.customer_id, cj.business_id, "completed",
+                             "All steps completed — journey finished")
                 cj.completed = True
                 continue
             # Check condition
             skip = False
+            skip_reason = ""
             if step.condition == "visited":
                 ref = customer.last_visit or customer.created_at
                 if (now - ref).days > 7:
                     skip = True
+                    skip_reason = f"Condition 'visited recently' not met — last visit {(now - ref).days} days ago"
             elif step.condition == "not_visited":
                 ref = customer.last_visit or customer.created_at
                 if (now - ref).days <= 7:
                     skip = True
+                    skip_reason = f"Condition 'not visited' not met — customer visited {(now - ref).days} days ago"
             sent_campaign = None
-            if not skip:
+            if skip:
+                _log_journey(cj.journey_id, cj.customer_id, cj.business_id, "skipped",
+                             skip_reason, step_order=step.step_order)
+            else:
                 lang = profile.language if profile else "English"
                 cuisine = profile.cuisine_type if profile else ""
                 dish = profile.signature_dish if profile else ""
@@ -783,6 +853,9 @@ def process_journeys(business_id=None):
                     msg = (step.message_text or "").replace("{name}", customer.first_name).replace("{business}", business.business_name)
                 if msg:
                     sent_campaign = _send_auto_campaign(business, customer, step.message_type, msg)
+                    _log_journey(cj.journey_id, cj.customer_id, cj.business_id, "step_sent",
+                                 f"Step {step.step_order+1}: {step.message_type} sent via {step.channel}",
+                                 step_order=step.step_order)
             # Advance — if email step with SMS fallback, enter open-check mode
             if (not skip and sent_campaign and step.channel == "email"
                     and getattr(step, "sms_fallback", False) and customer.phone):
@@ -3162,6 +3235,179 @@ def preview_audience_rules():
     fake_aud = type("A", (), {"rules": _json.dumps(rules_raw)})()
     members = compute_audience_members(fake_aud, b.id)
     return {"count": len(members)}
+
+
+# ── JOURNEY DIAGNOSTICS (like AJO Journey Logs) ─────────────────────────────
+@app.route("/journeys/<int:journey_id>/logs")
+def journey_logs(journey_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    journey = Journey.query.filter_by(id=journey_id, business_id=b.id).first_or_404()
+    logs = JourneyLog.query.filter_by(journey_id=journey_id, business_id=b.id)\
+        .order_by(JourneyLog.created_at.desc()).limit(200).all()
+    # Attach customer names
+    log_data = []
+    for log in logs:
+        c = Customer.query.get(log.customer_id)
+        log_data.append({"log": log, "customer": c})
+    return render_template("journey_logs.html", journey=journey, log_data=log_data)
+
+
+# ── JOURNEY TEST MODE (like AJO Test Mode) ───────────────────────────────────
+@app.route("/journeys/<int:journey_id>/test", methods=["GET", "POST"])
+def journey_test(journey_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    journey = Journey.query.filter_by(id=journey_id, business_id=b.id).first_or_404()
+    steps = JourneyStep.query.filter_by(journey_id=journey.id).order_by(JourneyStep.step_order).all()
+    profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+    if request.method == "POST":
+        customer_id = request.form.get("customer_id", type=int)
+        step_order = request.form.get("step_order", type=int, default=0)
+        customer = Customer.query.filter_by(id=customer_id, business_id=b.id).first()
+        if not customer:
+            flash("Customer not found.", "error")
+            return redirect(f"/journeys/{journey_id}/test")
+        step = JourneyStep.query.filter_by(journey_id=journey.id, step_order=step_order).first()
+        if not step:
+            flash("Step not found.", "error")
+            return redirect(f"/journeys/{journey_id}/test")
+        lang = profile.language if profile else "English"
+        cuisine = profile.cuisine_type if profile else ""
+        dish = profile.signature_dish if profile else ""
+        offer = profile.special_offer if profile else ""
+        tone = profile.tone if profile else "friendly"
+        if step.use_ai:
+            msg = generate_ai_message(customer.first_name, b.business_name, step.message_type,
+                                      language=lang, cuisine=cuisine, dish=dish, offer=offer, tone=tone)
+        else:
+            msg = (step.message_text or "").replace("{name}", customer.first_name).replace("{business}", b.business_name)
+        sent = False
+        if msg:
+            sent_c = _send_auto_campaign(b, customer, step.message_type, msg)
+            sent = bool(sent_c)
+            _log_journey(journey.id, customer.id, b.id, "test_sent",
+                         f"[TEST] Step {step_order+1} sent to {customer.first_name} via {step.channel}")
+            db.session.commit()
+        flash(f"{'✅ Test message sent' if sent else '⚠️ Could not send'} to {customer.first_name} ({customer.email or customer.phone})", "success" if sent else "error")
+        return redirect(f"/journeys/{journey_id}/test")
+    customers = Customer.query.filter_by(business_id=b.id, unsubscribed=False).order_by(Customer.first_name).all()
+    return render_template("journey_test.html", journey=journey, steps=steps, customers=customers)
+
+
+# ── SUPPRESSION LIST (like AJO Suppression) ──────────────────────────────────
+@app.route("/suppression")
+def suppression():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    items = SuppressionList.query.filter_by(business_id=b.id).order_by(SuppressionList.created_at.desc()).all()
+    return render_template("suppression.html", items=items)
+
+@app.route("/suppression/add", methods=["POST"])
+def suppression_add():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    email = request.form.get("email", "").strip().lower() or None
+    phone = request.form.get("phone", "").strip() or None
+    reason = request.form.get("reason", "manual")
+    if not email and not phone:
+        flash("Enter email or phone.", "error")
+        return redirect("/suppression")
+    existing = SuppressionList.query.filter_by(business_id=b.id, email=email).first() if email else None
+    if not existing:
+        db.session.add(SuppressionList(business_id=b.id, email=email, phone=phone, reason=reason))
+        db.session.commit()
+        flash(f"Added to suppression list.", "success")
+    else:
+        flash("Already on suppression list.", "error")
+    return redirect("/suppression")
+
+@app.route("/suppression/<int:item_id>/delete", methods=["POST"])
+def suppression_delete(item_id):
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    item = SuppressionList.query.filter_by(id=item_id, business_id=b.id).first()
+    if item:
+        db.session.delete(item)
+        db.session.commit()
+        flash("Removed from suppression list.", "success")
+    return redirect("/suppression")
+
+
+# ── DUPLICATE DETECTION + IDENTITY MERGE ────────────────────────────────────
+@app.route("/customers/duplicates")
+def customer_duplicates():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    all_customers = Customer.query.filter_by(business_id=b.id).all()
+    # Find duplicates by email
+    from collections import defaultdict
+    email_groups = defaultdict(list)
+    phone_groups = defaultdict(list)
+    for c in all_customers:
+        if c.email:
+            email_groups[c.email.lower()].append(c)
+        if c.phone:
+            phone_groups[c.phone.replace(" ","").replace("-","")].append(c)
+    duplicates = []
+    seen_ids = set()
+    for email, group in email_groups.items():
+        if len(group) > 1:
+            ids = tuple(sorted(c.id for c in group))
+            if ids not in seen_ids:
+                seen_ids.add(ids)
+                duplicates.append({"reason": f"Same email: {email}", "customers": group})
+    for phone, group in phone_groups.items():
+        if len(group) > 1:
+            ids = tuple(sorted(c.id for c in group))
+            if ids not in seen_ids:
+                seen_ids.add(ids)
+                duplicates.append({"reason": f"Same phone: {phone}", "customers": group})
+    return render_template("customer_duplicates.html", duplicates=duplicates, total=len(duplicates))
+
+@app.route("/customers/merge", methods=["POST"])
+def customer_merge():
+    """Merge duplicate: keep primary, copy data from secondary, delete secondary."""
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    primary_id = request.form.get("primary_id", type=int)
+    secondary_id = request.form.get("secondary_id", type=int)
+    primary = Customer.query.filter_by(id=primary_id, business_id=b.id).first()
+    secondary = Customer.query.filter_by(id=secondary_id, business_id=b.id).first()
+    if not primary or not secondary or primary_id == secondary_id:
+        flash("Invalid merge selection.", "error")
+        return redirect("/customers/duplicates")
+    # Merge: fill missing fields from secondary into primary
+    if not primary.email and secondary.email:
+        primary.email = secondary.email
+    if not primary.phone and secondary.phone:
+        primary.phone = secondary.phone
+    if not primary.dob and secondary.dob:
+        primary.dob = secondary.dob
+    if not primary.tags and secondary.tags:
+        primary.tags = secondary.tags
+    if not primary.notes and secondary.notes:
+        primary.notes = secondary.notes
+    primary.visit_count = (primary.visit_count or 0) + (secondary.visit_count or 0)
+    primary.loyalty_points = (primary.loyalty_points or 0) + (secondary.loyalty_points or 0)
+    if secondary.last_visit and (not primary.last_visit or secondary.last_visit > primary.last_visit):
+        primary.last_visit = secondary.last_visit
+    # Move campaigns to primary
+    Campaign.query.filter_by(business_id=b.id, customer_email=secondary.email or "____").update(
+        {"customer_email": primary.email or ""})
+    # Move journey memberships
+    CustomerJourney.query.filter_by(customer_id=secondary.id).update({"customer_id": primary.id})
+    db.session.delete(secondary)
+    db.session.commit()
+    flash(f"Merged successfully. Visit count and loyalty points combined.", "success")
+    return redirect("/customers/duplicates")
 
 
 @app.route("/analytics")

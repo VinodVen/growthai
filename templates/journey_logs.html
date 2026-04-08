@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Journey Logs — {{ journey.name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #09090f; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .topbar { background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .page-wrap { max-width: 1000px; margin: 0 auto; padding: 36px 20px 80px; }
+        .page-title { font-size: 1.5rem; font-weight: 800; color: #fff; }
+        .page-sub { color: #6b6b8a; font-size: 0.85rem; margin-top: 4px; }
+        .card-dark { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 22px; }
+        a.back-link { color: #6b6b8a; font-size: 0.82rem; text-decoration: none; }
+        a.back-link:hover { color: #a78bfa; }
+
+        .log-row { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.04); align-items: flex-start; }
+        .log-row:last-child { border-bottom: none; }
+        .event-badge { border-radius: 20px; padding: 3px 10px; font-size: 0.68rem; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+        .ev-enrolled    { background: rgba(96,165,250,0.15); color: #60a5fa; }
+        .ev-step_sent   { background: rgba(124,111,255,0.15); color: #a78bfa; }
+        .ev-skipped     { background: rgba(251,146,60,0.15); color: #fb923c; }
+        .ev-freq_capped { background: rgba(251,146,60,0.15); color: #fb923c; }
+        .ev-suppressed  { background: rgba(248,113,113,0.15); color: #f87171; }
+        .ev-goal_met    { background: rgba(34,197,94,0.15); color: #4ade80; }
+        .ev-completed   { background: rgba(34,197,94,0.15); color: #4ade80; }
+        .ev-test_sent   { background: rgba(168,85,247,0.15); color: #c084fc; }
+        .ev-default     { background: rgba(255,255,255,0.07); color: #9090b0; }
+        .log-detail { font-size: 0.82rem; color: #c0c0d8; flex: 1; }
+        .log-customer { font-size: 0.75rem; font-weight: 700; color: #a78bfa; }
+        .log-time { font-size: 0.7rem; color: #6b6b8a; white-space: nowrap; }
+
+        .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+        .filter-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.09); color: #9090b0; border-radius: 20px; padding: 4px 14px; font-size: 0.75rem; cursor: pointer; }
+        .filter-btn.active { background: rgba(124,111,255,0.15); border-color: rgba(124,111,255,0.3); color: #a78bfa; }
+    </style>
+</head>
+<body>
+<div class="topbar">
+    <span class="brand">Revvio <span style="font-size:0.6rem;background:linear-gradient(135deg,#7c6fff,#a855f7);color:#fff;border-radius:4px;padding:2px 6px;margin-left:6px;font-weight:700;">JOURNEY LOGS</span></span>
+    <div class="d-flex gap-3 align-items-center">
+        <a href="/journeys/{{ journey.id }}/analytics" class="back-link"><i class="bi bi-bar-chart-fill"></i> Analytics</a>
+        <a href="/journeys" class="back-link"><i class="bi bi-arrow-left"></i> Journeys</a>
+    </div>
+</div>
+<div class="page-wrap">
+    <div class="mb-4">
+        <div class="page-title">🔍 Journey Diagnostics</div>
+        <div class="page-sub">{{ journey.name }} — last 200 events</div>
+    </div>
+
+    <div class="filter-bar" id="filterBar">
+        <button class="filter-btn active" onclick="filterLogs('all', this)">All</button>
+        <button class="filter-btn" onclick="filterLogs('enrolled', this)">Enrolled</button>
+        <button class="filter-btn" onclick="filterLogs('step_sent', this)">Sent</button>
+        <button class="filter-btn" onclick="filterLogs('skipped', this)">Skipped</button>
+        <button class="filter-btn" onclick="filterLogs('freq_capped', this)">Freq Capped</button>
+        <button class="filter-btn" onclick="filterLogs('suppressed', this)">Suppressed</button>
+        <button class="filter-btn" onclick="filterLogs('goal_met', this)">Goal Met</button>
+        <button class="filter-btn" onclick="filterLogs('completed', this)">Completed</button>
+    </div>
+
+    <div class="card-dark">
+        {% if log_data %}
+            {% for item in log_data %}
+            <div class="log-row" data-event="{{ item.log.event }}">
+                <span class="event-badge ev-{{ item.log.event }}">
+                    {% if item.log.event == 'enrolled' %}📥 Enrolled
+                    {% elif item.log.event == 'step_sent' %}📤 Sent
+                    {% elif item.log.event == 'skipped' %}⏭ Skipped
+                    {% elif item.log.event == 'freq_capped' %}🚦 Capped
+                    {% elif item.log.event == 'suppressed' %}🚫 Suppressed
+                    {% elif item.log.event == 'goal_met' %}🎯 Goal Met
+                    {% elif item.log.event == 'completed' %}✅ Completed
+                    {% elif item.log.event == 'test_sent' %}🧪 Test
+                    {% else %}{{ item.log.event }}{% endif %}
+                </span>
+                <div style="flex:1;min-width:0;">
+                    {% if item.customer %}
+                    <div class="log-customer">
+                        <a href="/customers/{{ item.customer.id }}/profile" style="color:#a78bfa;text-decoration:none;">
+                            {{ item.customer.first_name }} {{ item.customer.last_name or '' }}
+                        </a>
+                        <span style="color:#6b6b8a;font-weight:400;"> · {{ item.customer.email or item.customer.phone or '—' }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="log-detail">{{ item.log.detail }}</div>
+                </div>
+                <div class="log-time">{{ item.log.created_at.strftime('%b %d %H:%M') }}</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="text-align:center;padding:40px 0;color:#6b6b8a;font-size:0.88rem;">No logs yet — logs appear when the journey cron runs.</div>
+        {% endif %}
+    </div>
+</div>
+<script>
+function filterLogs(event, btn) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.log-row').forEach(row => {
+        row.style.display = (event === 'all' || row.dataset.event === event) ? 'flex' : 'none';
+    });
+}
+</script>
+</body>
+</html>
