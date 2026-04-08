@@ -150,8 +150,9 @@ class BusinessProfile(db.Model):
     __tablename__ = "business_profiles"
     id = db.Column(db.Integer, primary_key=True)
     business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), unique=True, nullable=False)
+    business_type = db.Column(db.String(50), default="restaurant")  # restaurant|spa|gym|retail|hotel|other
     cuisine_type = db.Column(db.String(100))               # Italian, Mexican, Indian…
-    signature_dish = db.Column(db.String(200))             # "Wood-fired pizza"
+    signature_dish = db.Column(db.String(200))             # "Wood-fired pizza" / main service
     special_offer = db.Column(db.String(200))              # "15% off", "free dessert"
     slow_days = db.Column(db.String(100))                  # "Mon,Tue"
     peak_days = db.Column(db.String(100))                  # "Fri,Sat,Sun"
@@ -377,6 +378,7 @@ def _do_migrations():
         "CREATE TABLE IF NOT EXISTS journey_logs (id SERIAL PRIMARY KEY, journey_id INTEGER REFERENCES journeys(id), customer_id INTEGER REFERENCES customers(id), business_id INTEGER REFERENCES businesses(id), event VARCHAR(50), detail TEXT, step_order INTEGER, created_at TIMESTAMP DEFAULT NOW())",
         "CREATE TABLE IF NOT EXISTS suppression_list (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), email VARCHAR(200), phone VARCHAR(50), reason VARCHAR(200) DEFAULT 'manual', created_at TIMESTAMP DEFAULT NOW())",
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS checkin_token VARCHAR(64)",
+        "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS business_type VARCHAR(50) DEFAULT 'restaurant'",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -3803,6 +3805,7 @@ def onboarding():
         b.address = request.form.get("address", b.address or "").strip() or b.address
         b.website = request.form.get("website", b.website or "").strip() or b.website
 
+        profile.business_type   = request.form.get("business_type", "restaurant")
         profile.cuisine_type    = request.form.get("cuisine_type", "").strip()
         profile.signature_dish  = request.form.get("signature_dish", "").strip()
         profile.special_offer   = request.form.get("special_offer", "").strip()

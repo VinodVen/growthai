@@ -15,7 +15,7 @@
             display: flex; align-items: center; justify-content: center;
             padding: 20px;
         }
-        .wrap { width: 100%; max-width: 520px; }
+        .wrap { width: 100%; max-width: 560px; }
 
         /* Progress bar */
         .progress-bar { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
@@ -45,6 +45,28 @@
         .step-emoji { font-size: 2.8rem; margin-bottom: 12px; display: block; }
         .step-title { font-size: 1.4rem; font-weight: 800; color: #fff; margin-bottom: 6px; }
         .step-sub { font-size: 0.85rem; color: rgba(255,255,255,0.5); margin-bottom: 28px; }
+
+        /* Business type grid */
+        .biz-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 8px; }
+        .biz-opt { position: relative; }
+        .biz-opt input[type=radio] { position: absolute; opacity: 0; width: 0; }
+        .biz-opt label {
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            padding: 18px 10px 14px; border-radius: 14px;
+            border: 2px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.04);
+            color: rgba(255,255,255,0.55); font-size: 0.78rem; font-weight: 700;
+            cursor: pointer; transition: all 0.18s; text-align: center; line-height: 1.3;
+        }
+        .biz-opt label .biz-icon { font-size: 2rem; line-height: 1; }
+        .biz-opt input:checked + label {
+            border-color: #667eea;
+            background: rgba(102,126,234,0.18);
+            color: #fff;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.2);
+            transform: translateY(-2px);
+        }
+        .biz-opt label:hover { border-color: rgba(102,126,234,0.4); background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.8); }
 
         /* Fields */
         .field { margin-bottom: 16px; }
@@ -123,8 +145,10 @@
             display: block; text-align: center; width: 100%;
         }
         .btn-back:hover { color: rgba(255,255,255,0.7); }
-
         .hint { font-size: 0.73rem; color: rgba(255,255,255,0.3); margin-top: 6px; }
+
+        /* Dynamic label badge */
+        .biz-tag { display: inline-block; background: rgba(102,126,234,0.2); border: 1px solid rgba(102,126,234,0.3); color: #a5b4fc; border-radius: 20px; padding: 3px 12px; font-size: 0.72rem; font-weight: 700; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -143,16 +167,76 @@
     </div>
 
     <form method="POST" id="onboardForm">
+    <input type="hidden" name="business_type" id="bizTypeInput" value="{{ profile.business_type or 'restaurant' }}">
+
     <div class="card">
 
-        <!-- Step 1: Restaurant basics -->
+        <!-- Step 1: Business Type -->
         <div class="step-panel active" id="step1">
-            <span class="step-emoji">🍽️</span>
-            <div class="step-title">Tell us about your restaurant</div>
-            <p class="step-sub">This takes 2 minutes. AI handles everything after.</p>
+            <span class="step-emoji">👋</span>
+            <div class="step-title">What kind of business are you?</div>
+            <p class="step-sub">Revvio adapts to your industry — pick the one that fits.</p>
+            <div class="biz-grid">
+                <div class="biz-opt">
+                    <input type="radio" name="biz_type_pick" id="bt_restaurant" value="restaurant"
+                        {% if (profile.business_type or 'restaurant') == 'restaurant' %}checked{% endif %}
+                        onchange="setBizType('restaurant')">
+                    <label for="bt_restaurant">
+                        <span class="biz-icon">🍽️</span>Restaurant<br>/ Food
+                    </label>
+                </div>
+                <div class="biz-opt">
+                    <input type="radio" name="biz_type_pick" id="bt_spa" value="spa"
+                        {% if profile.business_type == 'spa' %}checked{% endif %}
+                        onchange="setBizType('spa')">
+                    <label for="bt_spa">
+                        <span class="biz-icon">💆</span>Spa / Salon<br>/ Beauty
+                    </label>
+                </div>
+                <div class="biz-opt">
+                    <input type="radio" name="biz_type_pick" id="bt_gym" value="gym"
+                        {% if profile.business_type == 'gym' %}checked{% endif %}
+                        onchange="setBizType('gym')">
+                    <label for="bt_gym">
+                        <span class="biz-icon">🏋️</span>Gym<br>/ Fitness
+                    </label>
+                </div>
+                <div class="biz-opt">
+                    <input type="radio" name="biz_type_pick" id="bt_retail" value="retail"
+                        {% if profile.business_type == 'retail' %}checked{% endif %}
+                        onchange="setBizType('retail')">
+                    <label for="bt_retail">
+                        <span class="biz-icon">🛍️</span>Retail<br>/ Store
+                    </label>
+                </div>
+                <div class="biz-opt">
+                    <input type="radio" name="biz_type_pick" id="bt_hotel" value="hotel"
+                        {% if profile.business_type == 'hotel' %}checked{% endif %}
+                        onchange="setBizType('hotel')">
+                    <label for="bt_hotel">
+                        <span class="biz-icon">🏨</span>Hotel<br>/ Stay
+                    </label>
+                </div>
+                <div class="biz-opt">
+                    <input type="radio" name="biz_type_pick" id="bt_other" value="other"
+                        {% if profile.business_type == 'other' %}checked{% endif %}
+                        onchange="setBizType('other')">
+                    <label for="bt_other">
+                        <span class="biz-icon">🏢</span>Other<br>Business
+                    </label>
+                </div>
+            </div>
+            <button type="button" class="btn-next" onclick="goTo(2)">Next →</button>
+        </div>
+
+        <!-- Step 2: Business Info -->
+        <div class="step-panel" id="step2">
+            <span class="step-emoji" id="s2emoji">🏪</span>
+            <div class="step-title" id="s2title">Tell us about your business</div>
+            <p class="step-sub">Takes 2 minutes. AI handles everything after.</p>
             <div class="field">
-                <label>Restaurant Name</label>
-                <input type="text" name="business_name" value="{{ business.business_name }}" placeholder="Your restaurant name" required>
+                <label id="s2namelabel">Business Name</label>
+                <input type="text" name="business_name" value="{{ business.business_name }}" placeholder="Your business name" required>
             </div>
             <div class="row2">
                 <div class="field">
@@ -161,58 +245,36 @@
                 </div>
                 <div class="field">
                     <label>Website</label>
-                    <input type="text" name="website" value="{{ business.website or '' }}" placeholder="yourrestaurant.com">
+                    <input type="text" name="website" value="{{ business.website or '' }}" placeholder="yourbusiness.com">
                 </div>
             </div>
             <div class="field">
                 <label>Address</label>
                 <input type="text" name="address" value="{{ business.address or '' }}" placeholder="123 Main St, City, State">
             </div>
-            <button type="button" class="btn-next" onclick="goTo(2)">Next →</button>
-        </div>
-
-        <!-- Step 2: Food & offer -->
-        <div class="step-panel" id="step2">
-            <span class="step-emoji">🤤</span>
-            <div class="step-title">What do you serve?</div>
-            <p class="step-sub">AI uses this to write authentic messages for your restaurant.</p>
-            <div class="field">
-                <label>Type of Cuisine</label>
-                <input type="text" name="cuisine_type" value="{{ profile.cuisine_type or '' }}" placeholder="e.g. Italian, Mexican, Indian, BBQ…">
-            </div>
-            <div class="field">
-                <label>Signature Dish / Best Seller</label>
-                <input type="text" name="signature_dish" value="{{ profile.signature_dish or '' }}" placeholder="e.g. Wood-fired pizza, Butter chicken, Ribs…">
-            </div>
-            <div class="field">
-                <label>Your Best Offer for New Customers</label>
-                <input type="text" name="special_offer" value="{{ profile.special_offer or '' }}" placeholder="e.g. Free dessert, 15% off, Buy 1 get 1…">
-                <p class="hint">AI will mention this in welcome and win-back messages.</p>
-            </div>
             <button type="button" class="btn-next" onclick="goTo(3)">Next →</button>
             <button type="button" class="btn-back" onclick="goTo(1)">← Back</button>
         </div>
 
-        <!-- Step 3: Slow days -->
+        <!-- Step 3: What you offer (dynamic) -->
         <div class="step-panel" id="step3">
-            <span class="step-emoji">📅</span>
-            <div class="step-title">When are you slow?</div>
-            <p class="step-sub">AI will automatically send flash deals on these days to fill empty seats.</p>
+            <span class="step-emoji" id="s3emoji">✨</span>
+            <div class="step-title" id="s3title">What do you offer?</div>
+            <p class="step-sub" id="s3sub">AI uses this to write authentic messages for your business.</p>
             <div class="field">
-                <label>Select your slow days</label>
-                <div class="days-grid">
-                    {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
-                    <div class="day-opt">
-                        <input type="checkbox" name="slow_days_check" id="day_{{ day }}" value="{{ day }}"
-                            {% if profile.slow_days and day in profile.slow_days %}checked{% endif %}>
-                        <label for="day_{{ day }}">{{ day[:3] }}</label>
-                    </div>
-                    {% endfor %}
-                </div>
-                <input type="hidden" name="slow_days" id="slowDaysInput" value="{{ profile.slow_days or '' }}">
-                <p class="hint">Leave blank if you don't have slow days (lucky you 😄).</p>
+                <label id="s3label1">Type / Specialty</label>
+                <input type="text" name="cuisine_type" id="s3input1" value="{{ profile.cuisine_type or '' }}" placeholder="">
             </div>
-            <button type="button" class="btn-next" onclick="collectDays(); goTo(4)">Next →</button>
+            <div class="field">
+                <label id="s3label2">Best Seller / Signature</label>
+                <input type="text" name="signature_dish" id="s3input2" value="{{ profile.signature_dish or '' }}" placeholder="">
+            </div>
+            <div class="field">
+                <label id="s3label3">Best Offer for New Customers</label>
+                <input type="text" name="special_offer" id="s3input3" value="{{ profile.special_offer or '' }}" placeholder="e.g. 15% off, free trial, buy 1 get 1…">
+                <p class="hint">AI will mention this in welcome and win-back messages.</p>
+            </div>
+            <button type="button" class="btn-next" onclick="goTo(4)">Next →</button>
             <button type="button" class="btn-back" onclick="goTo(2)">← Back</button>
         </div>
 
@@ -264,8 +326,8 @@
             </div>
             <div class="auto-item">
                 <div class="auto-info">
-                    <strong>💔 Win-back after 30 days</strong>
-                    <small>AI reaches out if they haven't visited</small>
+                    <strong id="winbackLabel">💔 Win-back after 30 days</strong>
+                    <small id="winbackSub">AI reaches out if they haven't visited</small>
                 </div>
                 <label class="toggle-wrap"><input type="checkbox" checked disabled><span class="slider"></span></label>
             </div>
@@ -294,7 +356,92 @@
 let current = 1;
 const total = 5;
 
+// Business type config: step 3 labels + step 2 emoji/title
+const bizConfig = {
+    restaurant: {
+        s2emoji: '🍽️', s2title: 'Tell us about your restaurant',
+        s3emoji: '🤤', s3title: 'What do you serve?',
+        s3sub: 'AI uses this to write authentic messages for your restaurant.',
+        s3label1: 'Type of Cuisine', s3ph1: 'e.g. Italian, Mexican, Indian, BBQ…',
+        s3label2: 'Signature Dish / Best Seller', s3ph2: 'e.g. Wood-fired pizza, Butter chicken…',
+        s3label3: 'Best Offer for New Customers', s3ph3: 'e.g. Free dessert, 15% off, Buy 1 get 1…',
+        winback: '💔 Win-back after 30 days', winbackSub: 'AI reaches out if they haven\'t visited in 30 days',
+    },
+    spa: {
+        s2emoji: '💆', s2title: 'Tell us about your spa / salon',
+        s3emoji: '✨', s3title: 'What services do you offer?',
+        s3sub: 'AI uses this to write personalized messages for your clients.',
+        s3label1: 'Type of Spa / Services', s3ph1: 'e.g. Massage, Facials, Hair, Nails, Waxing…',
+        s3label2: 'Signature / Most Popular Treatment', s3ph2: 'e.g. Hot stone massage, Keratin treatment…',
+        s3label3: 'First-Time Client Offer', s3ph3: 'e.g. 20% off first visit, free add-on…',
+        winback: '💆 Re-engage after 30 days', winbackSub: 'AI reaches out to clients who haven\'t booked recently',
+    },
+    gym: {
+        s2emoji: '🏋️', s2title: 'Tell us about your gym / studio',
+        s3emoji: '💪', s3title: 'What do you offer?',
+        s3sub: 'AI uses this to write motivating messages for your members.',
+        s3label1: 'Type of Fitness', s3ph1: 'e.g. CrossFit, Yoga, HIIT, Personal Training, Boxing…',
+        s3label2: 'Signature Class / Program', s3ph2: 'e.g. 6-week transformation, morning HIIT…',
+        s3label3: 'New Member Offer', s3ph3: 'e.g. First week free, no sign-up fee, free trial class…',
+        winback: '🏃 Re-engage after 30 days', winbackSub: 'AI reaches out to members who haven\'t checked in recently',
+    },
+    retail: {
+        s2emoji: '🛍️', s2title: 'Tell us about your store',
+        s3emoji: '🏪', s3title: 'What do you sell?',
+        s3sub: 'AI uses this to write targeted messages for your shoppers.',
+        s3label1: 'Type of Products', s3ph1: 'e.g. Clothing, Furniture, Electronics, Jewelry…',
+        s3label2: 'Best Sellers / Featured Products', s3ph2: 'e.g. Designer handbags, Handmade candles…',
+        s3label3: 'New Customer Discount', s3ph3: 'e.g. 10% off first order, free shipping…',
+        winback: '🛍️ Win-back after 30 days', winbackSub: 'AI reaches out to customers who haven\'t shopped recently',
+    },
+    hotel: {
+        s2emoji: '🏨', s2title: 'Tell us about your hotel / property',
+        s3emoji: '🌟', s3title: 'What makes you special?',
+        s3sub: 'AI uses this to write luxurious messages for your guests.',
+        s3label1: 'Type of Property', s3ph1: 'e.g. Boutique hotel, Resort, B&B, Vacation rental…',
+        s3label2: 'Signature Amenity / Experience', s3ph2: 'e.g. Rooftop pool, Farm-to-table breakfast…',
+        s3label3: 'Direct Booking Offer', s3ph3: 'e.g. 10% off direct, free breakfast, late checkout…',
+        winback: '🏨 Re-engage past guests', winbackSub: 'AI reaches out to guests who haven\'t returned in 90 days',
+    },
+    other: {
+        s2emoji: '🏢', s2title: 'Tell us about your business',
+        s3emoji: '💡', s3title: 'What do you offer?',
+        s3sub: 'AI uses this to write messages tailored to your customers.',
+        s3label1: 'Industry / Type of Business', s3ph1: 'e.g. Law firm, Tutoring, Cleaning service…',
+        s3label2: 'Main Service / Product', s3ph2: 'e.g. Tax preparation, Home cleaning, SAT tutoring…',
+        s3label3: 'New Customer Offer', s3ph3: 'e.g. Free consultation, 10% off first service…',
+        winback: '💔 Win-back after 30 days', winbackSub: 'AI reaches out to customers who haven\'t returned recently',
+    },
+};
+
+let selectedBizType = '{{ profile.business_type or "restaurant" }}';
+
+function setBizType(type) {
+    selectedBizType = type;
+    document.getElementById('bizTypeInput').value = type;
+}
+
+function applyBizConfig() {
+    const c = bizConfig[selectedBizType] || bizConfig.restaurant;
+    document.getElementById('s2emoji').textContent = c.s2emoji;
+    document.getElementById('s2title').textContent = c.s2title;
+    document.getElementById('s3emoji').textContent = c.s3emoji;
+    document.getElementById('s3title').textContent = c.s3title;
+    document.getElementById('s3sub').textContent = c.s3sub;
+    document.getElementById('s3label1').textContent = c.s3label1;
+    document.getElementById('s3input1').placeholder = c.s3ph1;
+    document.getElementById('s3label2').textContent = c.s3label2;
+    document.getElementById('s3input2').placeholder = c.s3ph2;
+    document.getElementById('s3label3').textContent = c.s3label3;
+    document.getElementById('s3input3').placeholder = c.s3ph3;
+    document.getElementById('winbackLabel').textContent = c.winback;
+    document.getElementById('winbackSub').textContent = c.winbackSub;
+}
+
 function goTo(step) {
+    // Apply config before going to step 2/3
+    applyBizConfig();
+
     document.getElementById('step' + current).classList.remove('active');
     document.getElementById('dot' + current).className = 'step-dot done';
     if (current < total) document.getElementById('line' + current).classList.add('done');
@@ -314,6 +461,9 @@ function collectDays() {
     const checked = [...document.querySelectorAll('input[name="slow_days_check"]:checked')].map(el => el.value);
     document.getElementById('slowDaysInput').value = checked.join(',');
 }
+
+// Apply config on load
+applyBizConfig();
 </script>
 </body>
 </html>
