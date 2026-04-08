@@ -45,7 +45,7 @@
         }
         .sidebar-brand .logo { font-size: 1.5rem; font-weight: 800; color: white; letter-spacing: -0.5px; }
         .sidebar-brand .tagline { font-size: 0.7rem; color: rgba(255,255,255,0.7); margin-top: 1px; }
-        .sidebar-nav { padding: 12px 10px; flex: 1; overflow-y: auto; }
+        .sidebar-nav { padding: 12px 10px; flex: 1; overflow-y: auto; max-height: calc(100vh - 130px); }
         .nav-section { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em;
             color: rgba(255,255,255,0.45); padding: 10px 10px 4px; text-transform: uppercase; }
         .nav-item a {
@@ -262,6 +262,9 @@
         <div class="d-flex align-items-center gap-2">
             <span class="plan-badge plan-{{ plan }}">{{ plan.upper() }} PLAN</span>
             {% if plan == 'free' %}<a href="/upgrade" class="btn btn-warning btn-sm fw-bold">Upgrade</a>{% endif %}
+            <a href="/logout" class="btn btn-sm" style="background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);color:#dc2626;font-weight:700;border-radius:8px;padding:5px 14px;">
+                <i class="bi bi-box-arrow-right"></i> Log Out
+            </a>
         </div>
     </div>
 
