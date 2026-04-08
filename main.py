@@ -1442,12 +1442,6 @@ def register():
             flash("Error creating account.", "error")
     return render_template("index.html", google_client_id=os.getenv("GOOGLE_CLIENT_ID", ""))
 
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect("/login")
-
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if "user_id" in session and not session.get("is_demo"):

@@ -943,6 +943,28 @@ function closeVideo(e) {
 }
 
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeVideo({}); });
+
+// Scroll to top button
+const scrollBtn = document.getElementById('scrollTopBtn');
+window.addEventListener('scroll', () => {
+    scrollBtn.style.opacity = window.scrollY > 400 ? '1' : '0';
+    scrollBtn.style.pointerEvents = window.scrollY > 400 ? 'auto' : 'none';
+});
+scrollBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 </script>
+
+<!-- Scroll to Top Button -->
+<button id="scrollTopBtn" title="Back to top" style="
+    position: fixed; bottom: 28px; right: 28px; z-index: 999;
+    width: 46px; height: 46px; border-radius: 50%; border: none;
+    background: linear-gradient(135deg, #7c6fff, #a855f7);
+    color: white; font-size: 1.2rem; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(124,111,255,0.45);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s, transform 0.2s;
+    display: flex; align-items: center; justify-content: center;
+" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+    ↑
+</button>
 </body>
 </html>

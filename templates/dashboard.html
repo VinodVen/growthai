@@ -612,6 +612,27 @@
         }
     });
     {% endif %}
+
+    // Scroll to top
+    const sb = document.getElementById('scrollTopBtn');
+    document.querySelector('.main-content').addEventListener('scroll', function() {
+        if(sb) { sb.style.opacity = this.scrollTop > 300 ? '1' : '0'; sb.style.pointerEvents = this.scrollTop > 300 ? 'auto' : 'none'; }
+    });
+    window.addEventListener('scroll', function() {
+        if(sb) { sb.style.opacity = window.scrollY > 300 ? '1' : '0'; sb.style.pointerEvents = window.scrollY > 300 ? 'auto' : 'none'; }
+    });
+    if(sb) sb.addEventListener('click', () => { window.scrollTo({top:0,behavior:'smooth'}); document.querySelector('.main-content')?.scrollTo({top:0,behavior:'smooth'}); });
 </script>
+
+<button id="scrollTopBtn" title="Back to top" style="
+    position: fixed; bottom: 28px; right: 28px; z-index: 999;
+    width: 44px; height: 44px; border-radius: 50%; border: none;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white; font-size: 1.1rem; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(102,126,234,0.4);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s, transform 0.2s;
+    display: flex; align-items: center; justify-content: center;
+" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">↑</button>
 </body>
 </html>
