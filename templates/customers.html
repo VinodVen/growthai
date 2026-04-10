@@ -3,179 +3,300 @@
 <head>
     <meta charset="UTF-8">
     <link rel="icon" type="image/png" href="/static/icon-192.png">
-    <link rel="shortcut icon" href="/static/icon-192.png">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#667eea">
-    <link rel="manifest" href="/static/manifest.json">
-    <link rel="apple-touch-icon" href="/static/icon-192.png">
-    <title>Customers - Revvio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customers — Revvio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
-        .navbar { background: rgba(0,0,0,0.15); backdrop-filter: blur(10px); }
-        .card { border: none; border-radius: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
-        .btn-add { background: linear-gradient(135deg, #667eea, #764ba2); border: none; color: white; }
-        .btn-add:hover { color: white; opacity: 0.9; }
-        .badge-unsub { background: #f8d7da; color: #842029; font-size: 0.7rem; }
-        .search-box { border-radius: 10px; border: 2px solid #e0e0e0; }
-        .search-box:focus { border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102,126,234,0.15); }
-        .customer-row:hover { background: #f8f9ff; }
-        .stat-pill { background: rgba(255,255,255,0.2); color: white; border-radius: 20px; padding: 6px 16px; font-size: 0.85rem; display: inline-block; }
-        @media (max-width: 576px) {
+        body { background: #09090f; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; }
+        .topbar { background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .page-wrap { max-width: 1100px; margin: 0 auto; padding: 28px 20px 80px; }
+
+        .page-title { font-size: 1.5rem; font-weight: 800; color: #fff; }
+        .page-sub { color: #6b6b8a; font-size: 0.85rem; margin-top: 3px; }
+
+        /* Stat pills */
+        .stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+        .stat-chip { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 10px 18px; }
+        .stat-chip .num { font-size: 1.3rem; font-weight: 800; color: #fff; line-height: 1; }
+        .stat-chip .lbl { font-size: 0.68rem; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.07em; margin-top: 2px; }
+
+        /* Toolbar */
+        .toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+        .search-wrap { flex: 1; min-width: 220px; position: relative; }
+        .search-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6b6b8a; font-size: 0.9rem; }
+        .search-input { background: #13131f; border: 1px solid rgba(255,255,255,0.1); color: #e2e2f0; border-radius: 10px; padding: 9px 14px 9px 36px; width: 100%; font-size: 0.88rem; }
+        .search-input:focus { outline: none; border-color: rgba(102,126,234,0.5); }
+        .search-input::placeholder { color: #6b6b8a; }
+
+        .filter-select { background: #13131f; border: 1px solid rgba(255,255,255,0.1); color: #e2e2f0; border-radius: 10px; padding: 9px 14px; font-size: 0.82rem; cursor: pointer; }
+        .filter-select:focus { outline: none; border-color: rgba(102,126,234,0.4); }
+
+        .btn-action { background: linear-gradient(135deg, #667eea, #764ba2); border: none; color: #fff; font-weight: 700; padding: 9px 18px; border-radius: 10px; font-size: 0.85rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-action:hover { color: #fff; opacity: 0.88; }
+        .btn-outline-act { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #9090b0; border-radius: 10px; padding: 9px 16px; font-size: 0.82rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-outline-act:hover { background: rgba(255,255,255,0.09); color: #e2e2f0; }
+
+        /* Table */
+        .table-wrap { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        thead tr { background: rgba(255,255,255,0.03); border-bottom: 1px solid rgba(255,255,255,0.07); }
+        th { font-size: 0.7rem; font-weight: 700; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.07em; padding: 11px 16px; white-space: nowrap; }
+        th a { color: #6b6b8a; text-decoration: none; }
+        th a:hover { color: #a78bfa; }
+        th.sorted a { color: #a78bfa; }
+        td { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.85rem; vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tbody tr:hover td { background: rgba(255,255,255,0.02); }
+
+        .cust-name { font-weight: 700; color: #fff; }
+        .cust-sub { font-size: 0.75rem; color: #6b6b8a; margin-top: 1px; }
+        .badge-active { background: rgba(34,197,94,0.12); color: #4ade80; border-radius: 20px; padding: 2px 9px; font-size: 0.68rem; font-weight: 700; }
+        .badge-unsub { background: rgba(248,113,113,0.12); color: #f87171; border-radius: 20px; padding: 2px 9px; font-size: 0.68rem; font-weight: 700; }
+        .visit-bar { background: rgba(255,255,255,0.06); border-radius: 10px; height: 5px; width: 60px; overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 6px; }
+        .visit-fill { background: linear-gradient(90deg, #667eea, #a855f7); height: 100%; border-radius: 10px; }
+
+        .btn-icon { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: #9090b0; border-radius: 7px; padding: 4px 9px; font-size: 0.78rem; cursor: pointer; transition: all 0.15s; }
+        .btn-icon:hover { background: rgba(255,255,255,0.1); color: #e2e2f0; }
+        .btn-icon-danger { color: #f87171; border-color: rgba(248,113,113,0.2); }
+        .btn-icon-danger:hover { background: rgba(248,113,113,0.1); }
+
+        /* Pagination */
+        .pagination-wrap { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+        .page-info { font-size: 0.8rem; color: #6b6b8a; }
+        .page-btns { display: flex; gap: 4px; }
+        .page-btn { background: #13131f; border: 1px solid rgba(255,255,255,0.08); color: #9090b0; border-radius: 8px; padding: 6px 12px; font-size: 0.8rem; text-decoration: none; transition: all 0.15s; }
+        .page-btn:hover { background: rgba(255,255,255,0.07); color: #e2e2f0; }
+        .page-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border-color: transparent; font-weight: 700; }
+        .page-btn.disabled { opacity: 0.3; pointer-events: none; }
+
+        a.back-link { color: #6b6b8a; font-size: 0.82rem; text-decoration: none; }
+        a.back-link:hover { color: #a78bfa; }
+
+        .alert-s { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: #4ade80; border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; }
+        .alert-e { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: #f87171; border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; }
+
+        @media (max-width: 640px) {
             .hide-mobile { display: none; }
+            .toolbar { gap: 6px; }
         }
     </style>
 </head>
 <body>
 
-<nav class="navbar navbar-dark px-3 py-2">
-    <a class="navbar-brand fw-bold" href="/dashboard">Revvio</a>
-    <div class="d-flex gap-2">
-        <a href="/upload-customers" class="btn btn-light btn-sm">+ Import</a>
-        <a href="/add-customer" class="btn btn-warning btn-sm fw-bold">+ Add</a>
-    </div>
-</nav>
-
-<div class="container py-3" style="max-width: 900px;">
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
-    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <div>
-            <h3 class="text-white fw-bold mb-0">Customers</h3>
-            <small class="text-white opacity-75">{{ customers|length }} total
-                {% set unsub_count = customers|selectattr('unsubscribed')|list|length %}
-                {% if unsub_count %} · {{ unsub_count }} unsubscribed{% endif %}
-            </small>
-        </div>
-        <a href="/dashboard" class="btn btn-outline-light btn-sm">← Dashboard</a>
-    </div>
-
-    <div class="card">
-        <div class="card-body p-3">
-
-            <!-- Search -->
-            <div class="mb-3">
-                <input type="text" id="searchInput" class="form-control search-box"
-                    placeholder="Search by name, email, or phone..." oninput="filterCustomers(this.value)">
-            </div>
-
-            {% if customers %}
-            <div class="table-responsive">
-                <table class="table table-hover mb-0" id="customersTable">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Name</th>
-                            <th>Email / Phone</th>
-                            <th class="hide-mobile">DOB</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for customer in customers %}
-                        <tr class="customer-row" data-search="{{ customer.first_name|lower }} {{ customer.last_name|lower }} {{ customer.email|lower }} {{ customer.phone or '' }}">
-                            <td>
-                                <strong>{{ customer.first_name }} {{ customer.last_name or '' }}</strong>
-                            </td>
-                            <td>
-                                <div>{{ customer.email }}</div>
-                                {% if customer.phone %}<small class="text-muted">{{ customer.phone }}</small>{% endif %}
-                            </td>
-                            <td class="hide-mobile"><small class="text-muted">{{ customer.dob or '—' }}</small></td>
-                            <td>
-                                {% if customer.unsubscribed %}
-                                <span class="badge badge-unsub">Unsubscribed</span>
-                                {% else %}
-                                <span class="badge bg-success-subtle text-success" style="font-size:0.7rem;">Active</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <a href="/customers/{{ customer.id }}/profile" class="btn btn-sm btn-outline-secondary me-1" title="View Profile">
-                                    <i class="bi bi-person-circle"></i>
-                                </a>
-                                <button class="btn btn-sm btn-outline-primary me-1"
-                                    data-id="{{ customer.id }}"
-                                    data-first="{{ customer.first_name }}"
-                                    data-last="{{ customer.last_name or '' }}"
-                                    data-email="{{ customer.email }}"
-                                    data-phone="{{ customer.phone or '' }}"
-                                    data-dob="{{ customer.dob or '' }}"
-                                    onclick="openEdit(this)">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                <form method="POST" action="/delete-customer/{{ customer.id }}" style="display:inline;"
-                                    onsubmit="return confirm('Delete {{ customer.first_name }}?')">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            <p class="text-muted small mt-2 mb-0" id="noResults" style="display:none;">No customers match your search.</p>
-
-            {% else %}
-            <div class="text-center py-5">
-                <i class="bi bi-people" style="font-size:3rem;color:#ccc;"></i>
-                <p class="text-muted mt-3">No customers yet.</p>
-                <a href="/upload-customers" class="btn btn-add px-4">Import Customers</a>
-            </div>
-            {% endif %}
-        </div>
+<div class="topbar">
+    <span class="brand">Revvio</span>
+    <div class="d-flex gap-2 align-items-center">
+        <a href="/upload-customers" class="btn-outline-act"><i class="bi bi-upload"></i> Import</a>
+        <a href="/add-customer" class="btn-action"><i class="bi bi-person-plus-fill"></i> Add Customer</a>
+        <a href="/dashboard" class="back-link ms-2"><i class="bi bi-arrow-left"></i> Dashboard</a>
     </div>
 </div>
 
-<!-- Edit Customer Modal -->
+<div class="page-wrap">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div class="alert-{{ 's' if cat != 'error' else 'e' }}">{{ msg }}</div>
+    {% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-4">
+        <div>
+            <div class="page-title">👥 Customers</div>
+            <div class="page-sub">Manage and browse your customer list</div>
+        </div>
+        <a href="/customers/duplicates" class="btn-outline-act" style="font-size:0.78rem;"><i class="bi bi-diagram-2-fill"></i> Find Duplicates</a>
+    </div>
+
+    <!-- Stats -->
+    <div class="stat-row">
+        <div class="stat-chip">
+            <div class="num">{{ total_all }}</div>
+            <div class="lbl">Total Customers</div>
+        </div>
+        <div class="stat-chip">
+            <div class="num" style="color:#4ade80;">{{ total_all - total_unsub }}</div>
+            <div class="lbl">Active</div>
+        </div>
+        <div class="stat-chip">
+            <div class="num" style="color:#f87171;">{{ total_unsub }}</div>
+            <div class="lbl">Unsubscribed</div>
+        </div>
+        {% if total_count != total_all %}
+        <div class="stat-chip">
+            <div class="num" style="color:#a78bfa;">{{ total_count }}</div>
+            <div class="lbl">Matching Search</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Toolbar: Search + Filters + Sort -->
+    <form method="GET" action="/customers" id="filterForm">
+    <div class="toolbar">
+        <div class="search-wrap">
+            <i class="bi bi-search"></i>
+            <input type="text" name="q" value="{{ q }}" class="search-input" placeholder="Search name, email, phone…" autocomplete="off" oninput="debounceSubmit()">
+        </div>
+        <select name="status" class="filter-select" onchange="this.form.submit()">
+            <option value="all" {% if status == 'all' %}selected{% endif %}>All Status</option>
+            <option value="active" {% if status == 'active' %}selected{% endif %}>Active Only</option>
+            <option value="unsubscribed" {% if status == 'unsubscribed' %}selected{% endif %}>Unsubscribed</option>
+        </select>
+        <select name="sort" class="filter-select" onchange="this.form.submit()">
+            <option value="newest" {% if sort == 'newest' %}selected{% endif %}>Newest First</option>
+            <option value="oldest" {% if sort == 'oldest' %}selected{% endif %}>Oldest First</option>
+            <option value="name" {% if sort == 'name' %}selected{% endif %}>Name A–Z</option>
+            <option value="visits" {% if sort == 'visits' %}selected{% endif %}>Most Visits</option>
+        </select>
+        <input type="hidden" name="page" value="1">
+        {% if q or status != 'all' %}
+        <a href="/customers" class="btn-outline-act" style="font-size:0.78rem;"><i class="bi bi-x-circle"></i> Clear</a>
+        {% endif %}
+    </div>
+    </form>
+
+    {% if customers %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Contact</th>
+                    <th class="hide-mobile">DOB</th>
+                    <th class="hide-mobile">Visits</th>
+                    <th class="hide-mobile">Points</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in customers %}
+                {% set row_num = (page - 1) * per_page + loop.index %}
+                <tr>
+                    <td style="color:#6b6b8a;font-size:0.75rem;">{{ row_num }}</td>
+                    <td>
+                        <div class="cust-name">
+                            <a href="/customers/{{ customer.id }}/profile" style="color:#fff;text-decoration:none;">
+                                {{ customer.first_name }} {{ customer.last_name or '' }}
+                            </a>
+                        </div>
+                        {% if customer.tags %}<div class="cust-sub">{{ customer.tags }}</div>{% endif %}
+                    </td>
+                    <td>
+                        {% if customer.email %}<div style="font-size:0.82rem;color:#60a5fa;">{{ customer.email }}</div>{% endif %}
+                        {% if customer.phone %}<div style="font-size:0.78rem;color:#6b6b8a;">{{ customer.phone }}</div>{% endif %}
+                        {% if not customer.email and not customer.phone %}<span style="color:#6b6b8a;">—</span>{% endif %}
+                    </td>
+                    <td class="hide-mobile" style="color:#6b6b8a;font-size:0.8rem;">{{ customer.dob or '—' }}</td>
+                    <td class="hide-mobile">
+                        {% set vcount = customer.visit_count or 0 %}
+                        <span style="font-size:0.82rem;color:#e2e2f0;">{{ vcount }}</span>
+                        <div class="visit-bar"><div class="visit-fill" data-pct="{{ [vcount * 5, 100] | min }}"></div></div>
+                    </td>
+                    <td class="hide-mobile" style="font-size:0.82rem;color:#a78bfa;">{{ customer.loyalty_points or 0 }}</td>
+                    <td>
+                        {% if customer.unsubscribed %}
+                        <span class="badge-unsub">Unsub</span>
+                        {% else %}
+                        <span class="badge-active">Active</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a href="/customers/{{ customer.id }}/profile" class="btn-icon" title="Profile"><i class="bi bi-person-circle"></i></a>
+                            <button class="btn-icon" title="Edit"
+                                data-id="{{ customer.id }}"
+                                data-first="{{ customer.first_name }}"
+                                data-last="{{ customer.last_name or '' }}"
+                                data-email="{{ customer.email or '' }}"
+                                data-phone="{{ customer.phone or '' }}"
+                                data-dob="{{ customer.dob or '' }}"
+                                onclick="openEdit(this)"><i class="bi bi-pencil"></i></button>
+                            <form method="POST" action="/delete-customer/{{ customer.id }}" style="display:inline;"
+                                onsubmit="return confirm('Delete {{ customer.first_name }}?')">
+                                <button type="submit" class="btn-icon btn-icon-danger" title="Delete"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-wrap">
+        <div class="page-info">
+            Showing {{ (page-1)*per_page + 1 }}–{{ [(page*per_page), total_count] | min }} of {{ total_count }} customer{{ 's' if total_count != 1 else '' }}
+            {% if q %} matching "<strong>{{ q }}</strong>"{% endif %}
+        </div>
+        <div class="page-btns">
+            <a href="/customers?q={{ q }}&status={{ status }}&sort={{ sort }}&page={{ page-1 }}"
+               class="page-btn {% if page <= 1 %}disabled{% endif %}">‹ Prev</a>
+            {% for p in range([1, page-2]|max, [total_pages+1, page+3]|min) %}
+                <a href="/customers?q={{ q }}&status={{ status }}&sort={{ sort }}&page={{ p }}"
+                   class="page-btn {% if p == page %}active{% endif %}">{{ p }}</a>
+            {% endfor %}
+            <a href="/customers?q={{ q }}&status={{ status }}&sort={{ sort }}&page={{ page+1 }}"
+               class="page-btn {% if page >= total_pages %}disabled{% endif %}">Next ›</a>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="table-wrap" style="text-align:center;padding:60px 20px;">
+        <div style="font-size:2.5rem;margin-bottom:12px;">👥</div>
+        {% if q or status != 'all' %}
+        <div style="color:#fff;font-weight:700;margin-bottom:6px;">No customers match your filters</div>
+        <div style="color:#6b6b8a;font-size:0.85rem;margin-bottom:16px;">Try a different search or <a href="/customers" style="color:#a78bfa;">clear filters</a></div>
+        {% else %}
+        <div style="color:#fff;font-weight:700;margin-bottom:6px;">No customers yet</div>
+        <div style="color:#6b6b8a;font-size:0.85rem;margin-bottom:20px;">Import a CSV or add your first customer manually</div>
+        <a href="/upload-customers" class="btn-action me-2">Import CSV</a>
+        <a href="/add-customer" class="btn-action">+ Add Customer</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Edit Modal -->
 <div class="modal fade" id="editModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 rounded-4">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold">Edit Customer</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="modal-content" style="background:#13131f;border:1px solid rgba(255,255,255,0.1);border-radius:16px;">
+            <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,0.07);">
+                <h5 class="modal-title text-white fw-bold">Edit Customer</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" id="editForm">
                 <div class="modal-body">
                     <div class="row g-3">
                         <div class="col-6">
-                            <label class="form-label fw-bold small">First Name</label>
-                            <input type="text" class="form-control" name="first_name" id="edit_first_name" required>
+                            <label class="form-label small fw-bold text-white-50">First Name</label>
+                            <input type="text" class="form-control" name="first_name" id="edit_first_name" required style="background:#1a1a2e;border-color:rgba(255,255,255,0.12);color:#fff;">
                         </div>
                         <div class="col-6">
-                            <label class="form-label fw-bold small">Last Name</label>
-                            <input type="text" class="form-control" name="last_name" id="edit_last_name">
+                            <label class="form-label small fw-bold text-white-50">Last Name</label>
+                            <input type="text" class="form-control" name="last_name" id="edit_last_name" style="background:#1a1a2e;border-color:rgba(255,255,255,0.12);color:#fff;">
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-bold small">Email</label>
-                            <input type="email" class="form-control" name="email" id="edit_email" required>
+                            <label class="form-label small fw-bold text-white-50">Email</label>
+                            <input type="email" class="form-control" name="email" id="edit_email" style="background:#1a1a2e;border-color:rgba(255,255,255,0.12);color:#fff;">
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-bold small">Phone</label>
-                            <input type="tel" class="form-control" name="phone" id="edit_phone" placeholder="+1 555 000 0000">
+                            <label class="form-label small fw-bold text-white-50">Phone</label>
+                            <input type="tel" class="form-control" name="phone" id="edit_phone" style="background:#1a1a2e;border-color:rgba(255,255,255,0.12);color:#fff;">
                         </div>
                         <div class="col-12">
-                            <label class="form-label fw-bold small">Date of Birth</label>
-                            <input type="date" class="form-control" name="dob" id="edit_dob">
+                            <label class="form-label small fw-bold text-white-50">Date of Birth</label>
+                            <input type="date" class="form-control" name="dob" id="edit_dob" style="background:#1a1a2e;border-color:rgba(255,255,255,0.12);color:#fff;">
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 pt-0">
+                <div class="modal-footer" style="border-top:1px solid rgba(255,255,255,0.07);">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-add px-4 fw-bold">Save Changes</button>
+                    <button type="submit" class="btn-action px-4">Save Changes</button>
                 </div>
             </form>
         </div>
@@ -184,28 +305,29 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    function openEdit(btn) {
-        const d = btn.dataset;
-        document.getElementById('edit_first_name').value = d.first;
-        document.getElementById('edit_last_name').value = d.last;
-        document.getElementById('edit_email').value = d.email;
-        document.getElementById('edit_phone').value = d.phone;
-        document.getElementById('edit_dob').value = d.dob;
-        document.getElementById('editForm').action = '/edit-customer/' + d.id;
-        new bootstrap.Modal(document.getElementById('editModal')).show();
-    }
+function openEdit(btn) {
+    const d = btn.dataset;
+    document.getElementById('edit_first_name').value = d.first;
+    document.getElementById('edit_last_name').value = d.last;
+    document.getElementById('edit_email').value = d.email;
+    document.getElementById('edit_phone').value = d.phone;
+    document.getElementById('edit_dob').value = d.dob;
+    document.getElementById('editForm').action = '/edit-customer/' + d.id;
+    new bootstrap.Modal(document.getElementById('editModal')).show();
+}
 
-    function filterCustomers(query) {
-        const rows = document.querySelectorAll('#customersTable tbody tr');
-        const q = query.toLowerCase();
-        let visible = 0;
-        rows.forEach(row => {
-            const match = row.dataset.search.includes(q);
-            row.style.display = match ? '' : 'none';
-            if (match) visible++;
-        });
-        document.getElementById('noResults').style.display = visible === 0 ? '' : 'none';
-    }
+document.querySelectorAll('.visit-fill[data-pct]').forEach(el => {
+    el.style.width = el.dataset.pct + '%';
+});
+
+let searchTimer;
+function debounceSubmit() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        document.querySelector('[name="page"]').value = 1;
+        document.getElementById('filterForm').submit();
+    }, 400);
+}
 </script>
 </body>
 </html>

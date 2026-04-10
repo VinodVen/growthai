@@ -1827,8 +1827,53 @@ def customers():
     b = current_business()
     if not b:
         return redirect("/login")
-    customers_list = Customer.query.filter_by(business_id=b.id).order_by(Customer.created_at.desc()).all()
-    return render_template("customers.html", customers=customers_list, plan=b.plan)
+    page     = request.args.get("page", 1, type=int)
+    per_page = 50
+    q        = request.args.get("q", "").strip()
+    status   = request.args.get("status", "all")   # all | active | unsubscribed
+    sort     = request.args.get("sort", "newest")  # newest | oldest | name | visits
+
+    query = Customer.query.filter_by(business_id=b.id)
+
+    # Search
+    if q:
+        like = f"%{q}%"
+        query = query.filter(db.or_(
+            Customer.first_name.ilike(like),
+            Customer.last_name.ilike(like),
+            Customer.email.ilike(like),
+            Customer.phone.ilike(like),
+        ))
+
+    # Status filter
+    if status == "active":
+        query = query.filter_by(unsubscribed=False)
+    elif status == "unsubscribed":
+        query = query.filter_by(unsubscribed=True)
+
+    # Sort
+    if sort == "oldest":
+        query = query.order_by(Customer.created_at.asc())
+    elif sort == "name":
+        query = query.order_by(Customer.first_name.asc())
+    elif sort == "visits":
+        query = query.order_by(Customer.visit_count.desc())
+    else:
+        query = query.order_by(Customer.created_at.desc())
+
+    total_count = query.count()
+    total_pages = max(1, (total_count + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    customers_list = query.offset((page - 1) * per_page).limit(per_page).all()
+
+    total_all  = Customer.query.filter_by(business_id=b.id).count()
+    total_unsub = Customer.query.filter_by(business_id=b.id, unsubscribed=True).count()
+
+    return render_template("customers.html",
+        customers=customers_list, plan=b.plan,
+        page=page, total_pages=total_pages, total_count=total_count,
+        total_all=total_all, total_unsub=total_unsub,
+        q=q, status=status, sort=sort, per_page=per_page)
 
 @app.route("/add-customer", methods=["GET", "POST"])
 def add_customer():
