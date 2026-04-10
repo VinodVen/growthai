@@ -139,6 +139,7 @@ class Business(db.Model):
     password = db.Column(db.String(200), nullable=False)
     plan = db.Column(db.String(50), default="free")
     stripe_customer_id = db.Column(db.String(200))
+    trial_ends_at = db.Column(db.DateTime, nullable=True)  # 30-day free trial
     address = db.Column(db.String(300))
     phone = db.Column(db.String(50))
     website = db.Column(db.String(200))
@@ -379,6 +380,7 @@ def _do_migrations():
         "CREATE TABLE IF NOT EXISTS suppression_list (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), email VARCHAR(200), phone VARCHAR(50), reason VARCHAR(200) DEFAULT 'manual', created_at TIMESTAMP DEFAULT NOW())",
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS checkin_token VARCHAR(64)",
         "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS business_type VARCHAR(50) DEFAULT 'restaurant'",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -497,7 +499,30 @@ def get_segment_customers(business_id, segment):
 def current_business():
     if "user_id" not in session:
         return None
-    return Business.query.get(session["user_id"])
+    b = Business.query.get(session["user_id"])
+    if b and b.plan == "pro" and b.trial_ends_at:
+        # Check if trial has expired — downgrade to free
+        trial_end = b.trial_ends_at
+        if trial_end.tzinfo is None:
+            trial_end = trial_end.replace(tzinfo=timezone.utc)
+        if trial_end < datetime.now(timezone.utc):
+            b.plan = "free"
+            b.trial_ends_at = None
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+    return b
+
+def trial_days_left(b):
+    """Return days left in trial, or None if not on trial."""
+    if not b or not b.trial_ends_at:
+        return None
+    trial_end = b.trial_ends_at
+    if trial_end.tzinfo is None:
+        trial_end = trial_end.replace(tzinfo=timezone.utc)
+    delta = trial_end - datetime.now(timezone.utc)
+    return max(0, delta.days)
 
 def get_plan_limit(plan, limit_type):
     return PLAN_LIMITS.get(plan, PLAN_LIMITS["free"]).get(limit_type)
@@ -1396,7 +1421,9 @@ def register():
         session.pop("is_demo", None)
         session.pop("user_id", None)
         hashed = bcrypt.hashpw(raw_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-        b = Business(business_name=business_name, owner_name=owner_name, email=email, password=hashed)
+        trial_end = datetime.now(timezone.utc) + timedelta(days=30)
+        b = Business(business_name=business_name, owner_name=owner_name, email=email,
+                     password=hashed, plan="pro", trial_ends_at=trial_end)
         try:
             db.session.add(b)
             db.session.commit()
@@ -1791,6 +1818,8 @@ def dashboard():
         chart_labels=chart_labels,
         chart_data=chart_data,
         is_demo=session.get("is_demo", False),
+        trial_days=trial_days_left(b),
+        insights=insights,
     )
 
 @app.route("/customers")

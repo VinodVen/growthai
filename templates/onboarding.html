@@ -164,6 +164,8 @@
         <div class="step-dot future" id="dot4">4</div>
         <div class="step-line" id="line4"></div>
         <div class="step-dot future" id="dot5">5</div>
+        <div class="step-line" id="line5"></div>
+        <div class="step-dot future" id="dot6">6</div>
     </div>
 
     <form method="POST" id="onboardForm">
@@ -278,8 +280,31 @@
             <button type="button" class="btn-back" onclick="goTo(2)">← Back</button>
         </div>
 
-        <!-- Step 4: Tone -->
+        <!-- Step 4: Slow Days -->
         <div class="step-panel" id="step4">
+            <span class="step-emoji" id="s4emoji">📅</span>
+            <div class="step-title" id="s4title">When are you slow?</div>
+            <p class="step-sub" id="s4sub">AI will automatically send flash deals on these days to fill empty seats.</p>
+            <div class="field">
+                <label>Select your slow days</label>
+                <div class="days-grid">
+                    {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
+                    <div class="day-opt">
+                        <input type="checkbox" name="slow_days_check" id="day_{{ day }}" value="{{ day }}"
+                            {% if profile.slow_days and day in profile.slow_days %}checked{% endif %}>
+                        <label for="day_{{ day }}">{{ day[:3] }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <input type="hidden" name="slow_days" id="slowDaysInput" value="{{ profile.slow_days or '' }}">
+                <p class="hint">Leave blank if you don't have slow days (lucky you 😄).</p>
+            </div>
+            <button type="button" class="btn-next" onclick="collectDays(); goTo(5)">Next →</button>
+            <button type="button" class="btn-back" onclick="goTo(3)">← Back</button>
+        </div>
+
+        <!-- Step 5: Tone -->
+        <div class="step-panel" id="step5">
             <span class="step-emoji">💬</span>
             <div class="step-title">What's your vibe?</div>
             <p class="step-sub">AI will match this tone in every message it writes.</p>
@@ -300,12 +325,12 @@
                     <label for="tone_professional"><span class="emoji">💼</span>Professional</label>
                 </div>
             </div>
-            <button type="button" class="btn-next" onclick="goTo(5)">Next →</button>
-            <button type="button" class="btn-back" onclick="goTo(3)">← Back</button>
+            <button type="button" class="btn-next" onclick="goTo(6)">Next →</button>
+            <button type="button" class="btn-back" onclick="goTo(4)">← Back</button>
         </div>
 
-        <!-- Step 5: Automations -->
-        <div class="step-panel" id="step5">
+        <!-- Step 6: Automations -->
+        <div class="step-panel" id="step6">
             <span class="step-emoji">🤖</span>
             <div class="step-title">Turn on your AI auto-pilot</div>
             <p class="step-sub">These run automatically. You won't need to do anything.</p>
@@ -345,7 +370,7 @@
             <button type="submit" class="btn-next" style="background:linear-gradient(135deg,#22c55e,#16a34a); margin-top:28px;">
                 🚀 Activate AI Auto-Pilot
             </button>
-            <button type="button" class="btn-back" onclick="goTo(4)">← Back</button>
+            <button type="button" class="btn-back" onclick="goTo(5)">← Back</button>
         </div>
 
     </div>
@@ -354,7 +379,7 @@
 
 <script>
 let current = 1;
-const total = 5;
+const total = 6;
 
 // Business type config: step 3 labels + step 2 emoji/title
 const bizConfig = {
@@ -421,6 +446,15 @@ function setBizType(type) {
     document.getElementById('bizTypeInput').value = type;
 }
 
+const slowDaysTitles = {
+    restaurant: { emoji:'📅', title:'When are you slow?', sub:'AI will send flash deals on these days to fill empty seats.' },
+    spa:        { emoji:'🗓️', title:'When are bookings slow?', sub:'AI will send promotions on slow days to fill your calendar.' },
+    gym:        { emoji:'🗓️', title:'When is attendance low?', sub:'AI will send motivational offers on slow days to boost check-ins.' },
+    retail:     { emoji:'🗓️', title:'When is foot traffic slow?', sub:'AI will send flash deals on slow days to drive store visits.' },
+    hotel:      { emoji:'🗓️', title:'When do you have low occupancy?', sub:'AI will send special rates on low-occupancy days.' },
+    other:      { emoji:'📅', title:'When is business slow?', sub:'AI will send promotions on slow days to drive engagement.' },
+};
+
 function applyBizConfig() {
     const c = bizConfig[selectedBizType] || bizConfig.restaurant;
     document.getElementById('s2emoji').textContent = c.s2emoji;
@@ -436,6 +470,10 @@ function applyBizConfig() {
     document.getElementById('s3input3').placeholder = c.s3ph3;
     document.getElementById('winbackLabel').textContent = c.winback;
     document.getElementById('winbackSub').textContent = c.winbackSub;
+    const sd = slowDaysTitles[selectedBizType] || slowDaysTitles.restaurant;
+    document.getElementById('s4emoji').textContent = sd.emoji;
+    document.getElementById('s4title').textContent = sd.title;
+    document.getElementById('s4sub').textContent = sd.sub;
 }
 
 function goTo(step) {
