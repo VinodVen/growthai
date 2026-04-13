@@ -1437,6 +1437,24 @@ def try_demo():
 def test():
     return f"<h1>Flask is working!</h1><p>Environment: {ENV}</p>"
 
+@app.route("/test-social")
+def test_social():
+    """Debug route — tests social post generation and shows raw response."""
+    if not client:
+        return "<h2>❌ OpenAI not configured</h2>"
+    try:
+        import json as _json, re as _re
+        prompt = '''Generate social media content in this EXACT JSON format (no markdown, no explanation):
+{"instagram":{"caption":"Test caption","hashtags":"#test #hello"},"facebook":{"post":"Test facebook post"},"whatsapp":{"message":"Test whatsapp"},"story":{"text":"Slide 1\nSlide 2\nSlide 3"}}'''
+        raw = _call_openai(prompt, max_tokens=400, timeout=20)
+        clean = _re.sub(r'```(?:json)?\s*', '', raw).strip()
+        start = clean.find("{")
+        end = clean.rfind("}") + 1
+        parsed = _json.loads(clean[start:end]) if start >= 0 else {}
+        return f"<h2>✅ Social post generation working!</h2><pre>Raw: {raw[:500]}</pre><hr><pre>Parsed: {_json.dumps(parsed, indent=2)}</pre>"
+    except Exception as e:
+        return f"<h2>❌ Social post failed</h2><pre>{e}</pre><pre>Raw: {raw[:500] if 'raw' in locals() else 'N/A'}</pre>"
+
 @app.route("/test-ai")
 def test_ai():
     key = os.getenv("OPENAI_API_KEY", "")
@@ -2922,10 +2940,20 @@ Generate social media content in this EXACT JSON format (no markdown, no explana
 }}"""
 
         raw = _call_openai(prompt, max_tokens=1500, timeout=40)
-        start = raw.find("{")
-        end = raw.rfind("}") + 1
-        result = _json.loads(raw[start:end]) if start >= 0 else {}
+        print(f"Social post raw response: {raw[:500]}")  # debug log
+        # Try to extract JSON from response (handles markdown code blocks)
+        import re as _re
+        # Remove markdown code fences if present
+        clean = _re.sub(r'```(?:json)?\s*', '', raw).strip()
+        start = clean.find("{")
+        end = clean.rfind("}") + 1
+        if start < 0:
+            return jsonify({"success": False, "error": f"AI returned unexpected format. Raw: {raw[:200]}"})
+        result = _json.loads(clean[start:end])
         return jsonify({"success": True, "content": result})
+    except _json.JSONDecodeError as e:
+        print(f"Social post JSON error: {e}, raw: {raw[:500] if 'raw' in locals() else 'N/A'}")
+        return jsonify({"success": False, "error": f"AI response could not be parsed. Try again."})
     except Exception as e:
         print(f"Social post error: {e}")
         return jsonify({"success": False, "error": str(e)})
