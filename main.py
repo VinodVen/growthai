@@ -145,6 +145,7 @@ class Business(db.Model):
     website = db.Column(db.String(200))
     slug = db.Column(db.String(200), unique=True)          # e.g. marios-pizza-3
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime, nullable=True)
 
 class BusinessProfile(db.Model):
     """Stores automation settings filled in by the business owner."""
@@ -381,6 +382,7 @@ def _do_migrations():
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS checkin_token VARCHAR(64)",
         "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS business_type VARCHAR(50) DEFAULT 'restaurant'",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS last_login TIMESTAMP",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -1507,6 +1509,8 @@ def login():
         if b and bcrypt.checkpw(password.encode("utf-8"), b.password.encode("utf-8")):
             session["user_id"] = b.id
             session.permanent = True
+            b.last_login = datetime.now(timezone.utc)
+            db.session.commit()
             flash(f"Welcome back, {b.owner_name}!", "success")
             return redirect("/dashboard")
         flash("Invalid email or password.", "error")
@@ -3769,6 +3773,7 @@ def admin_dashboard():
         mrr=mrr,
         trials_expiring=trials_expiring,
         campaign_types=all_campaign_types,
+        now_ts=now_utc.timestamp(),
     )
 
 @app.route("/admin/add-business", methods=["POST"])
@@ -3839,6 +3844,44 @@ def admin_delete_business(business_id):
         Promotion.query.filter_by(business_id=b.id).delete()
         db.session.delete(b)
         db.session.commit()
+    return redirect("/admin/dashboard")
+
+@app.route("/admin/send-message", methods=["POST"])
+def admin_send_message():
+    if not admin_required():
+        return redirect("/admin/login")
+    target = request.form.get("target", "all")   # "all", "pro", "free", or business_id
+    subject = request.form.get("subject", "").strip()
+    body = request.form.get("body", "").strip()
+    if not subject or not body:
+        flash("Subject and message are required.", "error")
+        return redirect("/admin/dashboard")
+    businesses = Business.query.all()
+    if target == "pro":
+        businesses = [b for b in businesses if b.plan == "pro"]
+    elif target == "starter":
+        businesses = [b for b in businesses if b.plan == "starter"]
+    elif target == "free":
+        businesses = [b for b in businesses if b.plan == "free"]
+    elif target == "trial":
+        businesses = [b for b in businesses if b.trial_ends_at]
+    elif target.isdigit():
+        businesses = [b for b in businesses if b.id == int(target)]
+    sent = 0
+    for b in businesses:
+        html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#f9fafb;border-radius:12px;">
+            <div style="background:#4f46e5;color:white;padding:18px 24px;border-radius:8px 8px 0 0;margin:-24px -24px 24px;">
+                <strong style="font-size:1.1rem;">Revvio Platform Update</strong>
+            </div>
+            <p style="color:#374151;">Hi {b.owner_name},</p>
+            <div style="white-space:pre-wrap;color:#374151;line-height:1.7;">{body}</div>
+            <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
+            <p style="color:#9ca3af;font-size:0.8rem;">This message was sent to you by the Revvio team. You are receiving this because you have a Revvio account.</p>
+        </div>"""
+        if send_email(b.email, subject, body, customer_name=b.owner_name, business_name="Revvio", html_override=html):
+            sent += 1
+    flash(f"Message sent to {sent} business owner{'s' if sent != 1 else ''}.", "success")
     return redirect("/admin/dashboard")
 
 @app.route("/admin/campaign-types/add", methods=["POST"])

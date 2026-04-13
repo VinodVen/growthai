@@ -289,6 +289,8 @@
         </button>
         <button class="nav-item-link" onclick="showSection('add-business')"><i class="bi bi-plus-circle"></i> Add Business</button>
         <button class="nav-item-link" onclick="showSection('businesses')"><i class="bi bi-buildings"></i> All Businesses</button>
+        <button class="nav-item-link" onclick="showSection('monitoring')"><i class="bi bi-activity"></i> Monitoring</button>
+        <button class="nav-item-link" onclick="showSection('messaging')"><i class="bi bi-megaphone"></i> Send Message</button>
         <button class="nav-item-link" onclick="showSection('campaign-types')"><i class="bi bi-tags"></i> Campaign Types</button>
     </nav>
     <div class="sidebar-footer">
@@ -619,6 +621,177 @@
         </div>
     </div>
 
+    <!-- ══ MONITORING ══ -->
+    <div id="section-monitoring" style="display:none;">
+        <div class="page-header">
+            <h1>Monitoring</h1>
+            <p>Activity health across all businesses</p>
+        </div>
+
+        <!-- Alert: never sent -->
+        {% set never_sent = stats | selectattr('sent', 'equalto', 0) | list %}
+        {% if never_sent %}
+        <div style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+            <i class="bi bi-exclamation-circle" style="color:#fbbf24;font-size:1.2rem;"></i>
+            <div>
+                <strong style="color:#fbbf24;">{{ never_sent|length }} business{{ 'es' if never_sent|length != 1 }} have never sent a campaign</strong>
+                <div style="color:var(--muted);font-size:0.8rem;margin-top:2px;">These users signed up but haven't used the platform yet.</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="panel mb-5">
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Business</th>
+                            <th>Plan</th>
+                            <th>Last Login</th>
+                            <th>Customers</th>
+                            <th>Campaigns Sent</th>
+                            <th>Open Rate</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in stats %}
+                    {% set b = row.business %}
+                    {% set open_rate = ((row.opens / row.sent * 100) | int) if row.sent > 0 else 0 %}
+                    {% set days_since_login = ((now_ts - b.last_login.timestamp()) / 86400) | int if b.last_login else 999 %}
+                    <tr>
+                        <td>
+                            <div class="biz-name">{{ b.business_name }}</div>
+                            <div class="biz-email">{{ b.email }}</div>
+                        </td>
+                        <td>
+                            <span class="badge-plan badge-{{ b.plan }}">{{ b.plan }}</span>
+                        </td>
+                        <td style="font-size:0.78rem;">
+                            {% if b.last_login %}
+                                {% if days_since_login == 0 %}<span style="color:#4ade80;">Today</span>
+                                {% elif days_since_login <= 7 %}<span style="color:#4ade80;">{{ days_since_login }}d ago</span>
+                                {% elif days_since_login <= 30 %}<span style="color:#fbbf24;">{{ days_since_login }}d ago</span>
+                                {% else %}<span style="color:#f87171;">{{ days_since_login }}d ago</span>{% endif %}
+                            {% else %}<span style="color:var(--muted);">Never logged in</span>{% endif %}
+                        </td>
+                        <td class="num-cell">{{ row.customers }}</td>
+                        <td class="num-cell">
+                            {% if row.sent == 0 %}<span style="color:#f87171;">0 ⚠️</span>
+                            {% else %}{{ row.sent }}{% endif %}
+                        </td>
+                        <td class="num-cell">
+                            {% if open_rate > 0 %}
+                            <span style="color:{% if open_rate >= 30 %}#4ade80{% elif open_rate >= 15 %}#fbbf24{% else %}#f87171{% endif %};">{{ open_rate }}%</span>
+                            {% else %}<span style="color:var(--muted);">—</span>{% endif %}
+                        </td>
+                        <td>
+                            {% if row.sent == 0 and days_since_login > 7 %}
+                            <span style="background:rgba(248,113,113,0.15);color:#f87171;padding:2px 10px;border-radius:20px;font-size:0.72rem;font-weight:600;">Inactive</span>
+                            {% elif days_since_login > 30 %}
+                            <span style="background:rgba(251,191,36,0.15);color:#fbbf24;padding:2px 10px;border-radius:20px;font-size:0.72rem;font-weight:600;">At Risk</span>
+                            {% else %}
+                            <span style="background:rgba(34,197,94,0.15);color:#4ade80;padding:2px 10px;border-radius:20px;font-size:0.72rem;font-weight:600;">Active</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <form method="POST" action="/admin/login-as/{{ b.id }}">
+                                    <button type="submit" class="btn-view"><i class="bi bi-box-arrow-in-right"></i> View</button>
+                                </form>
+                                <button class="btn-view" onclick="prefillMessage({{ b.id }}, '{{ b.business_name }}')" style="background:rgba(34,197,94,0.12);border-color:rgba(34,197,94,0.25);color:#4ade80;">
+                                    <i class="bi bi-envelope"></i> Message
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ MESSAGING ══ -->
+    <div id="section-messaging" style="display:none;">
+        <div class="page-header">
+            <h1>Send Message</h1>
+            <p>Email business owners directly from Revvio</p>
+        </div>
+
+        <div class="panel mb-5" style="max-width:720px;">
+            <div class="panel-body">
+                <form method="POST" action="/admin/send-message">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="field-group">
+                                <label class="field-label">Send To</label>
+                                <select name="target" class="ctrl" id="msgTarget">
+                                    <option value="all">📢 All Businesses ({{ stats|length }})</option>
+                                    <option value="pro">🔥 Pro Plan only ({{ plan_counts.pro }})</option>
+                                    <option value="starter">⚡ Starter Plan only ({{ plan_counts.starter }})</option>
+                                    <option value="free">🪨 Free Plan only ({{ plan_counts.free }})</option>
+                                    <option value="trial">⏳ On Trial only</option>
+                                    <optgroup label="── Individual Business ──">
+                                    {% for row in stats %}
+                                    <option value="{{ row.business.id }}">{{ row.business.business_name }} ({{ row.business.email }})</option>
+                                    {% endfor %}
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="field-group">
+                                <label class="field-label">Subject</label>
+                                <input type="text" class="ctrl" name="subject" id="msgSubject" placeholder="e.g. Exciting new feature on Revvio!" required>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="field-group">
+                                <label class="field-label">Message</label>
+                                <textarea class="ctrl" name="body" id="msgBody" rows="8" placeholder="Write your message here...&#10;&#10;You can include:&#10;- New features&#10;- Special offers for upgrading&#10;- Tips to get more from Revvio&#10;- Important platform updates" required style="resize:vertical;"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div style="background:rgba(124,111,255,0.08);border:1px solid rgba(124,111,255,0.2);border-radius:10px;padding:12px 16px;font-size:0.8rem;color:var(--muted);margin-bottom:8px;">
+                                <i class="bi bi-info-circle me-1" style="color:var(--accent2);"></i>
+                                Email will be sent from <strong style="color:var(--text);">hello@revvio.ai</strong> with your message. Each recipient will see it addressed to them personally.
+                            </div>
+                        </div>
+                        <div class="col-12 d-flex gap-3">
+                            <button type="submit" class="btn-primary-sm" onclick="return confirm('Send this email to selected businesses?')">
+                                <i class="bi bi-send me-1"></i> Send Email
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Quick templates -->
+        <div class="section-head"><h2>Quick Templates</h2></div>
+        <div class="row g-3 mb-5">
+            {% set templates = [
+                ('🚀 New Feature', 'New Feature Alert: [Feature Name]', "We've just launched a new feature that will help you grow your business!\n\n[Feature Name] lets you [describe what it does].\n\nLog in to your Revvio dashboard to try it now: https://revvio.ai/dashboard\n\nAs always, if you have any questions just reply to this email.\n\nBest,\nThe Revvio Team"),
+                ('💎 Upgrade Offer', 'Special offer: Upgrade to Pro for 20% off', "We noticed you're on the Free plan and wanted to offer you something special.\n\nUpgrade to Revvio Pro today and get 20% off your first 3 months.\n\nPro gives you:\n✅ Unlimited customers\n✅ Unlimited campaigns\n✅ AI message generation\n✅ Journey automation\n✅ Priority support\n\nUse code UPGRADE20 at checkout: https://revvio.ai/upgrade\n\nOffer expires in 48 hours.\n\nBest,\nThe Revvio Team"),
+                ('💡 Tips', 'Here are 3 tips to get more from Revvio', "Hi there,\n\nHere are 3 quick tips to help you get the most out of Revvio:\n\n1️⃣ Set up your Journey — Automated sequences bring customers back on autopilot.\n\n2️⃣ Use Bulk Send — Message all your customers at once with one click.\n\n3️⃣ Add customer birthdays — Birthday campaigns have 5x higher open rates!\n\nLog in to get started: https://revvio.ai/dashboard\n\nBest,\nThe Revvio Team"),
+                ('⚠️ Trial Ending', 'Your Revvio trial ends soon', "Hi there,\n\nYour 30-day free trial of Revvio Pro is ending soon.\n\nTo keep all your Pro features — unlimited customers, AI messaging, journey automation, and more — upgrade now before your trial expires.\n\nUpgrade here: https://revvio.ai/upgrade\n\nIf you have any questions, just reply to this email — we're happy to help!\n\nBest,\nThe Revvio Team"),
+            ] %}
+            {% for icon_title, subj, body in templates %}
+            <div class="col-md-6">
+                <div class="plan-card" style="cursor:pointer;transition:border-color 0.2s;" onclick="applyTemplate({{ subj|tojson }}, {{ body|tojson }})" onmouseover="this.style.borderColor='rgba(124,111,255,0.4)'" onmouseout="this.style.borderColor='var(--border)'">
+                    <div class="plan-icon">{{ icon_title.split(' ')[0] }}</div>
+                    <div>
+                        <div style="font-weight:600;font-size:0.88rem;color:#fff;">{{ icon_title.split(' ')[1:] | join(' ') }}</div>
+                        <div style="font-size:0.75rem;color:var(--muted);margin-top:2px;">{{ subj }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
     <!-- ══ CAMPAIGN TYPES ══ -->
     <div id="section-campaign-types" style="display:none;">
         <div class="page-header">
@@ -707,7 +880,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    const sections = ['overview', 'trials', 'add-business', 'businesses', 'campaign-types'];
+    const sections = ['overview', 'trials', 'monitoring', 'messaging', 'add-business', 'businesses', 'campaign-types'];
 
     function showSection(name) {
         sections.forEach(s => {
@@ -725,6 +898,21 @@
         document.querySelectorAll('.biz-row').forEach(row => {
             row.style.display = row.dataset.name.includes(q) ? '' : 'none';
         });
+    }
+
+    function applyTemplate(subject, body) {
+        document.getElementById('msgSubject').value = subject;
+        document.getElementById('msgBody').value = body;
+        showSection('messaging');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function prefillMessage(bizId, bizName) {
+        document.getElementById('msgTarget').value = bizId;
+        document.getElementById('msgSubject').value = 'A message from the Revvio team';
+        document.getElementById('msgBody').value = 'Hi there,\n\n';
+        showSection('messaging');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     // Auto-open to businesses section if there are flashed messages (form was submitted)
