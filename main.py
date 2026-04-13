@@ -333,6 +333,31 @@ class CampaignTypeModel(db.Model):
     sort_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class SocialConnection(db.Model):
+    __tablename__ = "social_connections"
+    id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"))
+    platform = db.Column(db.String(30))  # facebook, instagram
+    page_id = db.Column(db.String(100))
+    page_name = db.Column(db.String(200))
+    access_token = db.Column(db.Text)
+    ig_user_id = db.Column(db.String(100), nullable=True)
+    connected_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class SocialPost(db.Model):
+    __tablename__ = "social_posts"
+    id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"))
+    platform = db.Column(db.String(30))  # facebook, instagram, both
+    content = db.Column(db.Text)
+    hashtags = db.Column(db.Text, nullable=True)
+    scheduled_at = db.Column(db.DateTime, nullable=True)
+    sort_order = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(20), default="draft")  # draft, scheduled, posted, failed
+    posted_at = db.Column(db.DateTime, nullable=True)
+    fb_post_id = db.Column(db.String(200), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 def _run_migrations():
     """Run DB migrations in background so startup doesn't block gunicorn."""
     import time
@@ -393,6 +418,8 @@ def _do_migrations():
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0",
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS whatsapp_phone VARCHAR(50)",
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS whatsapp_opted_in BOOLEAN DEFAULT FALSE",
+        "CREATE TABLE IF NOT EXISTS social_connections (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), platform VARCHAR(30), page_id VARCHAR(100), page_name VARCHAR(200), access_token TEXT, ig_user_id VARCHAR(100), connected_at TIMESTAMP DEFAULT NOW())",
+        "CREATE TABLE IF NOT EXISTS social_posts (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), platform VARCHAR(30), content TEXT, hashtags TEXT, scheduled_at TIMESTAMP, sort_order INTEGER DEFAULT 0, status VARCHAR(20) DEFAULT 'draft', posted_at TIMESTAMP, fb_post_id VARCHAR(200), created_at TIMESTAMP DEFAULT NOW())",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -2902,6 +2929,236 @@ Generate social media content in this EXACT JSON format (no markdown, no explana
     except Exception as e:
         print(f"Social post error: {e}")
         return jsonify({"success": False, "error": str(e)})
+
+# ============================================
+# SOCIAL MEDIA AUTO-POST
+# ============================================
+
+@app.route("/social-connect")
+def social_connect():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    fb_conn = SocialConnection.query.filter_by(business_id=b.id, platform="facebook").first()
+    ig_conn = SocialConnection.query.filter_by(business_id=b.id, platform="instagram").first()
+    fb_app_id = os.getenv("FB_APP_ID", "")
+    redirect_uri = request.host_url.rstrip("/") + "/facebook/callback"
+    fb_auth_url = (
+        f"https://www.facebook.com/v18.0/dialog/oauth"
+        f"?client_id={fb_app_id}"
+        f"&redirect_uri={redirect_uri}"
+        f"&scope=pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish"
+        f"&response_type=code"
+        f"&state={b.id}"
+    ) if fb_app_id else ""
+    return render_template("social_connect.html", business=b,
+                           fb_conn=fb_conn, ig_conn=ig_conn,
+                           fb_auth_url=fb_auth_url, fb_configured=bool(fb_app_id))
+
+@app.route("/facebook/callback")
+def facebook_callback():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    code = request.args.get("code")
+    if not code:
+        flash("Facebook connection cancelled.", "error")
+        return redirect("/social-connect")
+    fb_app_id = os.getenv("FB_APP_ID", "")
+    fb_app_secret = os.getenv("FB_APP_SECRET", "")
+    redirect_uri = request.host_url.rstrip("/") + "/facebook/callback"
+    try:
+        # Exchange code for access token
+        token_res = _requests.get(
+            "https://graph.facebook.com/v18.0/oauth/access_token",
+            params={"client_id": fb_app_id, "client_secret": fb_app_secret,
+                    "redirect_uri": redirect_uri, "code": code}
+        ).json()
+        if "error" in token_res:
+            flash(f"Facebook error: {token_res['error'].get('message', 'Unknown error')}", "error")
+            return redirect("/social-connect")
+        user_token = token_res["access_token"]
+        # Get pages managed by user
+        pages_res = _requests.get(
+            "https://graph.facebook.com/v18.0/me/accounts",
+            params={"access_token": user_token, "fields": "id,name,access_token"}
+        ).json()
+        pages = pages_res.get("data", [])
+        if not pages:
+            flash("No Facebook Pages found. Make sure you have admin access to a Facebook Page.", "error")
+            return redirect("/social-connect")
+        # Use first page (or store all - for now use first)
+        page = pages[0]
+        # Save/update connection
+        conn = SocialConnection.query.filter_by(business_id=b.id, platform="facebook").first()
+        if not conn:
+            conn = SocialConnection(business_id=b.id, platform="facebook")
+            db.session.add(conn)
+        conn.page_id = page["id"]
+        conn.page_name = page["name"]
+        conn.access_token = page["access_token"]
+        conn.connected_at = datetime.utcnow()
+        # Check for Instagram business account linked to this page
+        ig_res = _requests.get(
+            f"https://graph.facebook.com/v18.0/{page['id']}",
+            params={"fields": "instagram_business_account", "access_token": page["access_token"]}
+        ).json()
+        ig_id = ig_res.get("instagram_business_account", {}).get("id")
+        if ig_id:
+            ig_conn = SocialConnection.query.filter_by(business_id=b.id, platform="instagram").first()
+            if not ig_conn:
+                ig_conn = SocialConnection(business_id=b.id, platform="instagram")
+                db.session.add(ig_conn)
+            ig_conn.page_id = page["id"]
+            ig_conn.page_name = page["name"]
+            ig_conn.access_token = page["access_token"]
+            ig_conn.ig_user_id = ig_id
+            ig_conn.connected_at = datetime.utcnow()
+            flash(f"Connected Facebook Page '{page['name']}' + Instagram!", "success")
+        else:
+            flash(f"Connected Facebook Page '{page['name']}'! (No Instagram Business account linked to this page)", "success")
+        db.session.commit()
+    except Exception as e:
+        flash(f"Connection failed: {e}", "error")
+    return redirect("/social-connect")
+
+@app.route("/facebook/disconnect", methods=["POST"])
+def facebook_disconnect():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    SocialConnection.query.filter_by(business_id=b.id, platform="facebook").delete()
+    SocialConnection.query.filter_by(business_id=b.id, platform="instagram").delete()
+    db.session.commit()
+    flash("Facebook disconnected.", "success")
+    return redirect("/social-connect")
+
+@app.route("/api/post-to-social", methods=["POST"])
+def post_to_social():
+    b = current_business()
+    if not b:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    try:
+        import json as _json
+        data = request.get_json()
+        platform = data.get("platform", "facebook")  # facebook, instagram, both
+        content = data.get("content", "").strip()
+        hashtags = data.get("hashtags", "").strip()
+        schedule_at = data.get("schedule_at", "").strip()  # ISO datetime or empty = now
+        if not content:
+            return jsonify({"success": False, "error": "Content is required"})
+
+        full_text = content + ("\n\n" + hashtags if hashtags else "")
+
+        results = {}
+
+        def post_facebook(full_text):
+            conn = SocialConnection.query.filter_by(business_id=b.id, platform="facebook").first()
+            if not conn:
+                return {"success": False, "error": "Facebook not connected"}
+            res = _requests.post(
+                f"https://graph.facebook.com/v18.0/{conn.page_id}/feed",
+                data={"message": full_text, "access_token": conn.access_token}
+            ).json()
+            if "error" in res:
+                return {"success": False, "error": res["error"].get("message", "Post failed")}
+            return {"success": True, "post_id": res.get("id", "")}
+
+        if platform in ("facebook", "both"):
+            results["facebook"] = post_facebook(full_text)
+
+        # Save to queue regardless
+        sp = SocialPost(
+            business_id=b.id,
+            platform=platform,
+            content=content,
+            hashtags=hashtags,
+            status="posted" if any(r.get("success") for r in results.values()) else "failed",
+            posted_at=datetime.utcnow(),
+            fb_post_id=results.get("facebook", {}).get("post_id", ""),
+            sort_order=SocialPost.query.filter_by(business_id=b.id).count()
+        )
+        db.session.add(sp)
+        db.session.commit()
+
+        success = any(r.get("success") for r in results.values()) if results else False
+        return jsonify({"success": success, "results": results})
+    except Exception as e:
+        print(f"Post to social error: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/save-to-queue", methods=["POST"])
+def save_to_queue():
+    """Save a post to the queue (scheduled or draft) without posting now."""
+    b = current_business()
+    if not b:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    try:
+        data = request.get_json()
+        content = data.get("content", "").strip()
+        hashtags = data.get("hashtags", "").strip()
+        platform = data.get("platform", "facebook")
+        schedule_str = data.get("schedule_at", "").strip()
+        scheduled_at = None
+        if schedule_str:
+            try:
+                scheduled_at = datetime.strptime(schedule_str, "%Y-%m-%dT%H:%M")
+            except ValueError:
+                pass
+        sp = SocialPost(
+            business_id=b.id,
+            platform=platform,
+            content=content,
+            hashtags=hashtags,
+            status="scheduled" if scheduled_at else "draft",
+            scheduled_at=scheduled_at,
+            sort_order=SocialPost.query.filter_by(business_id=b.id).count()
+        )
+        db.session.add(sp)
+        db.session.commit()
+        return jsonify({"success": True, "id": sp.id})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/reorder-queue", methods=["POST"])
+def reorder_queue():
+    """Update sort_order for drag-reordered posts."""
+    b = current_business()
+    if not b:
+        return jsonify({"success": False}), 401
+    try:
+        data = request.get_json()
+        order = data.get("order", [])  # list of post IDs in new order
+        for i, post_id in enumerate(order):
+            sp = SocialPost.query.filter_by(id=post_id, business_id=b.id).first()
+            if sp:
+                sp.sort_order = i
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/delete-queue-post/<int:post_id>", methods=["POST"])
+def delete_queue_post(post_id):
+    b = current_business()
+    if not b:
+        return jsonify({"success": False}), 401
+    sp = SocialPost.query.filter_by(id=post_id, business_id=b.id).first()
+    if sp:
+        db.session.delete(sp)
+        db.session.commit()
+    return jsonify({"success": True})
+
+@app.route("/social-queue")
+def social_queue():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    fb_conn = SocialConnection.query.filter_by(business_id=b.id, platform="facebook").first()
+    ig_conn = SocialConnection.query.filter_by(business_id=b.id, platform="instagram").first()
+    posts = SocialPost.query.filter_by(business_id=b.id).order_by(SocialPost.sort_order, SocialPost.created_at).all()
+    return render_template("social_queue.html", business=b, posts=posts,
+                           fb_conn=fb_conn, ig_conn=ig_conn)
 
 @app.route("/ai-ideas", methods=["POST"])
 def ai_ideas():

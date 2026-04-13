@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Queue — Revvio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+        body { background: #0d0d1a; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; min-height: 100vh; }
+        .top-bar { background: #13131f; border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 28px; display: flex; align-items: center; gap: 16px; }
+        .container { max-width: 760px; padding-top: 2rem; padding-bottom: 4rem; }
+        .post-card { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 18px 20px; margin-bottom: 12px; cursor: grab; transition: all 0.15s; position: relative; }
+        .post-card:active { cursor: grabbing; }
+        .post-card.sortable-ghost { opacity: 0.4; border: 2px dashed #7c6fff; }
+        .post-card.sortable-chosen { box-shadow: 0 8px 32px rgba(124,111,255,0.3); transform: rotate(1deg); }
+        .drag-handle { color: #3d3d5c; font-size: 1.2rem; cursor: grab; margin-right: 12px; }
+        .plat-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; }
+        .plat-fb { background: rgba(24,119,242,0.15); color: #60a5fa; }
+        .plat-ig { background: rgba(220,39,67,0.15); color: #fb7185; }
+        .plat-both { background: rgba(124,111,255,0.15); color: #a78bfa; }
+        .status-badge { padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; }
+        .status-posted { background: rgba(34,197,94,0.15); color: #4ade80; }
+        .status-scheduled { background: rgba(251,191,36,0.15); color: #fbbf24; }
+        .status-draft { background: rgba(255,255,255,0.07); color: #6b6b8a; }
+        .status-failed { background: rgba(248,113,113,0.15); color: #f87171; }
+        .post-content { font-size: 0.88rem; color: #c0c0d8; line-height: 1.5; margin: 8px 0; white-space: pre-wrap; word-break: break-word; }
+        .btn-post-now { background: #1877f2; border: none; color: #fff; font-weight: 700; padding: 6px 14px; border-radius: 8px; font-size: 0.78rem; cursor: pointer; }
+        .btn-delete { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.2); color: #f87171; padding: 5px 12px; border-radius: 8px; font-size: 0.75rem; cursor: pointer; }
+        .empty-state { text-align: center; padding: 4rem 2rem; color: #6b6b8a; }
+        .connection-bar { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 12px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+        .conn-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; }
+        .conn-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .conn-on { background: #4ade80; }
+        .conn-off { background: #6b6b8a; }
+        .alert-success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: #4ade80; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+        .alert-danger { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: #f87171; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+<div class="top-bar">
+    <a href="/dashboard" style="color:#a78bfa;text-decoration:none;font-size:0.85rem;">← Dashboard</a>
+    <span style="font-size:1.1rem;font-weight:800;color:#fff;">Revvio</span>
+    <span style="font-size:0.75rem;color:#6b6b8a;margin-left:auto;">{{ business.business_name }}</span>
+</div>
+
+<div class="container">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <div style="font-size:2rem;">📅</div>
+        <div>
+            <h1 style="font-size:1.5rem;font-weight:800;color:#fff;margin:0;">Social Post Queue</h1>
+            <div style="color:#6b6b8a;font-size:0.85rem;">Drag to reorder — posts go live in this order</div>
+        </div>
+        <a href="/social-posts" style="margin-left:auto;background:linear-gradient(135deg,#7c6fff,#a855f7);border:none;color:#fff;padding:9px 18px;border-radius:10px;text-decoration:none;font-size:0.82rem;font-weight:700;">✨ Create New Post</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}{% for cat, msg in messages %}
+        <div class="alert-{{ 'danger' if cat == 'error' else 'success' }}">{{ msg }}</div>
+        {% endfor %}{% endif %}
+    {% endwith %}
+
+    <!-- Connection status bar -->
+    <div class="connection-bar">
+        <span style="font-size:0.75rem;color:#6b6b8a;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;">Connections</span>
+        <div class="conn-item">
+            <div class="conn-dot {{ 'conn-on' if fb_conn else 'conn-off' }}"></div>
+            <span style="color:{{ '#e2e2f0' if fb_conn else '#6b6b8a' }};">📘 Facebook{{ ': ' + fb_conn.page_name if fb_conn else ' — not connected' }}</span>
+        </div>
+        <div class="conn-item">
+            <div class="conn-dot {{ 'conn-on' if ig_conn else 'conn-off' }}"></div>
+            <span style="color:{{ '#e2e2f0' if ig_conn else '#6b6b8a' }};">📸 Instagram{{ ' — connected' if ig_conn else ' — not connected' }}</span>
+        </div>
+        <a href="/social-connect" style="margin-left:auto;color:#a78bfa;font-size:0.78rem;text-decoration:none;">⚙️ Manage connections</a>
+    </div>
+
+    <!-- Queue list -->
+    {% if posts %}
+    <div id="sortableQueue">
+        {% for post in posts %}
+        <div class="post-card" data-id="{{ post.id }}">
+            <div class="d-flex align-items-start gap-2">
+                <span class="drag-handle">⠿</span>
+                <div style="flex:1;">
+                    <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                        {% if post.platform == 'facebook' %}
+                        <span class="plat-badge plat-fb">📘 Facebook</span>
+                        {% elif post.platform == 'instagram' %}
+                        <span class="plat-badge plat-ig">📸 Instagram</span>
+                        {% else %}
+                        <span class="plat-badge plat-both">✨ Both</span>
+                        {% endif %}
+                        <span class="status-badge status-{{ post.status }}">{{ post.status.title() }}</span>
+                        {% if post.scheduled_at %}
+                        <span style="font-size:0.72rem;color:#6b6b8a;">🕐 {{ post.scheduled_at.strftime('%b %d, %I:%M %p') }}</span>
+                        {% endif %}
+                        <span style="font-size:0.72rem;color:#3d3d5c;margin-left:auto;">{{ post.created_at.strftime('%b %d') }}</span>
+                    </div>
+                    <div class="post-content">{{ post.content[:200] }}{% if post.content|length > 200 %}...{% endif %}</div>
+                    {% if post.hashtags %}
+                    <div style="font-size:0.78rem;color:#7c6fff;margin-top:4px;">{{ post.hashtags[:80] }}{% if post.hashtags|length > 80 %}...{% endif %}</div>
+                    {% endif %}
+                    <div class="d-flex gap-2 mt-3">
+                        {% if post.status != 'posted' and fb_conn %}
+                        <button class="btn-post-now" onclick="postNow({{ post.id }}, '{{ post.content|replace("'", "\\'") }}', '{{ (post.hashtags or '')|replace("'", "\\'") }}')">
+                            <i class="bi bi-send-fill"></i> Post Now
+                        </button>
+                        {% endif %}
+                        {% if post.fb_post_id %}
+                        <span style="font-size:0.75rem;color:#4ade80;align-self:center;">✓ Posted to Facebook</span>
+                        {% endif %}
+                        <button class="btn-delete" onclick="deletePost({{ post.id }}, this)">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <div style="text-align:center;margin-top:16px;color:#3d3d5c;font-size:0.78rem;">
+        ⠿ Drag posts to reorder — order is saved automatically
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div style="font-size:3rem;margin-bottom:12px;">📭</div>
+        <h3 style="color:#fff;font-size:1rem;font-weight:700;">Queue is empty</h3>
+        <p style="font-size:0.85rem;">Generate social posts with AI and save them here to schedule or post later.</p>
+        <a href="/social-posts" style="background:linear-gradient(135deg,#7c6fff,#a855f7);color:#fff;padding:10px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:0.88rem;">✨ Create AI Post</a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Drag-to-reorder with SortableJS
+const el = document.getElementById('sortableQueue');
+if (el) {
+    Sortable.create(el, {
+        animation: 150,
+        handle: '.drag-handle',
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onEnd: function() {
+            const order = Array.from(el.querySelectorAll('.post-card')).map(c => parseInt(c.dataset.id));
+            fetch('/api/reorder-queue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order })
+            });
+        }
+    });
+}
+
+async function postNow(postId, content, hashtags) {
+    if (!confirm('Post this to Facebook now?')) return;
+    const btn = event.target.closest('button');
+    btn.disabled = true;
+    btn.textContent = 'Posting...';
+    try {
+        const res = await fetch('/api/post-to-social', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ platform: 'facebook', content, hashtags, queue_id: postId })
+        });
+        const data = await res.json();
+        if (data.success) {
+            btn.textContent = '✓ Posted!';
+            btn.style.background = '#22c55e';
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            alert('Failed: ' + (data.error || 'Unknown error'));
+            btn.disabled = false;
+            btn.textContent = 'Post Now';
+        }
+    } catch(e) {
+        alert('Error: ' + e.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send-fill"></i> Post Now';
+    }
+}
+
+async function deletePost(postId, btn) {
+    if (!confirm('Delete this post?')) return;
+    await fetch('/api/delete-queue-post/' + postId, { method: 'POST' });
+    btn.closest('.post-card').remove();
+}
+</script>
+</body>
+</html>
