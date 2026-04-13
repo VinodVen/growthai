@@ -2274,9 +2274,12 @@ def whatsapp_setup():
     if not b:
         return redirect("/login")
     wa_number = os.getenv("TWILIO_WHATSAPP_NUMBER", "")
-    customers = Customer.query.filter_by(business_id=b.id).filter(
-        Customer.whatsapp_phone != None, Customer.whatsapp_opted_in == True
-    ).count()
+    try:
+        customers = Customer.query.filter_by(business_id=b.id).filter(
+            Customer.whatsapp_phone != None, Customer.whatsapp_opted_in == True
+        ).count()
+    except Exception:
+        customers = 0
     return render_template("whatsapp_setup.html", business=b, wa_number=wa_number,
                            wa_customers=customers, configured=bool(wa_number))
 
@@ -2285,9 +2288,12 @@ def quick_whatsapp():
     b = current_business()
     if not b:
         return redirect("/login")
-    customers = Customer.query.filter_by(business_id=b.id, unsubscribed=False).filter(
-        Customer.whatsapp_opted_in == True
-    ).all()
+    try:
+        customers = Customer.query.filter_by(business_id=b.id, unsubscribed=False).filter(
+            Customer.whatsapp_opted_in == True
+        ).all()
+    except Exception:
+        customers = []
     if request.method == "POST":
         message = request.form.get("message", "").strip()
         target = request.form.get("target", "all")
