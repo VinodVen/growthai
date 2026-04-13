@@ -146,6 +146,9 @@ class Business(db.Model):
     slug = db.Column(db.String(200), unique=True)          # e.g. marios-pizza-3
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, nullable=True)
+    referral_code = db.Column(db.String(20), unique=True, nullable=True)  # their shareable ref code
+    referred_by_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=True)  # who referred them
+    referral_count = db.Column(db.Integer, default=0)  # how many signups they've referred
 
 class BusinessProfile(db.Model):
     """Stores automation settings filled in by the business owner."""
@@ -383,6 +386,9 @@ def _do_migrations():
         "ALTER TABLE business_profiles ADD COLUMN IF NOT EXISTS business_type VARCHAR(50) DEFAULT 'restaurant'",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS last_login TIMESTAMP",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referred_by_id INTEGER REFERENCES businesses(id)",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -1427,6 +1433,28 @@ def contact():
             flash("Error saving message.", "error")
     return render_template("contact.html")
 
+@app.route("/r/<code>")
+def referral_landing(code):
+    """Referral link — store code in session and redirect to register."""
+    referrer = Business.query.filter_by(referral_code=code).first()
+    if referrer:
+        session["referral_code"] = code
+        session["referral_from"] = referrer.business_name
+    return redirect("/register")
+
+@app.route("/refer")
+def refer_page():
+    """Show the referral page for the logged-in business."""
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    if not b.referral_code:
+        b.referral_code = base64.urlsafe_b64encode(os.urandom(6)).decode().rstrip("=")[:8]
+        db.session.commit()
+    referred_businesses = Business.query.filter_by(referred_by_id=b.id).all()
+    return render_template("refer.html", business=b, referred=referred_businesses,
+                           ref_url=f"https://revvio.ai/r/{b.referral_code}")
+
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if "user_id" in session and not session.get("is_demo"):
@@ -1448,12 +1476,38 @@ def register():
         session.pop("is_demo", None)
         session.pop("user_id", None)
         hashed = bcrypt.hashpw(raw_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-        trial_end = datetime.now(timezone.utc) + timedelta(days=30)
+        # Check referral
+        ref_code = session.pop("referral_code", None) or request.form.get("ref", "").strip()
+        referrer = Business.query.filter_by(referral_code=ref_code).first() if ref_code else None
+        trial_days = 60 if referrer else 30  # referred users get 60 days
+        trial_end = datetime.now(timezone.utc) + timedelta(days=trial_days)
+        # Generate unique referral code for new business
+        new_ref_code = base64.urlsafe_b64encode(os.urandom(6)).decode().rstrip("=")[:8]
+        while Business.query.filter_by(referral_code=new_ref_code).first():
+            new_ref_code = base64.urlsafe_b64encode(os.urandom(6)).decode().rstrip("=")[:8]
         b = Business(business_name=business_name, owner_name=owner_name, email=email,
-                     password=hashed, plan="pro", trial_ends_at=trial_end)
+                     password=hashed, plan="pro", trial_ends_at=trial_end,
+                     referral_code=new_ref_code,
+                     referred_by_id=referrer.id if referrer else None)
         try:
             db.session.add(b)
             db.session.commit()
+            # Reward referrer: +30 days on their trial/plan
+            if referrer:
+                referrer.referral_count = (referrer.referral_count or 0) + 1
+                if referrer.trial_ends_at:
+                    te = referrer.trial_ends_at if referrer.trial_ends_at.tzinfo else referrer.trial_ends_at.replace(tzinfo=timezone.utc)
+                    referrer.trial_ends_at = max(te, datetime.now(timezone.utc)) + timedelta(days=30)
+                else:
+                    referrer.trial_ends_at = datetime.now(timezone.utc) + timedelta(days=30)
+                    referrer.plan = "pro"
+                db.session.commit()
+                try:
+                    send_email(referrer.email, "You earned a free month on Revvio! 🎉",
+                        f"Great news! {owner_name} from {business_name} signed up using your referral link.\n\nWe've added 30 free days to your account as a thank you.\n\nKeep sharing: https://revvio.ai/r/{referrer.referral_code}",
+                        customer_name=referrer.owner_name, business_name="Revvio")
+                except Exception:
+                    pass
             session["user_id"] = b.id
             session.permanent = True
             # Send welcome email to new user
@@ -1496,7 +1550,10 @@ def register():
         except:
             db.session.rollback()
             flash("Error creating account.", "error")
-    return render_template("index.html", google_client_id=os.getenv("GOOGLE_CLIENT_ID", ""))
+    referral_from = session.get("referral_from", "")
+    referral_code = session.get("referral_code", "")
+    return render_template("index.html", google_client_id=os.getenv("GOOGLE_CLIENT_ID", ""),
+                           referral_from=referral_from, referral_code=referral_code)
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
