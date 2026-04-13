@@ -105,7 +105,7 @@
                 </div>
             </div>
 
-            <button type="submit" class="btn-send" onclick="return confirm('Send WhatsApp to {{ customers|length }} customer{{ \'s\' if customers|length != 1 }}?')">
+            <button type="submit" class="btn-send" onclick="return confirm('Send WhatsApp to {{ customers|length }} customers?')">
                 <i class="bi bi-whatsapp"></i> Send to {{ customers|length }} Customer{{ 's' if customers|length != 1 }}
             </button>
         </form>
