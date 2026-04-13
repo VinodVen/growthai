@@ -3726,18 +3726,25 @@ def admin_dashboard():
     if not admin_required():
         return redirect("/admin/login")
     businesses = Business.query.order_by(Business.created_at.desc()).all()
+    now_utc = datetime.now(timezone.utc)
     stats = []
     for b in businesses:
         customer_count = Customer.query.filter_by(business_id=b.id).count()
         campaign_count = Campaign.query.filter_by(business_id=b.id).count()
         sent_count = Campaign.query.filter_by(business_id=b.id, status="sent").count()
         total_opens = db.session.query(db.func.sum(Campaign.open_count)).filter_by(business_id=b.id).scalar() or 0
+        # Trial days left
+        trial_days = None
+        if b.trial_ends_at:
+            te = b.trial_ends_at if b.trial_ends_at.tzinfo else b.trial_ends_at.replace(tzinfo=timezone.utc)
+            trial_days = max(0, (te - now_utc).days)
         stats.append({
             "business": b,
             "customers": customer_count,
             "campaigns": campaign_count,
             "sent": sent_count,
             "opens": total_opens,
+            "trial_days": trial_days,
         })
     total_businesses = len(businesses)
     total_customers = Customer.query.count()
@@ -3749,6 +3756,8 @@ def admin_dashboard():
         "pro": sum(1 for b in businesses if b.plan == "pro"),
     }
     mrr = plan_counts["starter"] * 19 + plan_counts["pro"] * 50
+    # Trials expiring within 3 days
+    trials_expiring = [s for s in stats if s["trial_days"] is not None and s["trial_days"] <= 3]
     all_campaign_types = CampaignTypeModel.query.order_by(CampaignTypeModel.sort_order, CampaignTypeModel.label).all()
     return render_template("admin_dashboard.html",
         stats=stats,
@@ -3758,6 +3767,7 @@ def admin_dashboard():
         total_opens=total_opens,
         plan_counts=plan_counts,
         mrr=mrr,
+        trials_expiring=trials_expiring,
         campaign_types=all_campaign_types,
     )
 

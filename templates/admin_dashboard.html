@@ -283,6 +283,10 @@
     </div>
     <nav class="sidebar-nav">
         <button class="nav-item-link active" onclick="showSection('overview')"><i class="bi bi-grid-1x2"></i> Overview</button>
+        <button class="nav-item-link" onclick="showSection('trials')">
+            <i class="bi bi-hourglass-split"></i> Trials
+            {% if trials_expiring %}<span style="background:#f87171;color:#fff;border-radius:10px;padding:1px 7px;font-size:0.65rem;font-weight:700;margin-left:auto;">{{ trials_expiring|length }}</span>{% endif %}
+        </button>
         <button class="nav-item-link" onclick="showSection('add-business')"><i class="bi bi-plus-circle"></i> Add Business</button>
         <button class="nav-item-link" onclick="showSection('businesses')"><i class="bi bi-buildings"></i> All Businesses</button>
         <button class="nav-item-link" onclick="showSection('campaign-types')"><i class="bi bi-tags"></i> Campaign Types</button>
@@ -302,6 +306,76 @@
         </div>
         {% endfor %}{% endif %}
     {% endwith %}
+
+    <!-- ══ TRIALS EXPIRING ══ -->
+    <div id="section-trials" style="display:none;">
+        <div class="page-header">
+            <h1>Trial Management</h1>
+            <p>All businesses on free trials — expiring soon highlighted</p>
+        </div>
+        {% if trials_expiring %}
+        <div style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+            <i class="bi bi-exclamation-triangle-fill" style="color:#f87171;font-size:1.2rem;"></i>
+            <div>
+                <strong style="color:#f87171;">{{ trials_expiring|length }} trial{{ 's' if trials_expiring|length != 1 }} expiring within 3 days</strong>
+                <div style="color:var(--muted);font-size:0.8rem;margin-top:2px;">Consider reaching out or upgrading their plan.</div>
+            </div>
+        </div>
+        {% endif %}
+        <div class="panel mb-5">
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Business</th>
+                            <th>Email</th>
+                            <th>Trial Ends</th>
+                            <th>Days Left</th>
+                            <th>Plan</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in stats if row.trial_days is not none %}
+                    {% set b = row.business %}
+                    <tr style="{% if row.trial_days <= 3 %}background:rgba(248,113,113,0.05);{% endif %}">
+                        <td><div class="biz-name">{{ b.business_name }}</div></td>
+                        <td style="color:var(--muted);font-size:0.8rem;">{{ b.email }}</td>
+                        <td style="color:var(--muted);font-size:0.8rem;">{{ b.trial_ends_at.strftime('%b %d, %Y') if b.trial_ends_at else '—' }}</td>
+                        <td>
+                            {% if row.trial_days <= 0 %}
+                            <span style="color:#f87171;font-weight:700;">Expired</span>
+                            {% elif row.trial_days <= 3 %}
+                            <span style="color:#f87171;font-weight:700;">{{ row.trial_days }} day{{ 's' if row.trial_days != 1 }}</span>
+                            {% elif row.trial_days <= 7 %}
+                            <span style="color:#fbbf24;font-weight:700;">{{ row.trial_days }} days</span>
+                            {% else %}
+                            <span style="color:#4ade80;">{{ row.trial_days }} days</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <form method="POST" action="/admin/change-plan/{{ b.id }}">
+                                <select name="plan" class="plan-select" onchange="this.form.submit()">
+                                    <option value="free" {% if b.plan == 'free' %}selected{% endif %}>Free</option>
+                                    <option value="starter" {% if b.plan == 'starter' %}selected{% endif %}>Starter</option>
+                                    <option value="pro" {% if b.plan == 'pro' %}selected{% endif %}>Pro</option>
+                                </select>
+                            </form>
+                        </td>
+                        <td>
+                            <form method="POST" action="/admin/login-as/{{ b.id }}">
+                                <button type="submit" class="btn-view"><i class="bi bi-box-arrow-in-right"></i> View</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:40px;">No active trials.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
     <!-- ══ OVERVIEW ══ -->
     <div id="section-overview">
@@ -478,6 +552,7 @@
                             <th>Sent</th>
                             <th>Opens</th>
                             <th>Open Rate</th>
+                            <th>Trial</th>
                             <th>Joined</th>
                             <th>Actions</th>
                         </tr>
@@ -513,6 +588,15 @@
                                 {% if open_rate > 0 %}
                                 <span style="color:{% if open_rate >= 30 %}#4ade80{% elif open_rate >= 15 %}#fbbf24{% else %}#f87171{% endif %}; font-weight:700;">{{ open_rate }}%</span>
                                 {% else %}<span style="color:var(--muted);">—</span>{% endif %}
+                            </td>
+                            <td class="num-cell">
+                                {% if row.trial_days is not none %}
+                                    {% if row.trial_days <= 0 %}<span style="color:#f87171;font-size:0.75rem;font-weight:700;">Expired</span>
+                                    {% elif row.trial_days <= 3 %}<span style="color:#f87171;font-size:0.75rem;font-weight:700;">{{ row.trial_days }}d ⚠️</span>
+                                    {% elif row.trial_days <= 7 %}<span style="color:#fbbf24;font-size:0.75rem;font-weight:700;">{{ row.trial_days }}d</span>
+                                    {% else %}<span style="color:#4ade80;font-size:0.75rem;">{{ row.trial_days }}d</span>
+                                    {% endif %}
+                                {% else %}<span style="color:var(--muted);font-size:0.75rem;">—</span>{% endif %}
                             </td>
                             <td><span style="color:var(--muted); font-size:0.78rem;">{{ b.created_at.strftime('%b %d, %Y') }}</span></td>
                             <td>
@@ -623,7 +707,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    const sections = ['overview', 'add-business', 'businesses', 'campaign-types'];
+    const sections = ['overview', 'trials', 'add-business', 'businesses', 'campaign-types'];
 
     function showSection(name) {
         sections.forEach(s => {
