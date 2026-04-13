@@ -2762,6 +2762,62 @@ def segment_count():
     sample = [{"name": f"{c.first_name} {c.last_name or ''}".strip(), "email": c.email or "", "phone": c.phone or ""} for c in customers[:5]]
     return jsonify({"count": len(customers), "sample": sample})
 
+@app.route("/social-posts")
+def social_posts():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+    return render_template("social_posts.html", business=b, profile=profile)
+
+@app.route("/generate-social-post", methods=["POST"])
+def generate_social_post():
+    b = current_business()
+    if not b:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    try:
+        import json as _json
+        data = request.get_json()
+        promo = data.get("promo", "").strip()
+        platform = data.get("platform", "all")
+        if not promo:
+            return jsonify({"success": False, "error": "Please describe your promotion"})
+        if not client:
+            return jsonify({"success": False, "error": "AI not configured"})
+        profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+        biz_type = (profile.business_type if profile else "business") or "business"
+        tone = (profile.tone if profile else "friendly") or "friendly"
+
+        prompt = f"""You are a social media expert for a {biz_type} called "{b.business_name}".
+The owner wants to promote: "{promo}"
+Tone: {tone}
+
+Generate social media content in this EXACT JSON format (no markdown, no explanation):
+{{
+  "instagram": {{
+    "caption": "An engaging Instagram caption with emojis, max 150 words, ends with a call to action",
+    "hashtags": "#tag1 #tag2 #tag3 #tag4 #tag5 #tag6 #tag7 #tag8 #tag9 #tag10"
+  }},
+  "facebook": {{
+    "post": "A friendly Facebook post, slightly longer, conversational tone, with emojis"
+  }},
+  "whatsapp": {{
+    "message": "A short WhatsApp broadcast message, personal and direct, max 3 sentences, with emojis"
+  }},
+  "story": {{
+    "text": "3 punchy story slide texts (one per line), each under 8 words, with emojis"
+  }}
+}}"""
+
+        raw = _call_openai(prompt, max_tokens=800)
+        start = raw.find("{")
+        end = raw.rfind("}") + 1
+        result = _json.loads(raw[start:end]) if start >= 0 else {}
+        return jsonify({"success": True, "content": result})
+    except Exception as e:
+        print(f"Social post error: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
 @app.route("/ai-ideas", methods=["POST"])
 def ai_ideas():
     b = current_business()
