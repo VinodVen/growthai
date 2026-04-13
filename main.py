@@ -47,7 +47,7 @@ if not _openai_api_key:
     openai_init_error = "OPENAI_API_KEY not set"
     print("Warning: OPENAI_API_KEY not set.")
 
-def _call_openai(prompt, max_tokens=150):
+def _call_openai(prompt, max_tokens=150, timeout=20):
     """Call OpenAI API directly via requests, avoiding httpx version conflicts."""
     response = _requests.post(
         "https://api.openai.com/v1/chat/completions",
@@ -61,7 +61,7 @@ def _call_openai(prompt, max_tokens=150):
             "max_tokens": max_tokens,
             "temperature": 0.7
         },
-        timeout=15
+        timeout=timeout
     )
     data = response.json()
     if "error" in data:
@@ -2894,7 +2894,7 @@ Generate social media content in this EXACT JSON format (no markdown, no explana
   }}
 }}"""
 
-        raw = _call_openai(prompt, max_tokens=800)
+        raw = _call_openai(prompt, max_tokens=1500, timeout=40)
         start = raw.find("{")
         end = raw.rfind("}") + 1
         result = _json.loads(raw[start:end]) if start >= 0 else {}

@@ -221,11 +221,15 @@ async function generatePosts() {
     document.getElementById('loadingState').style.display = 'block';
 
     try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 45000);
         const res = await fetch('/generate-social-post', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ promo, platform: selectedPlat })
+            body: JSON.stringify({ promo, platform: selectedPlat }),
+            signal: controller.signal
         });
+        clearTimeout(timer);
         const data = await res.json();
         if (!data.success) { alert(data.error || 'Error generating posts'); return; }
 
