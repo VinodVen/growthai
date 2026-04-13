@@ -198,6 +198,8 @@ class Customer(db.Model):
     sms_opted_in_at = db.Column(db.DateTime, nullable=True)
     sms_opt_in_ip = db.Column(db.String(60), nullable=True)
     checkin_token = db.Column(db.String(64), nullable=True)  # unique token for QR scanner
+    whatsapp_phone = db.Column(db.String(50), nullable=True)  # WhatsApp number (may differ from SMS)
+    whatsapp_opted_in = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Campaign(db.Model):
@@ -389,6 +391,8 @@ def _do_migrations():
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referred_by_id INTEGER REFERENCES businesses(id)",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS whatsapp_phone VARCHAR(50)",
+        "ALTER TABLE customers ADD COLUMN IF NOT EXISTS whatsapp_opted_in BOOLEAN DEFAULT FALSE",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -1273,13 +1277,29 @@ def send_sms(to_phone, message):
     """Send SMS with TCPA compliance — mandatory STOP footer."""
     if not twilio_client or not twilio_phone:
         return False
-    # Append mandatory opt-out footer if not already present
     body = message.rstrip() + (" Reply STOP to unsubscribe." if "STOP" not in message else "")
     try:
         twilio_client.messages.create(body=body, from_=twilio_phone, to=to_phone)
         return True
     except Exception as e:
         print(f"SMS error: {e}")
+        return False
+
+def send_whatsapp(to_phone, message, business_name=""):
+    """Send WhatsApp message via Twilio WhatsApp API."""
+    if not twilio_client:
+        return False
+    wa_from = os.getenv("TWILIO_WHATSAPP_NUMBER", "")
+    if not wa_from:
+        return False
+    # Ensure numbers are in whatsapp: format
+    from_wa = f"whatsapp:{wa_from}" if not wa_from.startswith("whatsapp:") else wa_from
+    to_wa = f"whatsapp:{to_phone}" if not to_phone.startswith("whatsapp:") else to_phone
+    try:
+        twilio_client.messages.create(body=message, from_=from_wa, to=to_wa)
+        return True
+    except Exception as e:
+        print(f"WhatsApp error: {e}")
         return False
 
 def generate_ai_message(customer_name, business_name, campaign_type, raise_on_error=False, language="English", cuisine="", dish="", offer="", tone="friendly", extra=""):
@@ -2247,6 +2267,43 @@ def send_sms_campaign(campaign_id):
     else:
         flash("SMS not sent. Check Twilio configuration in Render environment.", "error")
     return redirect(f"/campaign/{campaign.id}")
+
+@app.route("/whatsapp-setup")
+def whatsapp_setup():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    wa_number = os.getenv("TWILIO_WHATSAPP_NUMBER", "")
+    customers = Customer.query.filter_by(business_id=b.id).filter(
+        Customer.whatsapp_phone != None, Customer.whatsapp_opted_in == True
+    ).count()
+    return render_template("whatsapp_setup.html", business=b, wa_number=wa_number,
+                           wa_customers=customers, configured=bool(wa_number))
+
+@app.route("/quick-whatsapp", methods=["GET", "POST"])
+def quick_whatsapp():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    customers = Customer.query.filter_by(business_id=b.id, unsubscribed=False).filter(
+        Customer.whatsapp_opted_in == True
+    ).all()
+    if request.method == "POST":
+        message = request.form.get("message", "").strip()
+        target = request.form.get("target", "all")
+        if not message:
+            flash("Message is required.", "error")
+            return redirect("/quick-whatsapp")
+        sent = 0
+        for c in customers:
+            wa = c.whatsapp_phone or c.phone
+            if wa:
+                personalised = message.replace("{name}", c.first_name or "there")
+                if send_whatsapp(wa, personalised, b.business_name):
+                    sent += 1
+        flash(f"WhatsApp message sent to {sent} customer{'s' if sent != 1 else ''}.", "success")
+        return redirect("/quick-whatsapp")
+    return render_template("quick_whatsapp.html", business=b, customers=customers)
 
 @app.route("/quick-sms", methods=["GET", "POST"])
 def quick_sms():

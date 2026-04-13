@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Setup — Revvio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #0d0d1a; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; min-height: 100vh; }
+        .top-bar { background: #13131f; border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 28px; display: flex; align-items: center; gap: 16px; }
+        .container { max-width: 720px; padding-top: 2.5rem; padding-bottom: 4rem; }
+        .card { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 28px; margin-bottom: 20px; }
+        .step-num { width: 32px; height: 32px; border-radius: 50%; background: #25d366; color: #fff; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .step-row { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 20px; }
+        .step-content h4 { font-size: 0.95rem; font-weight: 700; color: #fff; margin: 0 0 4px; }
+        .step-content p { font-size: 0.82rem; color: #6b6b8a; margin: 0; line-height: 1.5; }
+        code { background: rgba(37,211,102,0.1); color: #25d366; border-radius: 6px; padding: 2px 8px; font-size: 0.82rem; }
+        .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; }
+        .status-ok { background: rgba(37,211,102,0.15); color: #25d366; border: 1px solid rgba(37,211,102,0.3); }
+        .status-pending { background: rgba(251,191,36,0.15); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+        .btn-wa { background: #25d366; border: none; color: #fff; font-weight: 700; padding: 11px 24px; border-radius: 10px; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-wa:hover { background: #1ebe5d; color: #fff; }
+        .stat-row { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+        .stat-box { flex: 1; min-width: 140px; background: #1a1a2e; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 16px; text-align: center; }
+        .stat-val { font-size: 1.8rem; font-weight: 800; color: #25d366; }
+        .stat-lbl { font-size: 0.72rem; color: #6b6b8a; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; }
+    </style>
+</head>
+<body>
+<div class="top-bar">
+    <a href="/dashboard" style="color:#25d366;text-decoration:none;font-size:0.85rem;">← Dashboard</a>
+    <span style="font-size:1.1rem;font-weight:800;color:#fff;">Revvio</span>
+    <span style="font-size:0.75rem;color:#6b6b8a;margin-left:auto;">{{ business.business_name }}</span>
+</div>
+
+<div class="container">
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <div style="font-size:2rem;">💬</div>
+        <div>
+            <h1 style="font-size:1.5rem;font-weight:800;color:#fff;margin:0;">WhatsApp Integration</h1>
+            <div style="color:#6b6b8a;font-size:0.85rem;">Send campaigns directly to your customers on WhatsApp</div>
+        </div>
+        {% if configured %}
+        <span class="status-badge status-ok ms-auto"><i class="bi bi-check-circle-fill"></i> Connected</span>
+        {% else %}
+        <span class="status-badge status-pending ms-auto"><i class="bi bi-clock"></i> Not Set Up</span>
+        {% endif %}
+    </div>
+
+    {% if configured %}
+    <div class="stat-row">
+        <div class="stat-box">
+            <div class="stat-val">{{ wa_customers }}</div>
+            <div class="stat-lbl">WhatsApp Customers</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-val" style="color:#4ade80;">98%</div>
+            <div class="stat-lbl">Avg Open Rate</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-val" style="color:#a78bfa;">{{ wa_number }}</div>
+            <div class="stat-lbl">Your WA Number</div>
+        </div>
+    </div>
+    <div class="text-center mb-4">
+        <a href="/quick-whatsapp" class="btn-wa"><i class="bi bi-whatsapp"></i> Send WhatsApp Campaign</a>
+    </div>
+    {% endif %}
+
+    <!-- Setup Steps -->
+    <div class="card">
+        <h3 style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;color:#6b6b8a;text-transform:uppercase;margin-bottom:20px;">Setup Steps</h3>
+
+        <div class="step-row">
+            <div class="step-num">1</div>
+            <div class="step-content">
+                <h4>Create a Twilio account</h4>
+                <p>You already have Twilio set up for SMS. Same account works for WhatsApp.</p>
+            </div>
+        </div>
+
+        <div class="step-row">
+            <div class="step-num">2</div>
+            <div class="step-content">
+                <h4>Enable WhatsApp Sandbox (for testing)</h4>
+                <p>In Twilio Console → Messaging → Try it out → Send a WhatsApp message.<br>
+                Your test number is <code>+14155238886</code>. Customers text <code>join &lt;word&gt;</code> to opt in to sandbox.</p>
+            </div>
+        </div>
+
+        <div class="step-row">
+            <div class="step-num">3</div>
+            <div class="step-content">
+                <h4>Add to Render environment variables</h4>
+                <p>Go to Render → your service → Environment → Add:<br>
+                <code>TWILIO_WHATSAPP_NUMBER</code> = <code>+14155238886</code> (sandbox) or your approved number</p>
+            </div>
+        </div>
+
+        <div class="step-row">
+            <div class="step-num">4</div>
+            <div class="step-content">
+                <h4>For production — apply for WhatsApp Business API</h4>
+                <p>In Twilio Console → Messaging → Senders → WhatsApp senders → Apply.<br>
+                Takes 1–5 business days. Then replace the sandbox number with your approved number.</p>
+            </div>
+        </div>
+
+        <div class="step-row" style="margin-bottom:0;">
+            <div class="step-num">5</div>
+            <div class="step-content">
+                <h4>Add WhatsApp numbers to customers</h4>
+                <p>When adding/editing customers, enter their WhatsApp number. It can be the same as their phone number — WhatsApp uses regular phone numbers.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Why WhatsApp -->
+    <div class="card">
+        <h3 style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;color:#6b6b8a;text-transform:uppercase;margin-bottom:16px;">Why WhatsApp?</h3>
+        <div class="row g-3">
+            <div class="col-md-4 text-center">
+                <div style="font-size:1.8rem;font-weight:800;color:#25d366;">98%</div>
+                <div style="font-size:0.8rem;color:#6b6b8a;">Open rate (vs 20% email)</div>
+            </div>
+            <div class="col-md-4 text-center">
+                <div style="font-size:1.8rem;font-weight:800;color:#4ade80;">2B+</div>
+                <div style="font-size:0.8rem;color:#6b6b8a;">Active users worldwide</div>
+            </div>
+            <div class="col-md-4 text-center">
+                <div style="font-size:1.8rem;font-weight:800;color:#a78bfa;">45%</div>
+                <div style="font-size:0.8rem;color:#6b6b8a;">Higher response rate vs SMS</div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
