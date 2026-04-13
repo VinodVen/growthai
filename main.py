@@ -505,6 +505,12 @@ def get_segment_customers(business_id, segment):
         return base.filter(Customer.phone.isnot(None), Customer.phone != "",
                            (Customer.email.is_(None)) | (Customer.email == "")).all()
 
+    elif segment == "whatsapp":
+        try:
+            return base.filter(Customer.whatsapp_opted_in == True).all()
+        except Exception:
+            return []
+
     else:  # "all"
         return base.all()
 

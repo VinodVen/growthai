@@ -114,6 +114,14 @@
                             <div class="segment-desc">Phone, no email</div>
                         </div>
                     </div>
+                    <div class="col-4 col-md-2">
+                        <div class="segment-card" data-segment="whatsapp" onclick="selectSegment(this)">
+                            <span class="segment-icon">💬</span>
+                            <div class="segment-label">WhatsApp</div>
+                            <div class="segment-count" id="count-whatsapp">—</div>
+                            <div class="segment-desc">WA opted-in</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Audience Preview -->
@@ -188,11 +196,13 @@ const SEGMENT_LABELS = {
     inactive: "Inactive Guests (60+ days)",
     birthday_month: "Birthday This Month",
     vip: "VIP Guests (3+ campaigns)",
-    sms_only: "Phone-Only (SMS)"
+    sms_only: "Phone-Only (SMS)",
+    whatsapp: "WhatsApp Opted-In"
 };
 const SEGMENT_BADGES = {
     all: "Everyone", new: "New", inactive: "Inactive",
-    birthday_month: "🎂 Birthday", vip: "⭐ VIP", sms_only: "📱 SMS"
+    birthday_month: "🎂 Birthday", vip: "⭐ VIP", sms_only: "📱 SMS",
+    whatsapp: "💬 WhatsApp"
 };
 
 let currentSegment = "all";
