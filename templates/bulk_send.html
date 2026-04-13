@@ -148,12 +148,17 @@
                     </select>
                 </div>
 
+                <!-- WhatsApp mode banner -->
+                <div id="waBanner" style="display:none;background:#f0fff4;border:1.5px solid #b7ebc8;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:0.82rem;color:#166534;">
+                    💬 <strong>WhatsApp mode</strong> — this will send a WhatsApp message directly to each customer's phone. Use <code>{name}</code> to personalise.
+                </div>
+
                 <!-- STEP 3: Message -->
                 <div class="step-label">Step 3 — Your message</div>
                 <div class="mb-2">
                     <textarea class="form-control" id="messageField" name="message" rows="4"
                         placeholder="Write your message here, or use AI to generate one..."></textarea>
-                    <small class="text-muted">Leave blank + check "Use AI" to personalize each message with the customer's name.</small>
+                    <small class="text-muted" id="msgHint">Leave blank + check "Use AI" to personalize each message with the customer's name.</small>
                 </div>
 
                 <div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
@@ -235,6 +240,13 @@ async function selectSegment(el) {
         if (countEl) countEl.textContent = data.count;
         document.getElementById('previewCount').textContent = data.count;
         document.getElementById('sendCount').textContent = data.count;
+
+        // WhatsApp mode UI
+        const isWA = currentSegment === 'whatsapp';
+        document.getElementById('waBanner').style.display = isWA ? 'block' : 'none';
+        document.getElementById('sendBtn').style.background = isWA
+            ? 'linear-gradient(135deg, #25d366, #1ebe5d)'
+            : 'linear-gradient(135deg, #f6d365, #fda085)';
 
         // Sample names
         if (data.sample && data.sample.length > 0) {

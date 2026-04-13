@@ -2392,46 +2392,62 @@ def bulk_send():
                 pass
         sent_count = 0
         skipped_unsub = 0
-        skipped_no_email = 0
+        skipped_no_contact = 0
+        is_whatsapp_segment = (segment == "whatsapp")
+
         for customer in customers_list:
             if customer.unsubscribed:
                 skipped_unsub += 1
                 continue
-            if not customer.email:
-                skipped_no_email += 1
-                continue
             msg = generate_ai_message(customer.first_name, b.business_name, campaign_type) if (use_ai and not custom_message) else custom_message
-            campaign_status = "scheduled" if scheduled_at else "draft"
-            campaign = Campaign(
-                business_id=b.id,
-                customer_name=customer.first_name,
-                customer_email=customer.email,
-                customer_phone=customer.phone,
-                campaign_type=campaign_type,
-                message=msg,
-                status=campaign_status,
-                scheduled_at=scheduled_at
-            )
-            db.session.add(campaign)
-            if not scheduled_at:
-                db.session.flush()
-                token = get_unsubscribe_token(campaign.id)
-                unsub_url = url_for("unsubscribe", token=token, _external=True)
-                pixel_url = url_for("track_open", campaign_id=campaign.id, _external=True)
-                click_url = url_for("track_click", campaign_id=campaign.id, _external=True)
-                subject = f"Special Offer from {b.business_name}"
-                if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type, unsubscribe_url=unsub_url, business_address=b.address or "", business_phone=b.phone or "", business_website=b.website or "", tracking_pixel_url=pixel_url, click_tracking_url=click_url, business_reply_email=b.email):
-                    campaign.status = "sent"
+            personalised = msg.replace("{name}", customer.first_name or "there")
+
+            if is_whatsapp_segment:
+                # Send via WhatsApp
+                wa_number = customer.whatsapp_phone or customer.phone
+                if not wa_number:
+                    skipped_no_contact += 1
+                    continue
+                if send_whatsapp(wa_number, personalised, b.business_name):
                     sent_count += 1
+            else:
+                # Send via email
+                if not customer.email:
+                    skipped_no_contact += 1
+                    continue
+                campaign_status = "scheduled" if scheduled_at else "draft"
+                campaign = Campaign(
+                    business_id=b.id,
+                    customer_name=customer.first_name,
+                    customer_email=customer.email,
+                    customer_phone=customer.phone,
+                    campaign_type=campaign_type,
+                    message=msg,
+                    status=campaign_status,
+                    scheduled_at=scheduled_at
+                )
+                db.session.add(campaign)
+                if not scheduled_at:
+                    db.session.flush()
+                    token = get_unsubscribe_token(campaign.id)
+                    unsub_url = url_for("unsubscribe", token=token, _external=True)
+                    pixel_url = url_for("track_open", campaign_id=campaign.id, _external=True)
+                    click_url = url_for("track_click", campaign_id=campaign.id, _external=True)
+                    subject = f"Special Offer from {b.business_name}"
+                    if send_email(customer.email, subject, msg, customer_name=customer.first_name, business_name=b.business_name, campaign_type=campaign_type, unsubscribe_url=unsub_url, business_address=b.address or "", business_phone=b.phone or "", business_website=b.website or "", tracking_pixel_url=pixel_url, click_tracking_url=click_url, business_reply_email=b.email):
+                        campaign.status = "sent"
+                        sent_count += 1
+
         db.session.commit()
         notes = []
         if skipped_unsub: notes.append(f"{skipped_unsub} unsubscribed")
-        if skipped_no_email: notes.append(f"{skipped_no_email} phone-only (no email)")
+        if skipped_no_contact: notes.append(f"{skipped_no_contact} no contact info")
         note_str = f" ({', '.join(notes)} skipped)" if notes else ""
-        if scheduled_at:
-            flash(f"Scheduled {len(customers_list) - skipped_unsub - skipped_no_email} campaigns for {scheduled_at.strftime('%b %d at %I:%M %p')} UTC{note_str}.", "success")
+        channel = "WhatsApp" if is_whatsapp_segment else "email"
+        if scheduled_at and not is_whatsapp_segment:
+            flash(f"Scheduled {len(customers_list) - skipped_unsub - skipped_no_contact} campaigns for {scheduled_at.strftime('%b %d at %I:%M %p')} UTC{note_str}.", "success")
         else:
-            flash(f"Bulk send complete! Sent to {sent_count}/{len(customers_list)} customers{note_str}.", "success")
+            flash(f"Bulk send complete! {channel} sent to {sent_count}/{len(customers_list)} customers{note_str}.", "success")
         return redirect("/campaigns")
     customers_count = Customer.query.filter_by(business_id=b.id, unsubscribed=False).count()
     preselect_segment = request.args.get("segment", "all")
