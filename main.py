@@ -4252,6 +4252,8 @@ def customer_optin(slug):
         phone      = request.form.get("phone", "").strip()
         dob        = request.form.get("dob", "").strip()
         sms_consent = request.form.get("sms_consent") == "on"
+        wa_phone   = request.form.get("whatsapp_phone", "").strip() or phone or None
+        wa_consent = request.form.get("whatsapp_consent") == "on"
 
         if not first_name:
             flash("First name is required.", "error")
@@ -4279,6 +4281,9 @@ def customer_optin(slug):
                 existing.sms_opted_in = True
                 existing.sms_opted_in_at = datetime.now(timezone.utc)
                 existing.sms_opt_in_ip = ip
+            if wa_phone and wa_consent:
+                existing.whatsapp_phone = wa_phone
+                existing.whatsapp_opted_in = True
             db.session.commit()
             return render_template("optin_success.html", business=b, already=True)
 
@@ -4292,6 +4297,8 @@ def customer_optin(slug):
             sms_opted_in=sms_consent and bool(phone),
             sms_opted_in_at=datetime.now(timezone.utc) if (sms_consent and phone) else None,
             sms_opt_in_ip=ip if (sms_consent and phone) else None,
+            whatsapp_phone=wa_phone if (wa_phone and wa_consent) else None,
+            whatsapp_opted_in=bool(wa_phone and wa_consent),
         )
         db.session.add(customer)
         try:
@@ -4310,6 +4317,16 @@ def customer_optin(slug):
                 f"Thanks for joining — enjoy {offer} on your next visit!"
             )
             send_sms(customer.phone, welcome_msg)
+
+        # Send WhatsApp welcome if opted in
+        if customer.whatsapp_opted_in and customer.whatsapp_phone:
+            offer = (profile.special_offer if profile else None) or "a special welcome offer"
+            wa_welcome = (
+                f"👋 Welcome to {b.business_name}, {first_name}! "
+                f"Thanks for joining us on WhatsApp — enjoy {offer} on your next visit! "
+                f"Reply STOP to opt out anytime."
+            )
+            send_whatsapp(customer.whatsapp_phone, wa_welcome, b.business_name)
 
         return render_template("optin_success.html", business=b, already=False)
 

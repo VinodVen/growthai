@@ -25,6 +25,12 @@
         .consent-box { background: #f8f8ff; border: 1.5px solid #e0e0ff; border-radius: 10px; padding: 14px; margin: 14px 0; }
         .consent-box label { display: flex; gap: 10px; align-items: flex-start; font-size: 0.75rem; color: #555; text-transform: none; letter-spacing: 0; font-weight: 400; cursor: pointer; }
         .consent-box input[type=checkbox] { margin-top: 2px; flex-shrink: 0; accent-color: #667eea; width: 16px; height: 16px; }
+        .wa-box { background: #f0fff4; border: 1.5px solid #b7ebc8; border-radius: 10px; padding: 14px; margin: 14px 0; display: none; }
+        .wa-box .wa-title { font-size: 0.75rem; font-weight: 700; color: #25d366; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .wa-box input[type=tel] { border-color: #b7ebc8; }
+        .wa-box input[type=tel]:focus { border-color: #25d366; }
+        .wa-box label { display: flex; gap: 10px; align-items: flex-start; font-size: 0.75rem; color: #555; text-transform: none; letter-spacing: 0; font-weight: 400; cursor: pointer; margin-top: 10px; }
+        .wa-box input[type=checkbox] { margin-top: 2px; flex-shrink: 0; accent-color: #25d366; width: 16px; height: 16px; }
         .btn { width: 100%; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 12px; padding: 14px; font-size: 1rem; font-weight: 700; cursor: pointer; margin-top: 8px; transition: opacity 0.15s; }
         .btn:hover { opacity: 0.9; }
         .privacy { font-size: 0.7rem; color: #aaa; text-align: center; margin-top: 16px; line-height: 1.5; }
@@ -35,7 +41,7 @@
 </head>
 <body>
     <div class="card">
-        <div class="logo">🍽️</div>
+        <div class="logo">🎁</div>
         <h1>Join {{ business.business_name }}</h1>
         <p class="sub">Sign up to receive exclusive offers, deals & updates!</p>
 
@@ -76,6 +82,16 @@
                 </label>
             </div>
 
+            <!-- WhatsApp opt-in -->
+            <div class="wa-box" id="waBox">
+                <div class="wa-title">💬 WhatsApp (optional)</div>
+                <input type="tel" name="whatsapp_phone" id="waPhone" placeholder="Same as above or different number">
+                <label>
+                    <input type="checkbox" name="whatsapp_consent" id="waConsent">
+                    <span>I agree to receive WhatsApp messages from {{ business.business_name }}. Reply STOP to opt out anytime.</span>
+                </label>
+            </div>
+
             <button type="submit" class="btn">Join & Get Offers 🎉</button>
         </form>
 
@@ -88,7 +104,12 @@
 
     <script>
         document.getElementById('phoneField').addEventListener('input', function() {
-            document.getElementById('smsConsentBox').style.display = this.value.trim() ? 'block' : 'none';
+            const hasPhone = this.value.trim();
+            document.getElementById('smsConsentBox').style.display = hasPhone ? 'block' : 'none';
+            document.getElementById('waBox').style.display = hasPhone ? 'block' : 'none';
+            if (hasPhone && !document.getElementById('waPhone').value.trim()) {
+                document.getElementById('waPhone').placeholder = this.value.trim() + ' (or enter different)';
+            }
         });
     </script>
 </body>

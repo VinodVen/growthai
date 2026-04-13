@@ -213,7 +213,7 @@
                     <label class="field-label">Journey Goal (exit when achieved)</label>
                     <select class="ctrl" name="goal">
                         <option value="none">No goal — run all steps</option>
-                        <option value="visit">🏪 Customer visits the restaurant</option>
+                        <option value="visit">🏪 Customer visits your business</option>
                         <option value="email_open">📧 Customer opens an email</option>
                     </select>
                 </div>
@@ -298,7 +298,7 @@ function addStep(data = {}) {
                     </div>
                 </div>
                 <textarea class="ctrl" name="step_msg[]" id="msg_${i}" rows="2" placeholder="Leave empty for AI to write, or type your own message. Use {name} and {business} as variables." style="display:${data.use_ai !== false ? 'none' : 'block'};">${data.message_text ?? ''}</textarea>
-                <div id="ai_hint_${i}" style="font-size:0.75rem;color:#6b6b8a;display:${data.use_ai !== false ? 'block' : 'none'};">✨ AI will write a personalized message using your restaurant details and tone.</div>
+                <div id="ai_hint_${i}" style="font-size:0.75rem;color:#6b6b8a;display:${data.use_ai !== false ? 'block' : 'none'};">✨ AI will write a personalized message using your business details and tone.</div>
             </div>
         </div>
     `;
