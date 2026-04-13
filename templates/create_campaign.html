@@ -116,6 +116,11 @@
 
     <!-- ── STEP 1: Select Customer ── -->
     <div class="step-panel active" id="panel-1">
+        <div class="mb-3 p-3 rounded-3" style="background:#f0eeff;border:1px solid #c5b8ff;">
+            <div class="fw-semibold" style="color:#4338ca;">👤 Who are you sending to?</div>
+            <div class="text-muted small mt-1">Search and <strong>tap a customer</strong> to select them, or use a segment filter below.</div>
+        </div>
+
         {% if customers %}
         <!-- Search -->
         <div class="search-box mb-3">
@@ -132,10 +137,10 @@
         </div>
 
         <!-- Send-All shortcut banner -->
-        <div id="sendAllBanner" class="mb-3 p-2 rounded-3 d-flex align-items-center justify-content-between" style="background:#f0eeff;border:1.5px solid #c5b8ff;">
-            <span style="font-size:0.82rem;color:#555;">Want to message <strong id="sendAllCount">everyone</strong> at once?</span>
-            <a id="sendAllLink" href="/bulk-send" class="btn btn-sm fw-bold" style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;border-radius:8px;font-size:0.78rem;white-space:nowrap;">
-                Send to All →
+        <div id="sendAllBanner" class="mb-3 p-2 rounded-3 d-flex align-items-center justify-content-between" style="background:#fff7ed;border:1.5px solid #fed7aa;">
+            <span style="font-size:0.82rem;color:#555;">📢 Want to message <strong id="sendAllCount">everyone</strong> at once?</span>
+            <a id="sendAllLink" href="/bulk-send" class="btn btn-sm fw-bold" style="background:#f97316;color:white;border-radius:8px;font-size:0.78rem;white-space:nowrap;">
+                Bulk Send →
             </a>
         </div>
 
@@ -212,7 +217,28 @@
 
     <!-- ── STEP 2: Campaign Type + Message ── -->
     <div class="step-panel" id="panel-2">
-        <p class="text-muted small mb-3">Sending to: <strong id="step2Name"></strong></p>
+        <div class="mb-3 p-3 rounded-3" style="background:#f0eeff;border:1px solid #c5b8ff;">
+            <div class="fw-semibold" style="color:#4338ca;">✉️ Choose campaign type & write message</div>
+            <div class="text-muted small mt-1">Sending to: <strong id="step2Name"></strong></div>
+        </div>
+
+        <!-- Channel selector -->
+        <label class="form-label fw-bold small text-muted">SEND VIA</label>
+        <div class="d-flex gap-2 mb-3" id="channelSelector">
+            <div class="type-card flex-fill selected" data-ch="email" onclick="selectChannel(this)" style="padding:10px;">
+                <div style="font-size:1.4rem;">📧</div>
+                <div style="font-size:0.8rem;font-weight:600;margin-top:2px;">Email</div>
+            </div>
+            <div class="type-card flex-fill" data-ch="sms" onclick="selectChannel(this)" style="padding:10px;">
+                <div style="font-size:1.4rem;">💬</div>
+                <div style="font-size:0.8rem;font-weight:600;margin-top:2px;">SMS</div>
+            </div>
+            <div class="type-card flex-fill" data-ch="both" onclick="selectChannel(this)" style="padding:10px;">
+                <div style="font-size:1.4rem;">📧💬</div>
+                <div style="font-size:0.8rem;font-weight:600;margin-top:2px;">Both</div>
+            </div>
+        </div>
+        <input type="hidden" id="selectedChannel" value="email">
 
         <label class="form-label fw-bold mb-2">What type of campaign?</label>
         <div class="row g-2 mb-3" id="typeGrid">
@@ -266,12 +292,17 @@
 
     <!-- ── STEP 3: Review + Send ── -->
     <div class="step-panel" id="panel-3">
+        <div class="mb-3 p-3 rounded-3" style="background:#f0fff4;border:1px solid #bbf7d0;">
+            <div class="fw-semibold" style="color:#166534;">✅ Review & Send</div>
+            <div class="text-muted small mt-1">Check everything looks right, then hit Send.</div>
+        </div>
         <form method="POST" id="finalForm">
             <input type="hidden" name="customer_name" id="f_name">
             <input type="hidden" name="customer_email" id="f_email">
             <input type="hidden" name="customer_phone" id="f_phone">
             <input type="hidden" name="campaign_type" id="f_type">
             <input type="hidden" name="message" id="f_message">
+            <input type="hidden" name="channel" id="f_channel">
             <input type="hidden" name="scheduled_at" id="f_scheduled">
 
             <!-- Summary card -->
@@ -287,6 +318,7 @@
                         <div class="col-6">
                             <small class="text-muted fw-bold d-block" style="font-size:0.7rem;">TYPE</small>
                             <span class="badge bg-primary" id="r_type"></span>
+                            <span class="badge bg-secondary ms-1" id="r_channel"></span>
                         </div>
                     </div>
                 </div>
@@ -460,6 +492,14 @@ function goStep2() {
     goStep(2);
 }
 
+// ── Channel selector ──
+let selectedChannelCard = document.querySelector('#channelSelector .type-card.selected');
+function selectChannel(card) {
+    document.querySelectorAll('#channelSelector .type-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+    document.getElementById('selectedChannel').value = card.dataset.ch;
+}
+
 // ── Step 2 ──
 function selectType(card) {
     if (selectedTypeCard) selectedTypeCard.classList.remove('selected');
@@ -568,7 +608,10 @@ function goStep3() {
     document.getElementById('r_name').textContent = sel.name;
     document.getElementById('r_email').textContent = sel.email;
     document.getElementById('r_phone').textContent = sel.phone;
+    const ch = document.getElementById('selectedChannel').value;
+    const chLabels = { email: '📧 Email', sms: '💬 SMS', both: '📧+💬 Both' };
     document.getElementById('r_type').textContent = sel.typeLabel;
+    document.getElementById('r_channel').textContent = chLabels[ch] || ch;
     document.getElementById('r_message').textContent = sel.message;
     // Populate hidden fields
     document.getElementById('f_name').value = sel.name;
@@ -576,6 +619,7 @@ function goStep3() {
     document.getElementById('f_phone').value = sel.phone;
     document.getElementById('f_type').value = sel.type;
     document.getElementById('f_message').value = sel.message;
+    document.getElementById('f_channel').value = ch;
     goStep(3);
 }
 </script>

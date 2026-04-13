@@ -1183,9 +1183,34 @@ def send_email(to_email, subject, body, customer_name="", business_name="", camp
     from_name = business_name or "Revvio"
     html_body = html_override if html_override else build_html_email(from_name, customer_name or "Valued Customer", body, campaign_type, unsubscribe_url, business_address, business_phone, business_website, tracking_pixel_url, click_tracking_url)
 
-    sendgrid_key = os.getenv("SENDGRID_API_KEY")
-    if sendgrid_key:
-        # Option 2: SendGrid — sends from mail.revvio.ai with business name
+    resend_key = os.getenv("RESEND_API_KEY")
+    if resend_key:
+        # Resend — sends from hello@revvio.ai with business name
+        try:
+            from_email = os.getenv("RESEND_FROM_EMAIL", "hello@revvio.ai")
+            payload = {
+                "from": f"{from_name} <{from_email}>",
+                "to": [to_email],
+                "subject": subject,
+                "text": body,
+                "html": html_body,
+            }
+            if business_reply_email:
+                payload["reply_to"] = business_reply_email
+            if unsubscribe_url:
+                payload["headers"] = {"List-Unsubscribe": f"<{unsubscribe_url}>"}
+            resp = _requests.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {resend_key}", "Content-Type": "application/json"},
+                json=payload,
+                timeout=15,
+            )
+            return resp.status_code in (200, 201)
+        except Exception as e:
+            print(f"Resend error: {e}")
+            return False
+    elif os.getenv("SENDGRID_API_KEY"):
+        sendgrid_key = os.getenv("SENDGRID_API_KEY")
         try:
             import sendgrid as sg_module
             from sendgrid.helpers.mail import Mail, Email, To, ReplyTo

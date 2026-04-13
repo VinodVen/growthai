@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <link rel="icon" type="image/png" href="/static/icon-192.png">
-    <link rel="shortcut icon" href="/static/icon-192.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Customer - Revvio</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -15,67 +14,174 @@
             align-items: center;
             padding: 2rem 0;
         }
-        .container {
-            max-width: 500px;
+        .container { max-width: 540px; }
+        .card { border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.25); border-radius: 16px; }
+        .card-body { padding: 2rem; }
+
+        /* Mode selector */
+        .mode-selector { display: flex; gap: 12px; margin-bottom: 1.8rem; }
+        .mode-btn {
+            flex: 1;
+            padding: 14px 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 12px;
+            background: #f8f9fa;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #495057;
         }
-        .card {
-            border: none;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        .mode-btn:hover { border-color: #6366f1; background: #eef2ff; }
+        .mode-btn.active { border-color: #6366f1; background: #eef2ff; color: #4338ca; }
+        .mode-btn .icon { font-size: 1.6rem; display: block; margin-bottom: 4px; }
+
+        /* Import area */
+        .import-zone {
+            border: 2px dashed #c7d2fe;
+            border-radius: 12px;
+            padding: 2.5rem 1rem;
+            text-align: center;
+            background: #f5f7ff;
+            cursor: pointer;
+            transition: all 0.2s;
         }
+        .import-zone:hover { border-color: #6366f1; background: #eef2ff; }
+        .import-zone.dragover { border-color: #4338ca; background: #e0e7ff; }
+
+        .form-control:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+        .btn-primary { background: #4f46e5; border-color: #4f46e5; font-weight: 600; }
+        .btn-primary:hover { background: #4338ca; border-color: #4338ca; }
+        .btn-back { color: #6c757d; text-decoration: none; font-size: 0.9rem; }
+        .btn-back:hover { color: #343a40; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="card">
-            <div class="card-body p-4">
-                <h2 class="card-title mb-4">➕ Add New Customer</h2>
-                
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
-                
-                <form method="POST">
+<div class="container">
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+                <a href="javascript:history.back()" class="btn-back me-3">← Back</a>
+                <h2 class="mb-0 fs-4 fw-bold">Add Customers</h2>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Mode Selector -->
+            <div class="mode-selector">
+                <div class="mode-btn active" id="btn-manual" onclick="setMode('manual')">
+                    <span class="icon">✍️</span>
+                    Add Manually
+                </div>
+                <div class="mode-btn" id="btn-import" onclick="setMode('import')">
+                    <span class="icon">📂</span>
+                    Import CSV / Excel
+                </div>
+            </div>
+
+            <!-- Manual Form -->
+            <div id="panel-manual">
+                <form method="POST" action="/add-customer">
                     <div class="mb-3">
-                        <label class="form-label">First Name *</label>
-                        <input type="text" class="form-control" name="first_name" required>
+                        <label class="form-label fw-semibold">First Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="first_name" placeholder="e.g. John" required>
                     </div>
-                    
                     <div class="mb-3">
-                        <label class="form-label">Last Name</label>
-                        <input type="text" class="form-control" name="last_name">
+                        <label class="form-label fw-semibold">Last Name</label>
+                        <input type="text" class="form-control" name="last_name" placeholder="e.g. Smith">
                     </div>
-                    
                     <div class="mb-3">
-                        <label class="form-label">Phone <span class="text-danger">*</span></label>
+                        <label class="form-label fw-semibold">Phone <span class="text-danger">*</span></label>
                         <input type="tel" class="form-control" name="phone" placeholder="e.g. (214) 555-1234">
                         <small class="text-muted">Required if no email</small>
                     </div>
-
                     <div class="mb-3">
-                        <label class="form-label">Email <span class="text-muted fw-normal">(optional)</span></label>
+                        <label class="form-label fw-semibold">Email <span class="text-muted fw-normal">(optional)</span></label>
                         <input type="email" class="form-control" name="email" placeholder="e.g. john@gmail.com">
                         <small class="text-muted">Needed to send email campaigns</small>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label class="form-label">Date of Birth</label>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Date of Birth <span class="text-muted fw-normal">(optional)</span></label>
                         <input type="date" class="form-control" name="dob">
                     </div>
-                    
-                    <button type="submit" class="btn btn-primary w-100 mb-2">✅ Add Customer</button>
-                    <a href="/customers" class="btn btn-outline-secondary w-100">← Back</a>
+                    <button type="submit" class="btn btn-primary w-100 py-2">✅ Add Customer</button>
                 </form>
             </div>
+
+            <!-- Import Panel -->
+            <div id="panel-import" style="display:none;">
+                <form method="POST" action="/upload-customers" enctype="multipart/form-data">
+                    <div class="import-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                        <div style="font-size:2.5rem;">📁</div>
+                        <div class="fw-semibold mt-2">Click to choose file or drag & drop</div>
+                        <div class="text-muted mt-1" style="font-size:0.85rem;">Supports CSV and Excel (.xlsx) files</div>
+                        <div id="file-name" class="mt-2 text-primary fw-semibold" style="display:none;"></div>
+                    </div>
+                    <input type="file" id="file-input" name="file" accept=".csv,.xlsx,.xls" style="display:none;" onchange="showFileName(this)">
+
+                    <div class="mt-3 p-3 rounded" style="background:#f0fdf4;border:1px solid #bbf7d0;font-size:0.82rem;">
+                        <div class="fw-semibold text-success mb-1">📋 CSV Format Tips</div>
+                        <div class="text-muted">Your file should have columns like:<br>
+                        <code>first_name, last_name, email, phone, dob</code><br>
+                        Column names are auto-detected — order doesn't matter.</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 py-2 mt-3" id="import-btn" disabled>
+                        📤 Import Customers
+                    </button>
+                </form>
+
+                <div class="text-center mt-3">
+                    <a href="/static/sample_customers.csv" class="text-decoration-none" style="font-size:0.85rem;color:#6366f1;">
+                        ⬇️ Download sample CSV template
+                    </a>
+                </div>
+            </div>
+
         </div>
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+function setMode(mode) {
+    document.getElementById('panel-manual').style.display = mode === 'manual' ? 'block' : 'none';
+    document.getElementById('panel-import').style.display = mode === 'import' ? 'block' : 'none';
+    document.getElementById('btn-manual').classList.toggle('active', mode === 'manual');
+    document.getElementById('btn-import').classList.toggle('active', mode === 'import');
+}
+
+function showFileName(input) {
+    if (input.files && input.files[0]) {
+        const el = document.getElementById('file-name');
+        el.textContent = '✅ ' + input.files[0].name;
+        el.style.display = 'block';
+        document.getElementById('import-btn').disabled = false;
+    }
+}
+
+// Drag & drop
+const zone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    fileInput.files = e.dataTransfer.files;
+    showFileName(fileInput);
+});
+</script>
 </body>
 </html>
