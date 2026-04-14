@@ -358,6 +358,28 @@ class SocialPost(db.Model):
     fb_post_id = db.Column(db.String(200), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class CheckIn(db.Model):
+    """QR code walk-in check-ins — customer scans QR at counter."""
+    __tablename__ = "checkins"
+    id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=False)
+    customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"), nullable=True)
+    name = db.Column(db.String(200))
+    phone = db.Column(db.String(50))
+    source = db.Column(db.String(30), default="qr")  # qr, manual
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class CampaignRedemption(db.Model):
+    """Tracks when a customer redeems a campaign offer — for ROI calculation."""
+    __tablename__ = "campaign_redemptions"
+    id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=False)
+    campaign_id = db.Column(db.Integer, db.ForeignKey("campaigns.id"), nullable=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"), nullable=True)
+    revenue = db.Column(db.Float, default=0.0)
+    note = db.Column(db.String(300), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 def _run_migrations():
     """Run DB migrations in background so startup doesn't block gunicorn."""
     import time
@@ -423,6 +445,8 @@ def _do_migrations():
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS whatsapp_opted_in BOOLEAN DEFAULT FALSE",
         "CREATE TABLE IF NOT EXISTS social_connections (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), platform VARCHAR(30), page_id VARCHAR(100), page_name VARCHAR(200), access_token TEXT, ig_user_id VARCHAR(100), connected_at TIMESTAMP DEFAULT NOW())",
         "CREATE TABLE IF NOT EXISTS social_posts (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), platform VARCHAR(30), content TEXT, hashtags TEXT, scheduled_at TIMESTAMP, sort_order INTEGER DEFAULT 0, status VARCHAR(20) DEFAULT 'draft', posted_at TIMESTAMP, fb_post_id VARCHAR(200), created_at TIMESTAMP DEFAULT NOW())",
+        "CREATE TABLE IF NOT EXISTS checkins (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), customer_id INTEGER REFERENCES customers(id), name VARCHAR(200), phone VARCHAR(50), source VARCHAR(30) DEFAULT 'qr', created_at TIMESTAMP DEFAULT NOW())",
+        "CREATE TABLE IF NOT EXISTS campaign_redemptions (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), campaign_id INTEGER REFERENCES campaigns(id), customer_id INTEGER REFERENCES customers(id), revenue FLOAT DEFAULT 0, note VARCHAR(300), created_at TIMESTAMP DEFAULT NOW())",
     ]
     if not db_url.startswith("sqlite"):
         for sql in migrations:
@@ -5092,6 +5116,165 @@ def autopilot():
         avg_visits=round(float(avg_visits), 1),
         total_loyalty_pts=int(total_loyalty_pts),
     )
+
+
+# ============================================
+# QR CHECK-IN SYSTEM
+# ============================================
+
+@app.route("/checkin/<slug>")
+def checkin_page(slug):
+    """Public mobile page — customer scans QR, enters name+phone."""
+    b = Business.query.filter_by(slug=slug).first()
+    if not b:
+        return "<h2>Business not found.</h2>", 404
+    return render_template("checkin.html", business=b)
+
+@app.route("/api/do-checkin/<slug>", methods=["POST"])
+def do_checkin(slug):
+    """Process the check-in form — add/find customer, record check-in, send thank-you SMS."""
+    b = Business.query.filter_by(slug=slug).first()
+    if not b:
+        return jsonify({"success": False, "error": "Business not found"}), 404
+    try:
+        data = request.get_json()
+        name = (data.get("name") or "").strip()
+        phone = (data.get("phone") or "").strip()
+        if not name or not phone:
+            return jsonify({"success": False, "error": "Name and phone are required"})
+
+        # Find or create customer
+        customer = Customer.query.filter_by(business_id=b.id, phone=phone).first()
+        is_new = False
+        if not customer:
+            parts = name.strip().split(" ", 1)
+            customer = Customer(
+                business_id=b.id,
+                first_name=parts[0],
+                last_name=parts[1] if len(parts) > 1 else "",
+                phone=phone,
+                source="qr_checkin",
+                created_at=datetime.utcnow(),
+            )
+            db.session.add(customer)
+            db.session.flush()
+            is_new = True
+
+        # Record check-in
+        ci = CheckIn(
+            business_id=b.id,
+            customer_id=customer.id,
+            name=name,
+            phone=phone,
+            source="qr",
+        )
+        db.session.add(ci)
+        db.session.commit()
+
+        # Send thank-you SMS
+        if twilio_client and phone:
+            try:
+                msg = f"Thanks for visiting {b.business_name}, {customer.first_name}! 🎉 We're glad you're here. Show this to get a special treat today!"
+                twilio_client.messages.create(body=msg, from_=twilio_phone, to=phone)
+            except Exception as sms_err:
+                print(f"Check-in SMS failed: {sms_err}")
+
+        return jsonify({"success": True, "is_new": is_new, "name": customer.first_name})
+    except Exception as e:
+        print(f"Check-in error: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/my-qr")
+def my_qr():
+    """Business dashboard — QR code + recent check-ins."""
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    checkins = CheckIn.query.filter_by(business_id=b.id).order_by(CheckIn.created_at.desc()).limit(50).all()
+    today_count = CheckIn.query.filter(
+        CheckIn.business_id == b.id,
+        CheckIn.created_at >= datetime.utcnow().replace(hour=0, minute=0, second=0)
+    ).count()
+    week_count = CheckIn.query.filter(
+        CheckIn.business_id == b.id,
+        CheckIn.created_at >= datetime.utcnow() - timedelta(days=7)
+    ).count()
+    join_url = request.host_url.rstrip("/") + f"/checkin/{b.slug}"
+    return render_template("my_qr.html", business=b, checkins=checkins,
+                           today_count=today_count, week_count=week_count,
+                           join_url=join_url, now=datetime.utcnow())
+
+
+# ============================================
+# REVENUE ROI TRACKER
+# ============================================
+
+@app.route("/roi")
+def roi_dashboard():
+    """Revenue ROI dashboard — see how much each campaign earned."""
+    b = current_business()
+    if not b:
+        return redirect("/login")
+
+    # All campaigns with redemption totals
+    campaigns = Campaign.query.filter_by(business_id=b.id).order_by(Campaign.created_at.desc()).limit(100).all()
+    redemptions = CampaignRedemption.query.filter_by(business_id=b.id).all()
+
+    # Build per-campaign stats
+    camp_map = {}
+    for r in redemptions:
+        cid = r.campaign_id or 0
+        if cid not in camp_map:
+            camp_map[cid] = {"count": 0, "revenue": 0.0}
+        camp_map[cid]["count"] += 1
+        camp_map[cid]["revenue"] += r.revenue or 0
+
+    total_revenue = sum(r.revenue or 0 for r in redemptions)
+    total_redemptions = len(redemptions)
+
+    # Top performing campaigns
+    camp_stats = []
+    for c in campaigns:
+        stats = camp_map.get(c.id, {"count": 0, "revenue": 0.0})
+        camp_stats.append({
+            "campaign": c,
+            "redemptions": stats["count"],
+            "revenue": stats["revenue"],
+        })
+
+    # Recent redemptions
+    recent_redemptions = CampaignRedemption.query.filter_by(business_id=b.id)\
+        .order_by(CampaignRedemption.created_at.desc()).limit(20).all()
+
+    return render_template("roi.html", business=b,
+        camp_stats=camp_stats,
+        total_revenue=total_revenue,
+        total_redemptions=total_redemptions,
+        recent_redemptions=recent_redemptions,
+    )
+
+@app.route("/api/log-redemption", methods=["POST"])
+def log_redemption():
+    """Log a campaign redemption with optional revenue amount."""
+    b = current_business()
+    if not b:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    try:
+        data = request.get_json()
+        campaign_id = data.get("campaign_id")
+        revenue = float(data.get("revenue") or 0)
+        note = (data.get("note") or "").strip()
+        r = CampaignRedemption(
+            business_id=b.id,
+            campaign_id=campaign_id or None,
+            revenue=revenue,
+            note=note,
+        )
+        db.session.add(r)
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 
 if __name__ == "__main__":

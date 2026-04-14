@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Check In — {{ business.business_name }}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: linear-gradient(160deg, #0d0d1a 0%, #1a0a2e 100%);
+            min-height: 100vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+            color: #e2e2f0; padding: 20px;
+        }
+        .card {
+            background: #13131f; border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 24px; padding: 36px 28px; width: 100%; max-width: 400px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+        }
+        .biz-icon { font-size: 3rem; text-align: center; margin-bottom: 8px; }
+        .biz-name { font-size: 1.4rem; font-weight: 800; color: #fff; text-align: center; margin-bottom: 4px; }
+        .biz-sub { font-size: 0.85rem; color: #6b6b8a; text-align: center; margin-bottom: 28px; }
+
+        label { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; color: #6b6b8a; text-transform: uppercase; margin-bottom: 6px; }
+        input {
+            width: 100%; background: #1a1a2e; border: 1.5px solid rgba(255,255,255,0.1);
+            color: #e2e2f0; border-radius: 12px; padding: 14px 16px; font-size: 1rem;
+            margin-bottom: 16px; transition: border-color 0.15s; -webkit-appearance: none;
+        }
+        input:focus { outline: none; border-color: #7c6fff; }
+        input::placeholder { color: #3d3d5c; }
+
+        .btn {
+            width: 100%; background: linear-gradient(135deg, #7c6fff, #a855f7);
+            border: none; color: #fff; font-weight: 800; font-size: 1.1rem;
+            padding: 16px; border-radius: 14px; cursor: pointer;
+            transition: opacity 0.15s; margin-top: 4px; letter-spacing: 0.02em;
+        }
+        .btn:active { opacity: 0.85; }
+        .btn:disabled { opacity: 0.5; }
+
+        /* Success state */
+        .success-screen { display: none; text-align: center; }
+        .success-icon { font-size: 5rem; margin-bottom: 16px; }
+        .success-title { font-size: 1.6rem; font-weight: 900; color: #fff; margin-bottom: 8px; }
+        .success-msg { font-size: 0.95rem; color: #6b6b8a; line-height: 1.6; }
+        .success-badge { display: inline-block; background: rgba(74,222,128,0.12); border: 1px solid rgba(74,222,128,0.3); color: #4ade80; border-radius: 20px; padding: 8px 20px; font-size: 0.85rem; font-weight: 700; margin-top: 16px; }
+
+        .privacy { font-size: 0.68rem; color: #3d3d5c; text-align: center; margin-top: 16px; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <!-- Form -->
+    <div id="formScreen">
+        <div class="biz-icon">🏪</div>
+        <div class="biz-name">{{ business.business_name }}</div>
+        <div class="biz-sub">Check in to get your welcome reward 🎁</div>
+
+        <label>Your Name</label>
+        <input type="text" id="nameInput" placeholder="First & Last Name" autocomplete="name" autofocus>
+
+        <label>Phone Number</label>
+        <input type="tel" id="phoneInput" placeholder="+1 555 000 0000" autocomplete="tel">
+
+        <button class="btn" id="checkinBtn" onclick="doCheckin()">
+            ✅ Check In
+        </button>
+
+        <div class="privacy">By checking in, you agree to receive occasional SMS messages from {{ business.business_name }}. Reply STOP to unsubscribe anytime.</div>
+    </div>
+
+    <!-- Success -->
+    <div class="success-screen" id="successScreen">
+        <div class="success-icon">🎉</div>
+        <div class="success-title" id="successName">Welcome!</div>
+        <div class="success-msg">
+            You're checked in at <strong>{{ business.business_name }}</strong>.<br>
+            Check your phone — we just sent you a welcome message!
+        </div>
+        <div class="success-badge">✓ You're in the VIP list now</div>
+    </div>
+</div>
+
+<script>
+const SLUG = "{{ business.slug }}";
+
+async function doCheckin() {
+    const name = document.getElementById('nameInput').value.trim();
+    const phone = document.getElementById('phoneInput').value.trim();
+    if (!name) { document.getElementById('nameInput').focus(); return; }
+    if (!phone) { document.getElementById('phoneInput').focus(); return; }
+
+    const btn = document.getElementById('checkinBtn');
+    btn.disabled = true;
+    btn.textContent = 'Checking in...';
+
+    try {
+        const res = await fetch(`/api/do-checkin/${SLUG}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, phone })
+        });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('formScreen').style.display = 'none';
+            document.getElementById('successScreen').style.display = 'block';
+            document.getElementById('successName').textContent =
+                `Welcome${data.is_new ? '' : ' back'}, ${data.name}! 👋`;
+        } else {
+            alert(data.error || 'Something went wrong. Please try again.');
+            btn.disabled = false;
+            btn.textContent = '✅ Check In';
+        }
+    } catch(e) {
+        alert('Network error. Please try again.');
+        btn.disabled = false;
+        btn.textContent = '✅ Check In';
+    }
+}
+
+// Allow Enter key to submit
+document.addEventListener('keypress', e => { if (e.key === 'Enter') doCheckin(); });
+</script>
+</body>
+</html>

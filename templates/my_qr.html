@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Check-In — Revvio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #0d0d1a; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; min-height: 100vh; }
+        .top-bar { background: #13131f; border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 28px; display: flex; align-items: center; gap: 16px; }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .container { max-width: 900px; padding-top: 2rem; padding-bottom: 4rem; }
+
+        .stat-card { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 24px; text-align: center; }
+        .stat-num { font-size: 2.8rem; font-weight: 900; color: #fff; line-height: 1; }
+        .stat-label { font-size: 0.78rem; color: #6b6b8a; margin-top: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+
+        .qr-card { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; padding: 32px; text-align: center; }
+        .qr-img { border-radius: 12px; background: #fff; padding: 12px; display: inline-block; }
+        .qr-img img { display: block; width: 220px; height: 220px; }
+        .url-box { background: #1a1a2e; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px 16px; font-size: 0.82rem; color: #9090b0; word-break: break-all; margin: 16px 0; }
+        .btn-copy { background: linear-gradient(135deg, #7c6fff, #a855f7); border: none; color: #fff; font-weight: 700; border-radius: 10px; padding: 10px 24px; cursor: pointer; font-size: 0.88rem; }
+        .btn-print { background: #1a1a2e; border: 1px solid rgba(255,255,255,0.12); color: #e2e2f0; font-weight: 600; border-radius: 10px; padding: 10px 24px; cursor: pointer; font-size: 0.88rem; }
+
+        .section-title { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; color: #6b6b8a; text-transform: uppercase; margin-bottom: 14px; }
+
+        .checkin-row { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+        .ci-avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #7c6fff, #a855f7); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; font-size: 1rem; flex-shrink: 0; }
+        .ci-name { font-weight: 700; color: #fff; font-size: 0.9rem; }
+        .ci-phone { font-size: 0.78rem; color: #6b6b8a; }
+        .ci-time { margin-left: auto; font-size: 0.72rem; color: #4a4a6a; text-align: right; }
+        .badge-new { background: rgba(74,222,128,0.12); color: #4ade80; border: 1px solid rgba(74,222,128,0.25); border-radius: 20px; padding: 2px 10px; font-size: 0.68rem; font-weight: 700; }
+
+        .how-card { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 20px; }
+        .step { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 16px; }
+        .step:last-child { margin-bottom: 0; }
+        .step-num { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #7c6fff, #a855f7); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem; color: #fff; flex-shrink: 0; }
+        .step-text strong { color: #fff; font-size: 0.88rem; display: block; margin-bottom: 2px; }
+        .step-text span { font-size: 0.78rem; color: #6b6b8a; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <a href="/dashboard" style="color:#6b6b8a;text-decoration:none;font-size:0.85rem;">← Dashboard</a>
+    <span class="brand">Revvio</span>
+    <span style="font-size:0.85rem;color:#6b6b8a;margin-left:4px;">QR Check-In</span>
+</div>
+
+<div class="container">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <div style="font-size:2rem;">📲</div>
+        <div>
+            <h1 style="font-size:1.4rem;font-weight:800;color:#fff;margin:0;">QR Check-In</h1>
+            <div style="color:#6b6b8a;font-size:0.82rem;">Customers scan → instantly added to your list → welcome SMS sent automatically</div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-4">
+            <div class="stat-card">
+                <div class="stat-num" style="color:#4ade80;">{{ today_count }}</div>
+                <div class="stat-label">Today</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="stat-card">
+                <div class="stat-num" style="color:#a78bfa;">{{ week_count }}</div>
+                <div class="stat-label">This Week</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="stat-card">
+                <div class="stat-num">{{ checkins|length }}</div>
+                <div class="stat-label">All Time</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- QR Code -->
+        <div class="col-md-5">
+            <div class="qr-card mb-4">
+                <div style="font-size:0.72rem;font-weight:700;letter-spacing:0.1em;color:#6b6b8a;text-transform:uppercase;margin-bottom:16px;">Your QR Code</div>
+                <div class="qr-img">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data={{ join_url }}&color=000000&bgcolor=ffffff" alt="QR Code">
+                </div>
+                <div class="url-box" id="urlBox">{{ join_url }}</div>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button class="btn-copy" onclick="copyUrl()"><i class="bi bi-clipboard me-1"></i> Copy Link</button>
+                    <button class="btn-print" onclick="printQR()"><i class="bi bi-printer me-1"></i> Print</button>
+                </div>
+                <div style="font-size:0.72rem;color:#4a4a6a;margin-top:14px;line-height:1.6;">
+                    Print this QR code and place it at your counter, table, or door. Customers scan → check in → get a welcome message instantly.
+                </div>
+            </div>
+
+            <!-- How it works -->
+            <div class="how-card">
+                <div class="section-title">How It Works</div>
+                <div class="step">
+                    <div class="step-num">1</div>
+                    <div class="step-text">
+                        <strong>Print & Place</strong>
+                        <span>Print the QR code and put it at your counter or table</span>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">2</div>
+                    <div class="step-text">
+                        <strong>Customer Scans</strong>
+                        <span>They open their camera, scan, and enter name + phone — takes 10 seconds</span>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">3</div>
+                    <div class="step-text">
+                        <strong>Auto Added</strong>
+                        <span>Instantly added to your customer list in Revvio</span>
+                    </div>
+                </div>
+                <div class="step">
+                    <div class="step-num">4</div>
+                    <div class="step-text">
+                        <strong>Welcome SMS Sent</strong>
+                        <span>They receive a thank-you text with a reward — automatically</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Check-ins -->
+        <div class="col-md-7">
+            <div class="section-title">Recent Check-ins</div>
+
+            {% if checkins %}
+                {% for ci in checkins %}
+                <div class="checkin-row">
+                    <div class="ci-avatar">{{ ci.name[0].upper() if ci.name else '?' }}</div>
+                    <div>
+                        <div class="ci-name">{{ ci.name }}</div>
+                        <div class="ci-phone">{{ ci.phone }}</div>
+                    </div>
+                    {% if (now - ci.created_at).total_seconds() < 3600 %}
+                    <span class="badge-new">NEW</span>
+                    {% endif %}
+                    <div class="ci-time">
+                        {{ ci.created_at.strftime('%b %d') }}<br>
+                        <span style="color:#6b6b8a;">{{ ci.created_at.strftime('%I:%M %p') }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div style="background:#13131f;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:40px;text-align:center;">
+                <div style="font-size:2.5rem;margin-bottom:12px;">📲</div>
+                <div style="color:#fff;font-weight:700;margin-bottom:6px;">No check-ins yet</div>
+                <div style="color:#6b6b8a;font-size:0.85rem;">Print your QR code and place it where customers can see it. First check-in will appear here instantly.</div>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<script>
+function copyUrl() {
+    navigator.clipboard.writeText('{{ join_url }}').then(() => {
+        const btn = event.target.closest('button');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check me-1"></i> Copied!';
+        setTimeout(() => btn.innerHTML = orig, 2000);
+    });
+}
+
+function printQR() {
+    const w = window.open('', '_blank');
+    w.document.write(`
+        <html><head><title>QR Code — {{ business.business_name }}</title>
+        <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 40px; }
+            h2 { font-size: 28px; margin-bottom: 8px; }
+            p { color: #666; font-size: 16px; margin-bottom: 24px; }
+            img { width: 280px; height: 280px; }
+            .url { font-size: 13px; color: #999; margin-top: 16px; }
+            .footer { margin-top: 24px; font-size: 14px; color: #333; font-weight: bold; }
+        </style></head>
+        <body>
+            <h2>Check In Here! 📲</h2>
+            <p>Scan with your phone camera to join our VIP list & get a welcome gift</p>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=280x280&data={{ join_url }}&color=000000&bgcolor=ffffff">
+            <div class="url">{{ join_url }}</div>
+            <div class="footer">{{ business.business_name }}</div>
+        </body></html>
+    `);
+    w.document.close();
+    w.print();
+}
+</script>
+
+</body>
+</html>

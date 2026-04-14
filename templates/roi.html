@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Revenue ROI — Revvio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #0d0d1a; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; min-height: 100vh; }
+        .top-bar { background: #13131f; border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 28px; display: flex; align-items: center; gap: 16px; }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .container { max-width: 960px; padding-top: 2rem; padding-bottom: 4rem; }
+
+        .stat-card { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 24px; }
+        .stat-num { font-size: 2.4rem; font-weight: 900; color: #fff; line-height: 1; }
+        .stat-label { font-size: 0.75rem; color: #6b6b8a; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+
+        .camp-row { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 16px 20px; margin-bottom: 10px; display: flex; align-items: center; gap: 16px; }
+        .camp-type { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; color: #6b6b8a; text-transform: uppercase; margin-bottom: 3px; }
+        .camp-name { font-size: 0.85rem; color: #c0c0d8; }
+        .camp-date { font-size: 0.72rem; color: #4a4a6a; }
+        .roi-badge { background: rgba(74,222,128,0.12); border: 1px solid rgba(74,222,128,0.25); color: #4ade80; border-radius: 20px; padding: 5px 14px; font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+        .roi-badge.zero { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08); color: #4a4a6a; }
+        .redemption-count { font-size: 0.75rem; color: #6b6b8a; text-align: center; }
+        .btn-log { background: rgba(124,111,255,0.12); border: 1px solid rgba(124,111,255,0.25); color: #a78bfa; border-radius: 8px; padding: 7px 14px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .btn-log:hover { background: rgba(124,111,255,0.2); }
+
+        /* Revenue bar */
+        .rev-bar-wrap { flex: 1; min-width: 60px; }
+        .rev-bar { height: 6px; background: linear-gradient(90deg, #7c6fff, #4ade80); border-radius: 3px; transition: width 0.4s; }
+        .rev-bar-bg { background: rgba(255,255,255,0.05); border-radius: 3px; height: 6px; overflow: hidden; }
+
+        /* Log modal */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.open { display: flex; }
+        .modal-card { background: #13131f; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 28px; width: 100%; max-width: 420px; margin: 20px; }
+        .modal-title { font-size: 1rem; font-weight: 800; color: #fff; margin-bottom: 18px; }
+        .ctrl { background: #1a1a2e; border: 1px solid rgba(255,255,255,0.12); color: #e2e2f0; border-radius: 10px; padding: 11px 14px; font-size: 0.9rem; width: 100%; margin-bottom: 12px; }
+        .ctrl:focus { outline: none; border-color: #7c6fff; }
+        .btn-confirm { background: linear-gradient(135deg, #7c6fff, #a855f7); border: none; color: #fff; font-weight: 700; border-radius: 10px; padding: 12px; width: 100%; cursor: pointer; font-size: 0.9rem; }
+        .btn-cancel { background: none; border: none; color: #6b6b8a; font-size: 0.85rem; cursor: pointer; width: 100%; margin-top: 8px; }
+
+        .section-title { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; color: #6b6b8a; text-transform: uppercase; margin-bottom: 14px; }
+
+        .tip-box { background: rgba(124,111,255,0.08); border: 1px solid rgba(124,111,255,0.2); border-radius: 12px; padding: 14px 18px; font-size: 0.82rem; color: #9090b0; line-height: 1.6; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <a href="/dashboard" style="color:#6b6b8a;text-decoration:none;font-size:0.85rem;">← Dashboard</a>
+    <span class="brand">Revvio</span>
+    <span style="font-size:0.85rem;color:#6b6b8a;margin-left:4px;">Revenue ROI</span>
+</div>
+
+<div class="container">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <div style="font-size:2rem;">💰</div>
+        <div>
+            <h1 style="font-size:1.4rem;font-weight:800;color:#fff;margin:0;">Revenue ROI Tracker</h1>
+            <div style="color:#6b6b8a;font-size:0.82rem;">See exactly how much money each campaign brought back — no guessing</div>
+        </div>
+    </div>
+
+    <!-- Summary stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-4">
+            <div class="stat-card">
+                <div class="stat-num" style="color:#4ade80;">${{ '%.0f' | format(total_revenue) }}</div>
+                <div class="stat-label">Total Revenue Tracked</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="stat-card">
+                <div class="stat-num" style="color:#a78bfa;">{{ total_redemptions }}</div>
+                <div class="stat-label">Redemptions Logged</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="stat-card">
+                <div class="stat-num" style="color:#fbbf24;">
+                    ${{ '%.0f' | format(total_revenue / total_redemptions if total_redemptions else 0) }}
+                </div>
+                <div class="stat-label">Avg Revenue / Visit</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tip-box">
+        💡 <strong>How to use:</strong> When a customer shows your campaign message at the counter, tap <strong>Log Revenue</strong> next to that campaign and enter the sale amount. Revvio tracks your total ROI so you can see which campaigns are worth sending again.
+    </div>
+
+    <!-- Quick log without campaign -->
+    <div style="margin-bottom:20px;">
+        <button class="btn-log" style="font-size:0.85rem;padding:10px 20px;" onclick="openModal(null, 'Quick log — walk-in / no specific campaign')">
+            <i class="bi bi-plus-circle me-1"></i> Quick Log Revenue (walk-in / no campaign)
+        </button>
+    </div>
+
+    {% set max_rev = camp_stats | map(attribute='revenue') | max if camp_stats else 1 %}
+
+    <!-- Campaign list -->
+    <div class="section-title">Your Campaigns</div>
+    {% if camp_stats %}
+        {% for s in camp_stats %}
+        <div class="camp-row">
+            <div style="flex:1;min-width:0;">
+                <div class="camp-type">{{ s.campaign.campaign_type or 'Campaign' }}</div>
+                <div class="camp-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                    {{ s.campaign.customer_name or s.campaign.customer_email or 'Bulk campaign' }}
+                </div>
+                <div class="camp-date">{{ s.campaign.created_at.strftime('%b %d, %Y') }}</div>
+            </div>
+            <div style="text-align:center;min-width:70px;">
+                <div style="font-size:1.1rem;font-weight:800;color:{% if s.redemptions > 0 %}#4ade80{% else %}#4a4a6a{% endif %};">
+                    {{ s.redemptions }}
+                </div>
+                <div class="redemption-count">redemptions</div>
+            </div>
+            <div style="text-align:center;min-width:80px;">
+                <div class="{% if s.revenue > 0 %}roi-badge{% else %}roi-badge zero{% endif %}">
+                    ${{ '%.0f' | format(s.revenue) }}
+                </div>
+            </div>
+            <button class="btn-log" onclick="openModal({{ s.campaign.id }}, '{{ s.campaign.campaign_type or 'Campaign' }}')">
+                <i class="bi bi-plus me-1"></i> Log Revenue
+            </button>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div style="background:#13131f;border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:40px;text-align:center;">
+        <div style="font-size:2.5rem;margin-bottom:12px;">📊</div>
+        <div style="color:#fff;font-weight:700;margin-bottom:6px;">No campaigns yet</div>
+        <div style="color:#6b6b8a;font-size:0.85rem;margin-bottom:16px;">Send your first campaign and start tracking revenue.</div>
+        <a href="/bulk-send" style="background:linear-gradient(135deg,#7c6fff,#a855f7);color:#fff;border-radius:10px;padding:10px 24px;text-decoration:none;font-weight:700;font-size:0.85rem;">Send First Campaign</a>
+    </div>
+    {% endif %}
+
+    <!-- Recent redemptions -->
+    {% if recent_redemptions %}
+    <div class="section-title mt-4">Recent Redemptions</div>
+    {% for r in recent_redemptions %}
+    <div class="camp-row" style="padding:12px 18px;">
+        <div style="flex:1;">
+            <div style="font-size:0.85rem;color:#c0c0d8;">{{ r.note or 'Customer redeemed offer' }}</div>
+            <div style="font-size:0.72rem;color:#4a4a6a;">{{ r.created_at.strftime('%b %d, %Y %I:%M %p') }}</div>
+        </div>
+        <div class="roi-badge">${{ '%.2f' | format(r.revenue) }}</div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+</div>
+
+<!-- Log Revenue Modal -->
+<div class="modal-overlay" id="logModal">
+    <div class="modal-card">
+        <div class="modal-title">💰 Log Revenue</div>
+        <div id="modalCampName" style="font-size:0.82rem;color:#6b6b8a;margin-bottom:16px;"></div>
+        <input type="hidden" id="modalCampId">
+        <label style="font-size:0.72rem;color:#6b6b8a;font-weight:700;display:block;margin-bottom:6px;">Sale Amount ($)</label>
+        <input type="number" class="ctrl" id="revenueInput" placeholder="e.g. 45.00" step="0.01" min="0">
+        <label style="font-size:0.72rem;color:#6b6b8a;font-weight:700;display:block;margin-bottom:6px;">Note (optional)</label>
+        <input type="text" class="ctrl" id="noteInput" placeholder="e.g. Table of 2, lunch">
+        <button class="btn-confirm" onclick="logRevenue()">Save Redemption</button>
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+    </div>
+</div>
+
+<script>
+function openModal(campId, campName) {
+    document.getElementById('modalCampId').value = campId || '';
+    document.getElementById('modalCampName').textContent = campName;
+    document.getElementById('revenueInput').value = '';
+    document.getElementById('noteInput').value = '';
+    document.getElementById('logModal').classList.add('open');
+    setTimeout(() => document.getElementById('revenueInput').focus(), 100);
+}
+function closeModal() {
+    document.getElementById('logModal').classList.remove('open');
+}
+
+async function logRevenue() {
+    const campId = document.getElementById('modalCampId').value;
+    const revenue = parseFloat(document.getElementById('revenueInput').value) || 0;
+    const note = document.getElementById('noteInput').value.trim();
+    const btn = document.querySelector('.btn-confirm');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+        const res = await fetch('/api/log-redemption', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ campaign_id: campId || null, revenue, note })
+        });
+        const data = await res.json();
+        if (data.success) {
+            closeModal();
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to log.');
+        }
+    } finally {
+        btn.disabled = false; btn.textContent = 'Save Redemption';
+    }
+}
+
+// Close modal on outside click
+document.getElementById('logModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+</script>
+
+</body>
+</html>
