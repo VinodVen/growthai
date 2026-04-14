@@ -358,6 +358,18 @@ class SocialPost(db.Model):
     fb_post_id = db.Column(db.String(200), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class SquareConnection(db.Model):
+    """Square POS integration — auto-logs revenue when payments come in."""
+    __tablename__ = "square_connections"
+    id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=False)
+    merchant_id = db.Column(db.String(100))
+    merchant_name = db.Column(db.String(200))
+    access_token = db.Column(db.Text)
+    refresh_token = db.Column(db.Text)
+    webhook_signature_key = db.Column(db.String(200))
+    connected_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class CheckIn(db.Model):
     """QR code walk-in check-ins — customer scans QR at counter."""
     __tablename__ = "checkins"
@@ -445,6 +457,7 @@ def _do_migrations():
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS whatsapp_opted_in BOOLEAN DEFAULT FALSE",
         "CREATE TABLE IF NOT EXISTS social_connections (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), platform VARCHAR(30), page_id VARCHAR(100), page_name VARCHAR(200), access_token TEXT, ig_user_id VARCHAR(100), connected_at TIMESTAMP DEFAULT NOW())",
         "CREATE TABLE IF NOT EXISTS social_posts (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), platform VARCHAR(30), content TEXT, hashtags TEXT, scheduled_at TIMESTAMP, sort_order INTEGER DEFAULT 0, status VARCHAR(20) DEFAULT 'draft', posted_at TIMESTAMP, fb_post_id VARCHAR(200), created_at TIMESTAMP DEFAULT NOW())",
+        "CREATE TABLE IF NOT EXISTS square_connections (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), merchant_id VARCHAR(100), merchant_name VARCHAR(200), access_token TEXT, refresh_token TEXT, webhook_signature_key VARCHAR(200), connected_at TIMESTAMP DEFAULT NOW())",
         "CREATE TABLE IF NOT EXISTS checkins (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), customer_id INTEGER REFERENCES customers(id), name VARCHAR(200), phone VARCHAR(50), source VARCHAR(30) DEFAULT 'qr', created_at TIMESTAMP DEFAULT NOW())",
         "CREATE TABLE IF NOT EXISTS campaign_redemptions (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), campaign_id INTEGER REFERENCES campaigns(id), customer_id INTEGER REFERENCES customers(id), revenue FLOAT DEFAULT 0, note VARCHAR(300), created_at TIMESTAMP DEFAULT NOW())",
     ]
@@ -5116,6 +5129,249 @@ def autopilot():
         avg_visits=round(float(avg_visits), 1),
         total_loyalty_pts=int(total_loyalty_pts),
     )
+
+
+# ============================================
+# SQUARE POS INTEGRATION
+# ============================================
+
+SQUARE_APP_ID     = os.getenv("SQUARE_APP_ID", "")
+SQUARE_APP_SECRET = os.getenv("SQUARE_APP_SECRET", "")
+SQUARE_ENV        = os.getenv("SQUARE_ENV", "production")  # sandbox or production
+SQUARE_BASE       = "https://connect.squareup.com" if SQUARE_ENV == "production" else "https://connect.squareupsandbox.com"
+
+@app.route("/square-connect")
+def square_connect():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    conn = SquareConnection.query.filter_by(business_id=b.id).first()
+    redirect_uri = request.host_url.rstrip("/") + "/square/callback"
+    auth_url = (
+        f"{SQUARE_BASE}/oauth2/authorize"
+        f"?client_id={SQUARE_APP_ID}"
+        f"&scope=MERCHANT_PROFILE_READ+PAYMENTS_READ+CUSTOMERS_READ"
+        f"&redirect_uri={redirect_uri}"
+        f"&state={b.id}"
+    ) if SQUARE_APP_ID else ""
+    return render_template("square_connect.html", business=b, conn=conn,
+                           auth_url=auth_url, has_app=bool(SQUARE_APP_ID))
+
+@app.route("/square/callback")
+def square_callback():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    code = request.args.get("code", "")
+    if not code:
+        flash("Square authorization failed — no code returned.", "error")
+        return redirect("/square-connect")
+    try:
+        redirect_uri = request.host_url.rstrip("/") + "/square/callback"
+        token_res = _requests.post(
+            f"{SQUARE_BASE}/oauth2/token",
+            json={
+                "client_id": SQUARE_APP_ID,
+                "client_secret": SQUARE_APP_SECRET,
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect_uri,
+            },
+            headers={"Square-Version": "2024-01-18", "Content-Type": "application/json"}
+        ).json()
+        if "access_token" not in token_res:
+            flash(f"Square error: {token_res.get('message', 'Token exchange failed')}", "error")
+            return redirect("/square-connect")
+
+        # Get merchant info
+        merchant_res = _requests.get(
+            f"{SQUARE_BASE}/v2/merchants/me",
+            headers={"Authorization": f"Bearer {token_res['access_token']}", "Square-Version": "2024-01-18"}
+        ).json()
+        merchant = merchant_res.get("merchant", {})
+
+        conn = SquareConnection.query.filter_by(business_id=b.id).first()
+        if not conn:
+            conn = SquareConnection(business_id=b.id)
+            db.session.add(conn)
+        conn.merchant_id    = merchant.get("id", "")
+        conn.merchant_name  = merchant.get("business_name", "")
+        conn.access_token   = token_res["access_token"]
+        conn.refresh_token  = token_res.get("refresh_token", "")
+        conn.connected_at   = datetime.utcnow()
+        db.session.commit()
+        flash(f"✅ Square connected! ({conn.merchant_name}) Payments will now auto-sync.", "success")
+    except Exception as e:
+        flash(f"Square connection failed: {e}", "error")
+    return redirect("/square-connect")
+
+@app.route("/square/disconnect", methods=["POST"])
+def square_disconnect():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    SquareConnection.query.filter_by(business_id=b.id).delete()
+    db.session.commit()
+    flash("Square disconnected.", "success")
+    return redirect("/square-connect")
+
+@app.route("/square/sync-payments", methods=["POST"])
+def square_sync_payments():
+    """Manually pull recent Square payments and match to customers."""
+    b = current_business()
+    if not b:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    conn = SquareConnection.query.filter_by(business_id=b.id).first()
+    if not conn:
+        return jsonify({"success": False, "error": "Square not connected"})
+    try:
+        # Fetch payments from last 30 days
+        begin_time = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        payments_res = _requests.get(
+            f"{SQUARE_BASE}/v2/payments",
+            params={"begin_time": begin_time, "limit": 100},
+            headers={"Authorization": f"Bearer {conn.access_token}", "Square-Version": "2024-01-18"}
+        ).json()
+
+        payments = payments_res.get("payments", [])
+        matched = 0
+        total_rev = 0.0
+
+        for p in payments:
+            if p.get("status") != "COMPLETED":
+                continue
+            amount_cents = p.get("amount_money", {}).get("amount", 0)
+            amount = amount_cents / 100.0
+            email = p.get("buyer_email_address", "")
+            phone = ""
+
+            # Try to get customer phone from Square
+            sq_customer_id = p.get("customer_id", "")
+            if sq_customer_id:
+                cust_res = _requests.get(
+                    f"{SQUARE_BASE}/v2/customers/{sq_customer_id}",
+                    headers={"Authorization": f"Bearer {conn.access_token}", "Square-Version": "2024-01-18"}
+                ).json()
+                sq_cust = cust_res.get("customer", {})
+                phone = sq_cust.get("phone_number", "")
+                if not email:
+                    email = sq_cust.get("email_address", "")
+
+            # Match to Revvio customer
+            customer = None
+            if email:
+                customer = Customer.query.filter_by(business_id=b.id, email=email).first()
+            if not customer and phone:
+                customer = Customer.query.filter_by(business_id=b.id, phone=phone).first()
+
+            # Check not already logged (by Square payment id in note)
+            already = CampaignRedemption.query.filter_by(
+                business_id=b.id, note=f"square:{p['id']}"
+            ).first()
+            if already:
+                continue
+
+            # Log redemption
+            r = CampaignRedemption(
+                business_id=b.id,
+                customer_id=customer.id if customer else None,
+                revenue=amount,
+                note=f"square:{p['id']}",
+            )
+            db.session.add(r)
+            matched += 1
+            total_rev += amount
+
+        db.session.commit()
+        return jsonify({"success": True, "synced": matched, "total_revenue": total_rev})
+    except Exception as e:
+        print(f"Square sync error: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/square-webhook", methods=["POST"])
+def square_webhook():
+    """Receive real-time payment events from Square webhooks."""
+    try:
+        import json as _json
+        payload = request.get_data(as_text=True)
+        data = _json.loads(payload)
+
+        event_type = data.get("type", "")
+        if event_type != "payment.created":
+            return jsonify({"ok": True})
+
+        payment = data.get("data", {}).get("object", {}).get("payment", {})
+        if payment.get("status") != "COMPLETED":
+            return jsonify({"ok": True})
+
+        merchant_id = data.get("merchant_id", "")
+        conn = SquareConnection.query.filter_by(merchant_id=merchant_id).first()
+        if not conn:
+            return jsonify({"ok": True})
+
+        b = Business.query.get(conn.business_id)
+        if not b:
+            return jsonify({"ok": True})
+
+        amount_cents = payment.get("amount_money", {}).get("amount", 0)
+        amount = amount_cents / 100.0
+        email = payment.get("buyer_email_address", "")
+        sq_payment_id = payment.get("id", "")
+
+        # Skip if already logged
+        already = CampaignRedemption.query.filter_by(note=f"square:{sq_payment_id}").first()
+        if already:
+            return jsonify({"ok": True})
+
+        # Match customer
+        customer = None
+        if email:
+            customer = Customer.query.filter_by(business_id=b.id, email=email).first()
+
+        # Try to get phone from Square customer
+        sq_customer_id = payment.get("customer_id", "")
+        if not customer and sq_customer_id:
+            try:
+                cust_res = _requests.get(
+                    f"{SQUARE_BASE}/v2/customers/{sq_customer_id}",
+                    headers={"Authorization": f"Bearer {conn.access_token}", "Square-Version": "2024-01-18"}
+                ).json()
+                sq_cust = cust_res.get("customer", {})
+                phone = sq_cust.get("phone_number", "")
+                if phone:
+                    customer = Customer.query.filter_by(business_id=b.id, phone=phone).first()
+            except Exception:
+                pass
+
+        # Log the payment as a redemption
+        r = CampaignRedemption(
+            business_id=b.id,
+            customer_id=customer.id if customer else None,
+            revenue=amount,
+            note=f"square:{sq_payment_id}",
+        )
+        db.session.add(r)
+
+        # Send WhatsApp/SMS thank-you if customer matched
+        if customer and customer.phone:
+            try:
+                msg = f"Thanks for visiting {b.business_name}, {customer.first_name}! 🙏 Your payment of ${amount:.2f} was received. See you again soon!"
+                if twilio_client:
+                    if getattr(customer, 'whatsapp_opted_in', False) and getattr(customer, 'whatsapp_phone', None):
+                        twilio_client.messages.create(
+                            body=msg, from_=f"whatsapp:{twilio_phone}",
+                            to=f"whatsapp:{customer.whatsapp_phone}"
+                        )
+                    else:
+                        twilio_client.messages.create(body=msg, from_=twilio_phone, to=customer.phone)
+            except Exception as msg_err:
+                print(f"Square webhook SMS error: {msg_err}")
+
+        db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        print(f"Square webhook error: {e}")
+        return jsonify({"ok": True}), 200  # always return 200 to Square
 
 
 # ============================================

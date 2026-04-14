@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Square Integration — Revvio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background: #0d0d1a; color: #e2e2f0; font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; min-height: 100vh; }
+        .top-bar { background: #13131f; border-bottom: 1px solid rgba(255,255,255,0.07); padding: 14px 28px; display: flex; align-items: center; gap: 16px; }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+        .container { max-width: 680px; padding-top: 2rem; padding-bottom: 4rem; }
+        .card { background: #13131f; border: 1px solid rgba(255,255,255,0.07); border-radius: 20px; padding: 28px; margin-bottom: 20px; }
+        .section-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; color: #6b6b8a; text-transform: uppercase; margin-bottom: 12px; display: block; }
+
+        /* Connected state */
+        .connected-badge { display: flex; align-items: center; gap: 12px; background: rgba(74,222,128,0.08); border: 1px solid rgba(74,222,128,0.25); border-radius: 14px; padding: 16px 20px; margin-bottom: 20px; }
+        .conn-dot { width: 10px; height: 10px; background: #4ade80; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 8px rgba(74,222,128,0.6); }
+        .conn-name { font-weight: 700; color: #fff; font-size: 0.95rem; }
+        .conn-sub { font-size: 0.78rem; color: #6b6b8a; }
+
+        /* Buttons */
+        .btn-square { background: #006aff; border: none; color: #fff; font-weight: 700; border-radius: 12px; padding: 14px 28px; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; gap: 10px; text-decoration: none; transition: opacity 0.15s; }
+        .btn-square:hover { opacity: 0.88; color: #fff; }
+        .btn-sync { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); color: #4ade80; font-weight: 700; border-radius: 12px; padding: 12px 24px; font-size: 0.88rem; cursor: pointer; transition: all 0.15s; }
+        .btn-sync:hover { background: rgba(74,222,128,0.18); }
+        .btn-disconnect { background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); color: #f87171; font-weight: 600; border-radius: 10px; padding: 10px 20px; font-size: 0.82rem; cursor: pointer; }
+
+        /* How it works steps */
+        .step { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 20px; }
+        .step:last-child { margin-bottom: 0; }
+        .step-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+        .step-title { font-weight: 700; color: #fff; font-size: 0.9rem; margin-bottom: 3px; }
+        .step-desc { font-size: 0.8rem; color: #6b6b8a; line-height: 1.5; }
+
+        /* Alert */
+        .alert-success { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25); color: #4ade80; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+        .alert-danger { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.25); color: #f87171; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; }
+
+        /* Setup steps */
+        .setup-step { background: #1a1a2e; border-radius: 10px; padding: 14px 16px; margin-bottom: 8px; font-size: 0.82rem; color: #9090b0; line-height: 1.6; }
+        .setup-step strong { color: #e2e2f0; }
+        .setup-num { display: inline-flex; width: 22px; height: 22px; background: #7c6fff; border-radius: 50%; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 800; color: #fff; margin-right: 8px; }
+
+        code { background: rgba(255,255,255,0.06); padding: 2px 7px; border-radius: 4px; font-size: 0.8rem; color: #a78bfa; }
+
+        /* Sync result */
+        #syncResult { display: none; background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.25); color: #4ade80; border-radius: 10px; padding: 12px 16px; margin-top: 12px; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <a href="/dashboard" style="color:#6b6b8a;text-decoration:none;font-size:0.85rem;">← Dashboard</a>
+    <span class="brand">Revvio</span>
+    <a href="/roi" style="color:#fbbf24;text-decoration:none;font-size:0.82rem;margin-left:auto;">💰 Revenue ROI →</a>
+</div>
+
+<div class="container">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <div style="width:48px;height:48px;background:#006aff;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;">▪️</div>
+        <div>
+            <h1 style="font-size:1.4rem;font-weight:800;color:#fff;margin:0;">Square POS Integration</h1>
+            <div style="color:#6b6b8a;font-size:0.82rem;">Auto-log revenue every time a customer pays — no manual work</div>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}{% for category, message in messages %}
+        <div class="alert-{{ 'danger' if category == 'error' else 'success' }}">{{ message }}</div>
+        {% endfor %}{% endif %}
+    {% endwith %}
+
+    {% if conn %}
+    <!-- CONNECTED STATE -->
+    <div class="card">
+        <div class="connected-badge">
+            <div class="conn-dot"></div>
+            <div>
+                <div class="conn-name">{{ conn.merchant_name or 'Square Account' }}</div>
+                <div class="conn-sub">Connected {{ conn.connected_at.strftime('%B %d, %Y') }} · Merchant ID: {{ conn.merchant_id }}</div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-3 align-items-center flex-wrap">
+            <button class="btn-sync" id="syncBtn" onclick="syncPayments()">
+                <i class="bi bi-arrow-clockwise me-1"></i> Sync Last 30 Days
+            </button>
+            <form method="POST" action="/square/disconnect" onsubmit="return confirm('Disconnect Square?')">
+                <button type="submit" class="btn-disconnect">Disconnect</button>
+            </form>
+        </div>
+
+        <div id="syncResult"></div>
+
+        <div style="margin-top:20px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.07);">
+            <span class="section-label">Webhook URL (set in Square Dashboard)</span>
+            <div style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 16px;font-size:0.82rem;color:#9090b0;word-break:break-all;display:flex;align-items:center;gap:10px;">
+                <span id="webhookUrl">{{ request.host_url.rstrip('/') }}/api/square-webhook</span>
+                <button onclick="copyWebhook()" style="background:none;border:none;color:#7c6fff;font-size:0.78rem;cursor:pointer;white-space:nowrap;">Copy</button>
+            </div>
+            <div style="font-size:0.72rem;color:#4a4a6a;margin-top:6px;">Add this URL in Square Developer Dashboard → Your App → Webhooks → Add Endpoint. Select <code>payment.created</code> event.</div>
+        </div>
+    </div>
+
+    <!-- How it works when connected -->
+    <div class="card">
+        <span class="section-label">What Happens Automatically</span>
+        <div class="step">
+            <div class="step-icon" style="background:rgba(74,222,128,0.1);">💳</div>
+            <div>
+                <div class="step-title">Customer pays in Square</div>
+                <div class="step-desc">Any payment processed through your Square POS, card reader, or Square Online</div>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-icon" style="background:rgba(124,111,255,0.1);">🔗</div>
+            <div>
+                <div class="step-title">Revvio matches the customer</div>
+                <div class="step-desc">We match by email or phone to find them in your Revvio customer list</div>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-icon" style="background:rgba(251,191,36,0.1);">💰</div>
+            <div>
+                <div class="step-title">Revenue logged automatically</div>
+                <div class="step-desc">Sale amount added to your ROI tracker — see exactly which campaigns drove that visit</div>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-icon" style="background:rgba(37,211,102,0.1);">💬</div>
+            <div>
+                <div class="step-title">Thank-you message sent</div>
+                <div class="step-desc">Customer receives an automatic SMS or WhatsApp thank-you with their purchase amount</div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- NOT CONNECTED STATE -->
+    <div class="card">
+        {% if not has_app %}
+        <div style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.25);border-radius:12px;padding:16px;margin-bottom:20px;font-size:0.85rem;color:#fbbf24;">
+            ⚠️ <strong>Square API credentials not configured.</strong> Add <code>SQUARE_APP_ID</code> and <code>SQUARE_APP_SECRET</code> to your Render environment variables first.
+        </div>
+        {% endif %}
+
+        <a href="{{ auth_url }}" class="btn-square mb-4 {{ 'opacity-50 pe-none' if not auth_url }}"
+           {% if not auth_url %}onclick="return false"{% endif %}>
+            <span style="font-size:1.4rem;">▪️</span> Connect Square Account
+        </a>
+
+        <span class="section-label mt-2">How to Set Up (5 minutes)</span>
+
+        <div class="setup-step">
+            <span class="setup-num">1</span>
+            Go to <strong>developer.squareup.com</strong> → Sign in with your Square account → Create an App
+        </div>
+        <div class="setup-step">
+            <span class="setup-num">2</span>
+            Copy your <strong>Application ID</strong> and <strong>Application Secret</strong> from the app's OAuth tab
+        </div>
+        <div class="setup-step">
+            <span class="setup-num">3</span>
+            In Render → Environment → Add: <code>SQUARE_APP_ID</code> = your Application ID, <code>SQUARE_APP_SECRET</code> = your secret
+        </div>
+        <div class="setup-step">
+            <span class="setup-num">4</span>
+            In Square Developer → your app → OAuth → Add redirect URL: <code>{{ request.host_url.rstrip('/') }}/square/callback</code>
+        </div>
+        <div class="setup-step">
+            <span class="setup-num">5</span>
+            Come back here and click <strong>Connect Square Account</strong> — done!
+        </div>
+
+        <div style="margin-top:20px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.07);">
+            <span class="section-label">What You Get</span>
+            <div class="step">
+                <div class="step-icon" style="background:rgba(74,222,128,0.1);">🔄</div>
+                <div>
+                    <div class="step-title">Automatic revenue tracking</div>
+                    <div class="step-desc">Every Square payment auto-logged in your ROI dashboard — zero manual work</div>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-icon" style="background:rgba(124,111,255,0.1);">💬</div>
+                <div>
+                    <div class="step-title">Auto thank-you messages</div>
+                    <div class="step-desc">Matched customers get an instant SMS/WhatsApp after every visit</div>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-icon" style="background:rgba(251,191,36,0.1);">📊</div>
+                <div>
+                    <div class="step-title">Real campaign ROI</div>
+                    <div class="step-desc">See which campaigns actually drove revenue — not just opens and clicks</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+async function syncPayments() {
+    const btn = document.getElementById('syncBtn');
+    const result = document.getElementById('syncResult');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Syncing...';
+    result.style.display = 'none';
+    try {
+        const res = await fetch('/square/sync-payments', { method: 'POST' });
+        const data = await res.json();
+        result.style.display = 'block';
+        if (data.success) {
+            result.innerHTML = `✅ Synced ${data.synced} payment${data.synced !== 1 ? 's' : ''} — $${data.total_revenue.toFixed(2)} total revenue logged. <a href="/roi" style="color:#4ade80;">View ROI →</a>`;
+        } else {
+            result.style.background = 'rgba(248,113,113,0.1)';
+            result.style.color = '#f87171';
+            result.style.borderColor = 'rgba(248,113,113,0.25)';
+            result.textContent = '❌ ' + (data.error || 'Sync failed');
+        }
+    } catch(e) {
+        result.style.display = 'block';
+        result.textContent = '❌ Network error: ' + e.message;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Sync Last 30 Days';
+    }
+}
+
+function copyWebhook() {
+    const url = document.getElementById('webhookUrl').textContent;
+    navigator.clipboard.writeText(url).then(() => {
+        event.target.textContent = 'Copied!';
+        setTimeout(() => event.target.textContent = 'Copy', 2000);
+    });
+}
+</script>
+
+</body>
+</html>
