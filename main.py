@@ -2917,9 +2917,14 @@ def generate_social_post():
             return jsonify({"success": False, "error": "Please describe your promotion"})
         if not client:
             return jsonify({"success": False, "error": "AI not configured"})
-        profile = BusinessProfile.query.filter_by(business_id=b.id).first()
-        biz_type = (profile.business_type if profile else "business") or "business"
-        tone = (profile.tone if profile else "friendly") or "friendly"
+        try:
+            profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+            biz_type = (getattr(profile, 'business_type', None) if profile else None) or "business"
+            tone = (getattr(profile, 'tone', None) if profile else None) or "friendly"
+        except Exception as profile_err:
+            print(f"Profile fetch error (non-fatal): {profile_err}")
+            biz_type = "business"
+            tone = "friendly"
 
         prompt = f"""You are a social media expert for a {biz_type} called "{b.business_name}".
 The owner wants to promote: "{promo}"
@@ -2960,6 +2965,116 @@ Generate social media content in this EXACT JSON format (no markdown, no explana
     except Exception as e:
         print(f"Social post error: {e}")
         return jsonify({"success": False, "error": str(e)})
+
+
+# ============================================
+# AI BUSINESS SETUP AGENT
+# ============================================
+
+@app.route("/ai-agent")
+def ai_agent():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+    customer_count = Customer.query.filter_by(business_id=b.id).count()
+    journey_count = Journey.query.filter_by(business_id=b.id).count()
+    campaign_count = Campaign.query.filter_by(business_id=b.id).count()
+    return render_template("ai_agent.html",
+        business=b,
+        profile=profile,
+        customer_count=customer_count,
+        journey_count=journey_count,
+        campaign_count=campaign_count,
+    )
+
+@app.route("/api/ai-agent-chat", methods=["POST"])
+def ai_agent_chat():
+    b = current_business()
+    if not b:
+        return jsonify({"error": "Not authenticated"}), 401
+    if not client:
+        return jsonify({"reply": "AI is not configured yet. Please add your OpenAI API key in settings."})
+    try:
+        data = request.get_json()
+        user_message = (data.get("message") or "").strip()
+        history = data.get("history", [])  # list of {role, content}
+        if not user_message:
+            return jsonify({"reply": "Please type a message."})
+
+        profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+        customer_count = Customer.query.filter_by(business_id=b.id).count()
+        journey_count = Journey.query.filter_by(business_id=b.id).count()
+        campaign_count = Campaign.query.filter_by(business_id=b.id).count()
+
+        biz_type = getattr(profile, 'business_type', None) or "business"
+        biz_name = b.business_name
+
+        system_prompt = f"""You are Revvio's AI Business Assistant — a friendly, expert marketing coach for {biz_name}, a {biz_type}.
+
+Your job is to help the business owner set up and run Revvio perfectly. You guide them step by step, take action when needed, and make sure they never get stuck.
+
+Current business state:
+- Business: {biz_name} ({biz_type})
+- Customers: {customer_count}
+- Active journeys: {journey_count}
+- Total campaigns sent: {campaign_count}
+- Profile set up: {'Yes' if profile else 'No'}
+
+Revvio features you can help with:
+1. **Add customers** — /add-customer or /import-customers (CSV import)
+2. **Send campaigns** — /bulk-send (email/SMS/WhatsApp to segments)
+3. **Journeys (automations)** — /journeys (birthday, winback, welcome sequences)
+4. **Social posts** — /social-posts (AI-generated Instagram/Facebook content)
+5. **Customer sign-up page** — /join/{b.slug} (share this link to collect customers)
+6. **WhatsApp campaigns** — /quick-whatsapp
+7. **Business profile** — /setup (set business type, tone, peak days)
+
+When giving advice:
+- Be specific and actionable (tell them exactly what to click)
+- Use the current business state to give relevant advice
+- If they ask to set something up, guide them with clear steps
+- Keep replies concise and friendly — 2-4 short paragraphs max
+- Use bullet points for steps
+- If a task can be done in Revvio, give them the exact URL path
+
+Common action shortcuts you can suggest:
+- "Go to /setup to fill in your business details"
+- "Visit /journeys and click 'Create Journey' to set up a welcome automation"
+- "Share your sign-up link: /join/{b.slug}"
+- "Try /bulk-send to send your first campaign"
+
+Answer the business owner's question below:"""
+
+        messages = [{"role": "system", "content": system_prompt}]
+        # Add conversation history (last 10 turns max)
+        for h in history[-10:]:
+            messages.append({"role": h["role"], "content": h["content"]})
+        messages.append({"role": "user", "content": user_message})
+
+        response = _requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {_openai_api_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "gpt-4o-mini",
+                "messages": messages,
+                "max_tokens": 600,
+                "temperature": 0.7
+            },
+            timeout=30
+        )
+        result = response.json()
+        if "error" in result:
+            return jsonify({"reply": f"AI error: {result['error']['message']}"})
+        reply = result["choices"][0]["message"]["content"]
+        return jsonify({"reply": reply})
+    except Exception as e:
+        print(f"AI agent error: {e}")
+        return jsonify({"reply": f"Sorry, I hit an error: {str(e)}. Please try again."})
+
 
 # ============================================
 # SOCIAL MEDIA AUTO-POST
