@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Post Designer — Revvio</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --bg: #0d0d1a; --surface: #13131f; --surface2: #1a1a2e;
+            --border: rgba(255,255,255,0.07); --text: #e2e2f0; --muted: #6b6b8a;
+        }
+        body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; min-height: 100vh; }
+        .top-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; gap: 16px; }
+        .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
+
+        .main { display: grid; grid-template-columns: 320px 1fr; gap: 0; height: calc(100vh - 57px); }
+        @media(max-width: 900px) { .main { grid-template-columns: 1fr; height: auto; } }
+
+        /* LEFT PANEL */
+        .left-panel { background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; padding: 20px 16px; }
+        .panel-section { margin-bottom: 24px; }
+        .panel-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 10px; display: block; }
+        .ctrl { background: var(--surface2); border: 1px solid rgba(255,255,255,0.12); color: var(--text); border-radius: 10px; padding: 10px 14px; font-size: 0.88rem; width: 100%; transition: border-color 0.15s; }
+        .ctrl:focus { outline: none; border-color: #7c6fff; }
+        .ctrl::placeholder { color: #3d3d5c; }
+
+        /* Template thumbnails */
+        .template-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .tmpl-thumb { border: 2px solid rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; cursor: pointer; aspect-ratio: 1; transition: all 0.15s; position: relative; }
+        .tmpl-thumb:hover { border-color: rgba(124,111,255,0.5); transform: scale(1.02); }
+        .tmpl-thumb.active { border-color: #7c6fff; box-shadow: 0 0 0 3px rgba(124,111,255,0.2); }
+        .tmpl-thumb-inner { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; padding: 8px; }
+        .tmpl-name { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: #fff; font-size: 0.65rem; font-weight: 700; text-align: center; padding: 4px; }
+
+        /* Quick fill chips */
+        .quick-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .chip { background: var(--surface2); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 5px 12px; font-size: 0.75rem; color: var(--muted); cursor: pointer; transition: all 0.12s; }
+        .chip:hover { border-color: rgba(124,111,255,0.4); color: #e2e2f0; }
+
+        /* Color pickers */
+        .color-row { display: flex; gap: 8px; flex-wrap: wrap; }
+        .color-dot { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: transform 0.12s; }
+        .color-dot:hover { transform: scale(1.15); }
+        .color-dot.active { border-color: #fff; }
+
+        /* Buttons */
+        .btn-download { background: linear-gradient(135deg, #7c6fff, #a855f7); border: none; color: #fff; font-weight: 700; border-radius: 12px; padding: 12px; width: 100%; font-size: 0.9rem; cursor: pointer; transition: opacity 0.15s; }
+        .btn-download:hover { opacity: 0.88; }
+        .btn-copy-text { background: var(--surface2); border: 1px solid rgba(255,255,255,0.12); color: var(--text); border-radius: 10px; padding: 10px; width: 100%; font-size: 0.82rem; cursor: pointer; transition: all 0.15s; margin-top: 8px; }
+        .btn-copy-text:hover { border-color: rgba(124,111,255,0.4); }
+
+        /* RIGHT PANEL — canvas preview */
+        .right-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 24px; overflow-y: auto; gap: 16px; }
+
+        /* THE POST CANVAS */
+        .post-canvas-wrap { position: relative; }
+        #postCanvas {
+            width: 540px; height: 540px;
+            position: relative; overflow: hidden;
+            border-radius: 4px;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', sans-serif;
+        }
+        @media(max-width:600px) { #postCanvas { width: 320px; height: 320px; } }
+
+        /* =================== TEMPLATE STYLES =================== */
+
+        /* T1: Bold Gradient */
+        .tpl-bold-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; padding: 40px;
+        }
+        .tpl-bold-gradient .t-eyebrow { color: rgba(255,255,255,0.7); font-size: 13px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 16px; }
+        .tpl-bold-gradient .t-headline { color: #fff; font-size: 52px; font-weight: 900; line-height: 1.1; margin-bottom: 16px; letter-spacing: -1px; }
+        .tpl-bold-gradient .t-sub { color: rgba(255,255,255,0.85); font-size: 18px; font-weight: 400; margin-bottom: 32px; }
+        .tpl-bold-gradient .t-badge { background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.5); color: #fff; border-radius: 50px; padding: 10px 24px; font-size: 14px; font-weight: 700; display: inline-block; }
+        .tpl-bold-gradient .t-biz { position: absolute; bottom: 20px; right: 24px; color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 600; letter-spacing: 1px; }
+
+        /* T2: Dark Luxury */
+        .tpl-dark-luxury {
+            background: #0a0a0f;
+            display: flex; flex-direction: column; justify-content: center;
+            padding: 50px 44px;
+        }
+        .tpl-dark-luxury::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background: linear-gradient(90deg, #f6d365, #fda085); }
+        .tpl-dark-luxury .t-eyebrow { color: #f6d365; font-size: 11px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 20px; }
+        .tpl-dark-luxury .t-headline { color: #fff; font-size: 48px; font-weight: 900; line-height: 1.1; margin-bottom: 16px; letter-spacing: -1px; }
+        .tpl-dark-luxury .t-sub { color: #888; font-size: 17px; line-height: 1.6; margin-bottom: 32px; }
+        .tpl-dark-luxury .t-badge { background: linear-gradient(135deg, #f6d365, #fda085); color: #000; border-radius: 6px; padding: 10px 22px; font-size: 14px; font-weight: 800; display: inline-block; }
+        .tpl-dark-luxury .t-biz { position: absolute; bottom: 24px; right: 28px; color: #444; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+
+        /* T3: Warm Burst */
+        .tpl-warm-burst {
+            background: #ff6b35;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; padding: 40px;
+        }
+        .tpl-warm-burst::after { content:''; position:absolute; bottom:-80px; right:-80px; width:260px; height:260px; background:rgba(255,255,255,0.08); border-radius:50%; }
+        .tpl-warm-burst::before { content:''; position:absolute; top:-60px; left:-60px; width:200px; height:200px; background:rgba(255,255,255,0.06); border-radius:50%; }
+        .tpl-warm-burst .t-eyebrow { color: rgba(255,255,255,0.8); font-size: 12px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px; position:relative;z-index:1; }
+        .tpl-warm-burst .t-headline { color: #fff; font-size: 54px; font-weight: 900; line-height: 1.05; margin-bottom: 14px; letter-spacing: -1px; position:relative;z-index:1; }
+        .tpl-warm-burst .t-sub { color: rgba(255,255,255,0.9); font-size: 19px; margin-bottom: 28px; position:relative;z-index:1; }
+        .tpl-warm-burst .t-badge { background: #fff; color: #ff6b35; border-radius: 50px; padding: 10px 28px; font-size: 15px; font-weight: 800; display: inline-block; position:relative;z-index:1; }
+        .tpl-warm-burst .t-biz { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.6); font-size: 11px; font-weight: 600; letter-spacing: 2px; white-space: nowrap; z-index:1; }
+
+        /* T4: Clean Minimal */
+        .tpl-clean-minimal {
+            background: #f9f8f4;
+            display: flex; flex-direction: column; justify-content: center;
+            padding: 52px 48px;
+        }
+        .tpl-clean-minimal .t-eyebrow { color: #999; font-size: 11px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 20px; }
+        .tpl-clean-minimal .t-headline { color: #111; font-size: 50px; font-weight: 900; line-height: 1.1; margin-bottom: 18px; letter-spacing: -2px; }
+        .tpl-clean-minimal .t-sub { color: #555; font-size: 18px; line-height: 1.6; margin-bottom: 36px; }
+        .tpl-clean-minimal .t-badge { background: #111; color: #fff; border-radius: 6px; padding: 12px 24px; font-size: 14px; font-weight: 700; display: inline-block; }
+        .tpl-clean-minimal .t-biz { position: absolute; bottom: 24px; right: 28px; color: #ccc; font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+
+        /* T5: Neon Night */
+        .tpl-neon-night {
+            background: #050510;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; padding: 40px;
+        }
+        .tpl-neon-night::before { content:''; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:350px; height:350px; background:radial-gradient(circle, rgba(124,111,255,0.15) 0%, transparent 70%); border-radius:50%; }
+        .tpl-neon-night .t-eyebrow { color: #7c6fff; font-size: 11px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 16px; position:relative; }
+        .tpl-neon-night .t-headline { color: #fff; font-size: 50px; font-weight: 900; line-height: 1.1; margin-bottom: 16px; letter-spacing: -1px; position:relative; text-shadow: 0 0 40px rgba(124,111,255,0.5); }
+        .tpl-neon-night .t-sub { color: #8888aa; font-size: 18px; margin-bottom: 32px; position:relative; }
+        .tpl-neon-night .t-badge { background: linear-gradient(135deg, #7c6fff, #a855f7); color: #fff; border-radius: 50px; padding: 11px 28px; font-size: 14px; font-weight: 700; display: inline-block; position:relative; }
+        .tpl-neon-night .t-biz { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); color: #333; font-size: 11px; font-weight: 600; letter-spacing: 2px; white-space: nowrap; }
+
+        /* T6: Green Fresh */
+        .tpl-green-fresh {
+            background: linear-gradient(160deg, #134e34 0%, #0a2e1e 100%);
+            display: flex; flex-direction: column; justify-content: flex-end;
+            padding: 44px;
+        }
+        .tpl-green-fresh::before { content:'🌿'; position:absolute; top:32px; right:32px; font-size:80px; opacity:0.3; }
+        .tpl-green-fresh .t-eyebrow { color: #4ade80; font-size: 11px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 14px; }
+        .tpl-green-fresh .t-headline { color: #fff; font-size: 48px; font-weight: 900; line-height: 1.1; margin-bottom: 14px; letter-spacing: -1px; }
+        .tpl-green-fresh .t-sub { color: rgba(255,255,255,0.7); font-size: 18px; line-height: 1.6; margin-bottom: 28px; }
+        .tpl-green-fresh .t-badge { background: #4ade80; color: #0a2e1e; border-radius: 8px; padding: 10px 22px; font-size: 14px; font-weight: 800; display: inline-block; }
+        .tpl-green-fresh .t-biz { position: absolute; top: 28px; left: 28px; color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+
+        /* T7: Split Bold */
+        .tpl-split-bold {
+            background: #fff;
+            display: grid; grid-template-columns: 1fr 1fr;
+        }
+        .tpl-split-bold .t-left { background: linear-gradient(160deg, #1e1b4b, #312e81); display:flex; flex-direction:column; justify-content:center; padding: 36px 28px; }
+        .tpl-split-bold .t-right { background: #f1f5f9; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding: 28px 20px; }
+        .tpl-split-bold .t-eyebrow { color: rgba(255,255,255,0.6); font-size: 10px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px; }
+        .tpl-split-bold .t-headline { color: #fff; font-size: 38px; font-weight: 900; line-height: 1.1; margin-bottom: 12px; letter-spacing: -1px; }
+        .tpl-split-bold .t-sub { color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6; margin-bottom: 0; }
+        .tpl-split-bold .t-promo { color: #1e1b4b; font-size: 60px; font-weight: 900; line-height: 1; margin-bottom: 8px; }
+        .tpl-split-bold .t-badge { background: #1e1b4b; color: #fff; border-radius: 8px; padding: 9px 18px; font-size: 13px; font-weight: 700; display: inline-block; margin-bottom: 16px; }
+        .tpl-split-bold .t-biz { color: #999; font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; }
+
+        /* T8: Flash Sale */
+        .tpl-flash-sale {
+            background: #dc2626;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; padding: 40px;
+        }
+        .tpl-flash-sale::before { content:'⚡'; position:absolute; top:0; left:0; font-size:200px; opacity:0.06; line-height:1; }
+        .tpl-flash-sale .t-eyebrow { color: #fca5a5; font-size: 12px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 12px; position:relative; }
+        .tpl-flash-sale .t-headline { color: #fff; font-size: 58px; font-weight: 900; line-height: 1.0; margin-bottom: 12px; letter-spacing: -2px; position:relative; }
+        .tpl-flash-sale .t-sub { color: rgba(255,255,255,0.85); font-size: 20px; margin-bottom: 28px; position:relative; }
+        .tpl-flash-sale .t-badge { background: #fff; color: #dc2626; border-radius: 50px; padding: 12px 32px; font-size: 15px; font-weight: 900; display: inline-block; position:relative; }
+        .tpl-flash-sale .t-biz { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 600; letter-spacing: 2px; white-space: nowrap; }
+
+        /* Format badge */
+        .format-badge { position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.6); color: #fff; font-size: 9px; font-weight: 700; border-radius: 4px; padding: 3px 7px; }
+
+        /* Download row */
+        .download-row { display: flex; gap: 10px; width: 540px; }
+        @media(max-width:600px) { .download-row { width: 320px; } }
+        .btn-dl { flex: 1; background: linear-gradient(135deg, #7c6fff, #a855f7); border: none; color: #fff; font-weight: 700; border-radius: 12px; padding: 13px; font-size: 0.9rem; cursor: pointer; transition: opacity 0.15s; }
+        .btn-dl:hover { opacity: 0.88; }
+        .btn-dl-2 { flex: 1; background: var(--surface); border: 1px solid rgba(255,255,255,0.12); color: var(--text); border-radius: 12px; padding: 13px; font-size: 0.9rem; cursor: pointer; font-weight: 600; transition: all 0.15s; }
+        .btn-dl-2:hover { border-color: rgba(124,111,255,0.4); }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <a href="/social-posts" style="color:#6b6b8a;text-decoration:none;font-size:0.85rem;">← AI Posts</a>
+    <span class="brand">Revvio</span>
+    <span style="font-size:0.85rem;color:#6b6b8a;margin-left:4px;">Visual Post Designer</span>
+    <a href="/dashboard" style="margin-left:auto;color:#6b6b8a;text-decoration:none;font-size:0.82rem;">Dashboard</a>
+</div>
+
+<div class="main">
+
+    <!-- LEFT PANEL -->
+    <div class="left-panel">
+
+        <!-- Templates -->
+        <div class="panel-section">
+            <span class="panel-label">Choose a Template</span>
+            <div class="template-grid" id="templateGrid">
+
+                <div class="tmpl-thumb active" data-tpl="bold-gradient" onclick="selectTemplate(this)">
+                    <div style="width:100%;height:100%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;">
+                        <div style="color:#fff;font-size:11px;font-weight:800;text-align:center;padding:6px;">Bold<br>Gradient</div>
+                    </div>
+                    <span class="tmpl-name">Bold Gradient</span>
+                </div>
+
+                <div class="tmpl-thumb" data-tpl="dark-luxury" onclick="selectTemplate(this)">
+                    <div style="width:100%;height:100%;background:#0a0a0f;border-top:3px solid #f6d365;display:flex;align-items:center;justify-content:center;">
+                        <div style="color:#f6d365;font-size:11px;font-weight:800;text-align:center;padding:6px;">Dark<br>Luxury</div>
+                    </div>
+                    <span class="tmpl-name">Dark Luxury</span>
+                </div>
+
+                <div class="tmpl-thumb" data-tpl="warm-burst" onclick="selectTemplate(this)">
+                    <div style="width:100%;height:100%;background:#ff6b35;display:flex;align-items:center;justify-content:center;">
+                        <div style="color:#fff;font-size:11px;font-weight:800;text-align:center;padding:6px;">Warm<br>Burst</div>
+                    </div>
+                    <span class="tmpl-name">Warm Burst</span>
+                </div>
+
+                <div class="tmpl-thumb" data-tpl="clean-minimal" onclick="selectTemplate(this)">
+                    <div style="width:100%;height:100%;background:#f9f8f4;display:flex;align-items:center;justify-content:center;">
+                        <div style="color:#111;font-size:11px;font-weight:800;text-align:center;padding:6px;">Clean<br>Minimal</div>
+                    </div>
+                    <span class="tmpl-name">Clean Minimal</span>
+                </div>
+
+                <div class="tmpl-thumb" data-tpl="neon-night" onclick="selectTemplate(this)">
+                    <div style="width:100%;height:100%;background:#050510;display:flex;align-items:center;justify-content:center;">
+                        <div style="color:#7c6fff;font-size:11px;font-weight:800;text-align:center;padding:6px;text-shadow:0 0 10px rgba(124,111,255,0.8);">Neon<br>Night</div>
+                    </div>
+                    <span class="tmpl-name">Neon Night</span>
+                </div>
+
+                <div class="tmpl-thumb" data-tpl="green-fresh" onclick="selectTemplate(this)">
+                    <div style="width:100%;height:100%;background:linear-gradient(160deg,#134e34,#0a2e1e);display:flex;align-items:center;justify-content:center;">
+                        <div style="color:#4ade80;font-size:11px;font-weight:800;text-align:center;padding:6px;">Green<br>Fresh</div>
+                    </div>
+                    <span class="tmpl-name">Green Fresh</span>
+                </div>
+
+                <div class="tmpl-thumb" data-tpl="split-bold" onclick="selectTemplate(this)">
+                    <div style="width:100%;height:100%;background:#fff;display:grid;grid-template-columns:1fr 1fr;">
+                        <div style="background:linear-gradient(160deg,#1e1b4b,#312e81);"></div>
+                        <div style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#1e1b4b;">SPLIT</div>
+                    </div>
+                    <span class="tmpl-name">Split Bold</span>
+                </div>
+
+                <div class="tmpl-thumb" data-tpl="flash-sale" onclick="selectTemplate(this)">
+                    <div style="width:100%;height:100%;background:#dc2626;display:flex;align-items:center;justify-content:center;">
+                        <div style="color:#fff;font-size:11px;font-weight:800;text-align:center;padding:6px;">⚡ Flash<br>Sale</div>
+                    </div>
+                    <span class="tmpl-name">Flash Sale</span>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Content Fields -->
+        <div class="panel-section">
+            <span class="panel-label">Your Content</span>
+
+            <div style="margin-bottom:10px;">
+                <label style="font-size:0.72rem;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Label / Eyebrow</label>
+                <input type="text" class="ctrl" id="fieldEyebrow" placeholder="e.g. THIS WEEKEND ONLY" oninput="updatePreview()" value="SPECIAL OFFER">
+            </div>
+            <div style="margin-bottom:10px;">
+                <label style="font-size:0.72rem;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Headline</label>
+                <input type="text" class="ctrl" id="fieldHeadline" placeholder="e.g. 20% Off Everything" oninput="updatePreview()" value="20% OFF">
+            </div>
+            <div style="margin-bottom:10px;">
+                <label style="font-size:0.72rem;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Description</label>
+                <input type="text" class="ctrl" id="fieldSub" placeholder="e.g. This weekend only, dine with us!" oninput="updatePreview()" value="This weekend only. Come visit us!">
+            </div>
+            <div style="margin-bottom:10px;">
+                <label style="font-size:0.72rem;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Call to Action Button</label>
+                <input type="text" class="ctrl" id="fieldBadge" placeholder="e.g. Book Now · Show This" oninput="updatePreview()" value="Show This Message">
+            </div>
+            <div style="margin-bottom:10px;">
+                <label style="font-size:0.72rem;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Business Name</label>
+                <input type="text" class="ctrl" id="fieldBiz" oninput="updatePreview()" value="{{ business.business_name }}">
+            </div>
+        </div>
+
+        <!-- Quick Fill -->
+        <div class="panel-section">
+            <span class="panel-label">Quick Fill</span>
+            <div class="quick-chips">
+                <div class="chip" onclick="quickFill('Weekend Special', '20% OFF', 'This weekend only — come see us!', 'Show This Message')">Weekend 20% Off</div>
+                <div class="chip" onclick="quickFill('HAPPY HOUR', '5–7pm Daily', 'Great deals, great vibes. Every day this week!', 'Come In Today')">Happy Hour</div>
+                <div class="chip" onclick="quickFill('NEW ARRIVAL', 'Something New!', 'We\'re excited to announce our latest addition. Come try it first!', 'Try It Today')">New Item</div>
+                <div class="chip" onclick="quickFill('TODAY ONLY ⚡', 'Buy 1 Get 1', 'One day only! Bring a friend and enjoy the deal.', 'Claim Your Deal')">Buy 1 Get 1</div>
+                <div class="chip" onclick="quickFill('🎂 BIRTHDAY SPECIAL', 'It\'s Your Day!', 'Celebrating you this month with something special just for you.', 'Redeem Now')">Birthday</div>
+                <div class="chip" onclick="quickFill('GRAND OPENING', 'We\'re Open!', 'Come visit us and be one of our first guests. Special opening offers inside!', 'Visit Us Today')">Grand Opening</div>
+                <div class="chip" onclick="quickFill('LIMITED TIME', 'Flash Sale', 'Don\'t miss out — this deal expires at midnight tonight!', 'Get It Now')">Flash Sale</div>
+                <div class="chip" onclick="quickFill('THANK YOU ❤️', 'We Appreciate You', 'Your support means everything to us. Here\'s a little gift from us to you.', 'Claim Your Gift')">Customer Appreciation</div>
+            </div>
+        </div>
+
+        <!-- Format -->
+        <div class="panel-section">
+            <span class="panel-label">Format</span>
+            <div style="display:flex;gap:8px;">
+                <div class="chip active-chip" onclick="setFormat('square',this)" style="flex:1;text-align:center;">Square (1:1)</div>
+                <div class="chip" onclick="setFormat('story',this)" style="flex:1;text-align:center;">Story (9:16)</div>
+            </div>
+        </div>
+
+        <!-- Download -->
+        <div class="panel-section">
+            <button class="btn-download" id="btnDownload" onclick="downloadPost()">
+                <i class="bi bi-download me-2"></i> Download as Image
+            </button>
+            <div style="color:var(--muted);font-size:0.72rem;text-align:center;margin-top:8px;">
+                PNG • Ready to post on Instagram, Facebook, WhatsApp
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RIGHT PANEL — Live Preview -->
+    <div class="right-panel">
+        <div style="color:var(--muted);font-size:0.75rem;text-align:center;margin-bottom:-8px;">LIVE PREVIEW</div>
+
+        <div class="post-canvas-wrap">
+            <div id="postCanvas" class="tpl-bold-gradient">
+                <div class="t-eyebrow" id="pEyebrow">SPECIAL OFFER</div>
+                <div class="t-headline" id="pHeadline">20% OFF</div>
+                <div class="t-sub" id="pSub">This weekend only. Come visit us!</div>
+                <div class="t-badge" id="pBadge">Show This Message</div>
+                <div class="t-biz" id="pBiz">{{ business.business_name }}</div>
+            </div>
+        </div>
+
+        <div class="download-row">
+            <button class="btn-dl" onclick="downloadPost()">
+                <i class="bi bi-download me-1"></i> Download PNG
+            </button>
+            <button class="btn-dl-2" onclick="copyCaption()">
+                <i class="bi bi-clipboard me-1"></i> Copy Caption
+            </button>
+        </div>
+
+        <div style="color:var(--muted);font-size:0.75rem;text-align:center;max-width:400px;line-height:1.6;">
+            Download → post on Instagram/Facebook/WhatsApp. Edit captions in <a href="/social-posts" style="color:#a78bfa;">AI Social Posts</a>.
+        </div>
+    </div>
+
+</div>
+
+<script>
+let currentTemplate = 'bold-gradient';
+let currentFormat = 'square';
+
+const TEMPLATE_STRUCTURES = {
+    'bold-gradient': {
+        el: `<div class="t-eyebrow" id="pEyebrow"></div>
+             <div class="t-headline" id="pHeadline"></div>
+             <div class="t-sub" id="pSub"></div>
+             <div class="t-badge" id="pBadge"></div>
+             <div class="t-biz" id="pBiz"></div>`
+    },
+    'dark-luxury': {
+        el: `<div class="t-eyebrow" id="pEyebrow"></div>
+             <div class="t-headline" id="pHeadline"></div>
+             <div class="t-sub" id="pSub"></div>
+             <div class="t-badge" id="pBadge"></div>
+             <div class="t-biz" id="pBiz"></div>`
+    },
+    'warm-burst': {
+        el: `<div class="t-eyebrow" id="pEyebrow"></div>
+             <div class="t-headline" id="pHeadline"></div>
+             <div class="t-sub" id="pSub"></div>
+             <div class="t-badge" id="pBadge"></div>
+             <div class="t-biz" id="pBiz"></div>`
+    },
+    'clean-minimal': {
+        el: `<div class="t-eyebrow" id="pEyebrow"></div>
+             <div class="t-headline" id="pHeadline"></div>
+             <div class="t-sub" id="pSub"></div>
+             <div class="t-badge" id="pBadge"></div>
+             <div class="t-biz" id="pBiz"></div>`
+    },
+    'neon-night': {
+        el: `<div class="t-eyebrow" id="pEyebrow"></div>
+             <div class="t-headline" id="pHeadline"></div>
+             <div class="t-sub" id="pSub"></div>
+             <div class="t-badge" id="pBadge"></div>
+             <div class="t-biz" id="pBiz"></div>`
+    },
+    'green-fresh': {
+        el: `<div class="t-eyebrow" id="pEyebrow"></div>
+             <div class="t-headline" id="pHeadline"></div>
+             <div class="t-sub" id="pSub"></div>
+             <div class="t-badge" id="pBadge"></div>
+             <div class="t-biz" id="pBiz"></div>`
+    },
+    'split-bold': {
+        el: `<div class="t-left">
+                <div class="t-eyebrow" id="pEyebrow"></div>
+                <div class="t-headline" id="pHeadline"></div>
+                <div class="t-sub" id="pSub"></div>
+             </div>
+             <div class="t-right">
+                <div class="t-promo" id="pPromo">🎉</div>
+                <div class="t-badge" id="pBadge"></div>
+                <div class="t-biz" id="pBiz"></div>
+             </div>`
+    },
+    'flash-sale': {
+        el: `<div class="t-eyebrow" id="pEyebrow"></div>
+             <div class="t-headline" id="pHeadline"></div>
+             <div class="t-sub" id="pSub"></div>
+             <div class="t-badge" id="pBadge"></div>
+             <div class="t-biz" id="pBiz"></div>`
+    }
+};
+
+function selectTemplate(el) {
+    document.querySelectorAll('.tmpl-thumb').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    currentTemplate = el.dataset.tpl;
+    applyTemplate();
+}
+
+function applyTemplate() {
+    const canvas = document.getElementById('postCanvas');
+    // Remove all template classes
+    canvas.className = '';
+    canvas.classList.add('tpl-' + currentTemplate);
+    // Set inner HTML
+    canvas.innerHTML = TEMPLATE_STRUCTURES[currentTemplate].el;
+    updatePreview();
+}
+
+function updatePreview() {
+    const eyebrow = document.getElementById('fieldEyebrow').value;
+    const headline = document.getElementById('fieldHeadline').value;
+    const sub = document.getElementById('fieldSub').value;
+    const badge = document.getElementById('fieldBadge').value;
+    const biz = document.getElementById('fieldBiz').value;
+
+    const pE = document.getElementById('pEyebrow');
+    const pH = document.getElementById('pHeadline');
+    const pS = document.getElementById('pSub');
+    const pB = document.getElementById('pBadge');
+    const pBiz = document.getElementById('pBiz');
+
+    if (pE) pE.textContent = eyebrow;
+    if (pH) pH.textContent = headline;
+    if (pS) pS.textContent = sub;
+    if (pB) pB.textContent = badge;
+    if (pBiz) pBiz.textContent = biz;
+
+    // For split-bold, show promo emoji
+    const pPromo = document.getElementById('pPromo');
+    if (pPromo) {
+        // Try to pull emoji from headline
+        const match = headline.match(/[\u{1F300}-\u{1FFFF}]|[🎉🔥⚡🎂💥🌟✨❤️🎊]/u);
+        pPromo.textContent = match ? match[0] : '🎉';
+    }
+}
+
+function quickFill(eyebrow, headline, sub, badge) {
+    document.getElementById('fieldEyebrow').value = eyebrow;
+    document.getElementById('fieldHeadline').value = headline;
+    document.getElementById('fieldSub').value = sub;
+    document.getElementById('fieldBadge').value = badge;
+    updatePreview();
+}
+
+function setFormat(format, el) {
+    currentFormat = format;
+    document.querySelectorAll('.chip').forEach(c => c.style.background = '');
+    const canvas = document.getElementById('postCanvas');
+    if (format === 'story') {
+        canvas.style.width = '303px';
+        canvas.style.height = '540px';
+    } else {
+        canvas.style.width = '540px';
+        canvas.style.height = '540px';
+    }
+}
+
+async function downloadPost() {
+    const btn = document.getElementById('btnDownload');
+    btn.textContent = 'Generating...';
+    btn.disabled = true;
+    try {
+        const canvas = document.getElementById('postCanvas');
+        const imageCanvas = await html2canvas(canvas, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: null,
+            logging: false
+        });
+        const link = document.createElement('a');
+        const biz = document.getElementById('fieldBiz').value.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        link.download = `revvio_post_${biz}_${currentTemplate}.png`;
+        link.href = imageCanvas.toDataURL('image/png');
+        link.click();
+    } catch(e) {
+        alert('Download failed: ' + e.message);
+    } finally {
+        btn.textContent = '⬇ Download as Image';
+        btn.disabled = false;
+    }
+}
+
+function copyCaption() {
+    const eyebrow = document.getElementById('fieldEyebrow').value;
+    const headline = document.getElementById('fieldHeadline').value;
+    const sub = document.getElementById('fieldSub').value;
+    const badge = document.getElementById('fieldBadge').value;
+    const biz = document.getElementById('fieldBiz').value;
+    const text = `${eyebrow}\n\n${headline}\n\n${sub}\n\n${badge}\n\n— ${biz}`;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target.closest('button');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="bi bi-check me-1"></i> Copied!';
+        setTimeout(() => btn.innerHTML = orig, 2000);
+    });
+}
+
+// Initialize
+applyTemplate();
+</script>
+
+</body>
+</html>

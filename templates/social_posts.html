@@ -82,7 +82,12 @@
 <div class="top-bar">
     <a href="/dashboard" style="color:var(--accent2);text-decoration:none;font-size:0.85rem;">← Dashboard</a>
     <span class="brand">Revvio</span>
-    <span style="font-size:0.75rem;color:var(--muted);margin-left:auto;">{{ business.business_name }}</span>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+        <a href="/visual-posts" style="background:linear-gradient(135deg,rgba(251,191,36,0.15),rgba(249,115,22,0.15));border:1px solid rgba(251,191,36,0.35);border-radius:8px;color:#fbbf24;font-size:0.78rem;font-weight:700;padding:6px 14px;text-decoration:none;">
+            🎨 Visual Templates
+        </a>
+        <span style="font-size:0.75rem;color:var(--muted);">{{ business.business_name }}</span>
+    </div>
 </div>
 
 <div class="main-wrap">

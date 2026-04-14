@@ -2903,6 +2903,14 @@ def social_posts():
     profile = BusinessProfile.query.filter_by(business_id=b.id).first()
     return render_template("social_posts.html", business=b, profile=profile)
 
+@app.route("/visual-posts")
+def visual_posts():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+    return render_template("visual_posts.html", business=b, profile=profile)
+
 @app.route("/generate-social-post", methods=["POST"])
 def generate_social_post():
     b = current_business()
