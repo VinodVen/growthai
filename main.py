@@ -2971,44 +2971,36 @@ def generate_social_post():
             biz_type = "business"
             tone = "friendly"
 
-        prompt = f"""You are a social media expert for a {biz_type} called "{b.business_name}".
-The owner wants to promote: "{promo}"
-Tone: {tone}
+        prompt = (
+            f'You are a social media expert for a {biz_type} called "{b.business_name}".\n'
+            f'Promotion: "{promo}"\n'
+            f'Tone: {tone}\n\n'
+            f'Reply with ONLY a JSON object — no explanation, no markdown, no code block. Example structure:\n'
+            f'{{"instagram":{{"caption":"...","hashtags":"#tag1 #tag2 #tag3"}},'
+            f'"facebook":{{"post":"..."}},'
+            f'"whatsapp":{{"message":"..."}},'
+            f'"story":{{"text":"line1\\nline2\\nline3"}}}}'
+        )
 
-Generate social media content in this EXACT JSON format (no markdown, no explanation):
-{{
-  "instagram": {{
-    "caption": "An engaging Instagram caption with emojis, max 150 words, ends with a call to action",
-    "hashtags": "#tag1 #tag2 #tag3 #tag4 #tag5 #tag6 #tag7 #tag8 #tag9 #tag10"
-  }},
-  "facebook": {{
-    "post": "A friendly Facebook post, slightly longer, conversational tone, with emojis"
-  }},
-  "whatsapp": {{
-    "message": "A short WhatsApp broadcast message, personal and direct, max 3 sentences, with emojis"
-  }},
-  "story": {{
-    "text": "3 punchy story slide texts (one per line), each under 8 words, with emojis"
-  }}
-}}"""
+        raw = _call_openai(prompt, max_tokens=1500, timeout=45)
+        print(f"[social-post] raw={raw[:300]}")
 
-        raw = _call_openai(prompt, max_tokens=1500, timeout=40)
-        print(f"Social post raw response: {raw[:500]}")  # debug log
-        # Try to extract JSON from response (handles markdown code blocks)
         import re as _re
-        # Remove markdown code fences if present
-        clean = _re.sub(r'```(?:json)?\s*', '', raw).strip()
+        # Strip markdown fences
+        clean = _re.sub(r'```[a-z]*', '', raw).strip().strip('`').strip()
+        # Find first { to last }
         start = clean.find("{")
-        end = clean.rfind("}") + 1
-        if start < 0:
-            return jsonify({"success": False, "error": f"AI returned unexpected format. Raw: {raw[:200]}"})
+        end   = clean.rfind("}") + 1
+        if start < 0 or end <= start:
+            return jsonify({"success": False, "error": f"AI did not return JSON. Got: {raw[:200]}"})
         result = _json.loads(clean[start:end])
         return jsonify({"success": True, "content": result})
     except _json.JSONDecodeError as e:
-        print(f"Social post JSON error: {e}, raw: {raw[:500] if 'raw' in locals() else 'N/A'}")
-        return jsonify({"success": False, "error": f"AI response could not be parsed. Try again."})
+        raw_snippet = raw[:300] if 'raw' in dir() else 'N/A'
+        print(f"[social-post] JSON parse error: {e} | raw: {raw_snippet}")
+        return jsonify({"success": False, "error": f"AI response could not be parsed. Raw: {raw_snippet}"})
     except Exception as e:
-        print(f"Social post error: {e}")
+        print(f"[social-post] error: {e}")
         return jsonify({"success": False, "error": str(e)})
 
 
