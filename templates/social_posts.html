@@ -14,54 +14,67 @@
             --text: #e2e2f0; --muted: #6b6b8a; --accent: #7c6fff; --accent2: #a78bfa;
         }
         body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; min-height: 100vh; }
-
         .top-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; gap: 16px; }
         .brand { font-size: 1.1rem; font-weight: 800; color: #fff; }
-        .container { max-width: 860px; padding-top: 2rem; padding-bottom: 4rem; }
+        .main-wrap { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem 4rem; display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
+        @media(max-width:900px){ .main-wrap { grid-template-columns: 1fr; } }
 
-        .page-title { font-size: 1.6rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; margin-bottom: 4px; }
-        .page-sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 2rem; }
+        .page-title { font-size: 1.5rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; margin-bottom: 4px; }
+        .page-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
 
-        .input-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 2rem; }
+        .input-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px; margin-bottom: 20px; }
         .field-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; display: block; }
         .ctrl { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); border-radius: 10px; padding: 12px 16px; font-size: 0.9rem; width: 100%; transition: border-color 0.15s; }
         .ctrl:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,111,255,0.15); }
         .ctrl::placeholder { color: #3d3d5c; }
 
-        .platform-grid { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
-        .plat-btn { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 10px; border: 1.5px solid var(--border2); background: var(--surface2); color: var(--muted); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .platform-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+        .plat-btn { display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 10px; border: 1.5px solid var(--border2); background: var(--surface2); color: var(--muted); font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
         .plat-btn:hover { border-color: var(--accent); color: var(--accent2); }
         .plat-btn.active { border-color: var(--accent); background: rgba(124,111,255,0.12); color: var(--accent2); }
-        .plat-btn .plat-icon { font-size: 1.1rem; }
 
         .btn-generate { background: linear-gradient(135deg, #7c6fff, #a855f7); border: none; color: #fff; font-weight: 700; font-size: 0.95rem; padding: 12px 32px; border-radius: 12px; cursor: pointer; transition: opacity 0.15s; width: 100%; }
         .btn-generate:hover { opacity: 0.88; }
         .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* Results */
-        .results { display: none; }
-        .platform-section { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 16px; overflow: hidden; }
-        .platform-header { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--border); }
-        .platform-header .plat-icon { font-size: 1.3rem; }
-        .platform-header .plat-name { font-weight: 700; color: #fff; font-size: 0.95rem; }
-        .platform-header .plat-desc { font-size: 0.75rem; color: var(--muted); margin-left: auto; }
-        .content-block { padding: 16px 20px; }
-        .content-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
-        .content-text { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; font-size: 0.88rem; line-height: 1.7; color: var(--text); white-space: pre-wrap; word-break: break-word; min-height: 60px; }
-        .hashtag-text { color: var(--accent2); font-size: 0.82rem; line-height: 1.8; }
-        .story-text { font-size: 1rem; font-weight: 700; line-height: 2; color: #fff; }
+        .err-box { background: rgba(248,113,113,0.1); border: 1px solid rgba(248,113,113,0.3); color: #f87171; border-radius: 10px; padding: 12px 16px; font-size: 0.85rem; margin-bottom: 16px; display: none; }
 
-        .btn-copy { display: inline-flex; align-items: center; gap: 6px; background: rgba(124,111,255,0.12); border: 1px solid rgba(124,111,255,0.25); color: var(--accent2); font-size: 0.78rem; font-weight: 600; padding: 6px 14px; border-radius: 8px; cursor: pointer; transition: all 0.15s; margin-top: 10px; }
+        .results { display: none; }
+        .platform-section { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 14px; overflow: hidden; }
+        .platform-header { display: flex; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid var(--border); }
+        .platform-header .plat-name { font-weight: 700; color: #fff; font-size: 0.92rem; }
+        .platform-header .plat-desc { font-size: 0.72rem; color: var(--muted); margin-left: auto; }
+        .content-block { padding: 14px 18px; }
+        .content-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+        .content-text { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 0.85rem; line-height: 1.7; color: var(--text); white-space: pre-wrap; word-break: break-word; min-height: 50px; }
+        .hashtag-text { color: var(--accent2); font-size: 0.82rem; line-height: 1.8; }
+        .story-text { font-size: 0.95rem; font-weight: 700; line-height: 2; color: #fff; }
+
+        .btn-copy { display: inline-flex; align-items: center; gap: 6px; background: rgba(124,111,255,0.12); border: 1px solid rgba(124,111,255,0.25); color: var(--accent2); font-size: 0.75rem; font-weight: 600; padding: 5px 12px; border-radius: 8px; cursor: pointer; transition: all 0.15s; margin-top: 8px; }
         .btn-copy:hover { background: rgba(124,111,255,0.22); }
         .btn-copy.copied { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.25); color: #4ade80; }
 
-        .examples { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-        .example-pill { background: var(--surface2); border: 1px solid var(--border2); border-radius: 20px; padding: 5px 14px; font-size: 0.78rem; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+        .examples { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+        .example-pill { background: var(--surface2); border: 1px solid var(--border2); border-radius: 20px; padding: 4px 12px; font-size: 0.75rem; color: var(--muted); cursor: pointer; transition: all 0.15s; }
         .example-pill:hover { border-color: var(--accent); color: var(--accent2); }
 
-        .loading-state { text-align: center; padding: 3rem; display: none; }
-        .spinner-ring { width: 48px; height: 48px; border: 3px solid rgba(124,111,255,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+        .loading-state { text-align: center; padding: 2rem; display: none; }
+        .spinner-ring { width: 44px; height: 44px; border: 3px solid rgba(124,111,255,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Templates sidebar */
+        .tmpl-sidebar { position: sticky; top: 1rem; }
+        .tmpl-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; }
+        .tmpl-title { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 14px; }
+        .tmpl-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; cursor: pointer; transition: all 0.15s; }
+        .tmpl-item:hover { border-color: var(--accent); }
+        .tmpl-item-label { font-size: 0.72rem; font-weight: 700; color: var(--accent2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; display: flex; align-items: center; gap: 6px; }
+        .tmpl-item-text { font-size: 0.8rem; color: #c0c0d8; line-height: 1.5; }
+        .tmpl-platforms { display: flex; gap: 4px; margin-top: 8px; }
+        .tmpl-plat { font-size: 0.68rem; background: rgba(255,255,255,0.05); border-radius: 4px; padding: 2px 6px; color: var(--muted); }
+        .tmpl-actions { display: flex; gap: 6px; margin-top: 8px; }
+        .tmpl-btn { font-size: 0.72rem; padding: 4px 10px; border-radius: 6px; cursor: pointer; border: 1px solid rgba(124,111,255,0.25); background: rgba(124,111,255,0.1); color: var(--accent2); font-weight: 600; }
+        .tmpl-btn.green { border-color: rgba(34,197,94,0.25); background: rgba(34,197,94,0.1); color: #4ade80; }
     </style>
 </head>
 <body>
@@ -72,142 +85,205 @@
     <span style="font-size:0.75rem;color:var(--muted);margin-left:auto;">{{ business.business_name }}</span>
 </div>
 
-<div class="container">
-    <div class="page-title">📱 AI Social Posts</div>
-    <div class="page-sub">Describe your promo → get ready-to-post captions for Instagram, Facebook, WhatsApp & Stories in seconds.</div>
+<div class="main-wrap">
 
-    <!-- Input Card -->
-    <div class="input-card">
-        <label class="field-label">What are you promoting?</label>
-        <textarea class="ctrl" id="promoInput" rows="3"
-            placeholder="e.g. 20% off all burgers this weekend only&#10;e.g. New spa package: massage + facial for $89&#10;e.g. Buy one get one free on all coffees today"></textarea>
+    <!-- LEFT: AI Generator -->
+    <div>
+        <div class="page-title">📱 AI Social Posts</div>
+        <div class="page-sub">Describe your promo → get ready-to-post captions in seconds. Or use a template from the right →</div>
 
-        <div class="examples mt-2">
-            <span style="font-size:0.72rem;color:var(--muted);align-self:center;">Examples:</span>
-            <span class="example-pill" onclick="setExample(this)">Weekend special 20% off</span>
-            <span class="example-pill" onclick="setExample(this)">New menu item launch</span>
-            <span class="example-pill" onclick="setExample(this)">Happy hour 5-7pm daily</span>
-            <span class="example-pill" onclick="setExample(this)">Buy 1 get 1 free today</span>
-            <span class="example-pill" onclick="setExample(this)">Grand opening this Saturday</span>
+        <!-- Error box -->
+        <div class="err-box" id="errBox"></div>
+
+        <!-- Input Card -->
+        <div class="input-card">
+            <label class="field-label">What are you promoting?</label>
+            <textarea class="ctrl" id="promoInput" rows="3"
+                placeholder="e.g. 20% off all burgers this weekend&#10;e.g. New menu item launch&#10;e.g. Buy 1 get 1 free today"></textarea>
+
+            <div class="examples mt-2">
+                <span style="font-size:0.7rem;color:var(--muted);align-self:center;">Quick:</span>
+                <span class="example-pill" onclick="setExample(this)">Weekend 20% off</span>
+                <span class="example-pill" onclick="setExample(this)">New item launch</span>
+                <span class="example-pill" onclick="setExample(this)">Happy hour 5-7pm</span>
+                <span class="example-pill" onclick="setExample(this)">Buy 1 get 1 free</span>
+                <span class="example-pill" onclick="setExample(this)">Grand opening</span>
+            </div>
+
+            <div class="mt-3 mb-3">
+                <label class="field-label">Generate for</label>
+                <div class="platform-grid" id="platformBtns">
+                    <div class="plat-btn active" data-plat="all" onclick="selectPlat(this)"><span>✨</span> All</div>
+                    <div class="plat-btn" data-plat="instagram" onclick="selectPlat(this)"><span>📸</span> Instagram</div>
+                    <div class="plat-btn" data-plat="facebook" onclick="selectPlat(this)"><span>👥</span> Facebook</div>
+                    <div class="plat-btn" data-plat="whatsapp" onclick="selectPlat(this)"><span>💬</span> WhatsApp</div>
+                    <div class="plat-btn" data-plat="story" onclick="selectPlat(this)"><span>⚡</span> Stories</div>
+                </div>
+            </div>
+
+            <button class="btn-generate" id="generateBtn" onclick="generatePosts()">
+                <i class="bi bi-stars me-2"></i> Generate with AI
+            </button>
         </div>
 
-        <div class="mt-4 mb-3">
-            <label class="field-label">Generate for</label>
-            <div class="platform-grid" id="platformBtns">
-                <div class="plat-btn active" data-plat="all" onclick="selectPlat(this)">
-                    <span class="plat-icon">✨</span> All Platforms
-                </div>
-                <div class="plat-btn" data-plat="instagram" onclick="selectPlat(this)">
-                    <span class="plat-icon">📸</span> Instagram
-                </div>
-                <div class="plat-btn" data-plat="facebook" onclick="selectPlat(this)">
-                    <span class="plat-icon">👥</span> Facebook
-                </div>
-                <div class="plat-btn" data-plat="whatsapp" onclick="selectPlat(this)">
-                    <span class="plat-icon">💬</span> WhatsApp
-                </div>
-                <div class="plat-btn" data-plat="story" onclick="selectPlat(this)">
-                    <span class="plat-icon">⚡</span> Story Slides
-                </div>
-            </div>
+        <!-- Loading -->
+        <div class="loading-state" id="loadingState">
+            <div class="spinner-ring"></div>
+            <div style="color:var(--muted);font-size:0.88rem;">AI is writing your posts... (up to 30 seconds)</div>
         </div>
 
-        <button class="btn-generate" id="generateBtn" onclick="generatePosts()">
-            <i class="bi bi-stars me-2"></i> Generate Social Posts
-        </button>
-    </div>
+        <!-- Results -->
+        <div class="results" id="results">
 
-    <!-- Loading -->
-    <div class="loading-state" id="loadingState">
-        <div class="spinner-ring"></div>
-        <div style="color:var(--muted);font-size:0.9rem;">AI is writing your posts...</div>
-    </div>
-
-    <!-- Results -->
-    <div class="results" id="results">
-
-        <!-- Instagram -->
-        <div class="platform-section" id="sec-instagram">
-            <div class="platform-header">
-                <span class="plat-icon">📸</span>
-                <span class="plat-name">Instagram Caption</span>
-                <span class="plat-desc">Feed post</span>
+            <div class="platform-section" id="sec-instagram">
+                <div class="platform-header">
+                    <span style="font-size:1.2rem;">📸</span>
+                    <span class="plat-name">Instagram Caption</span>
+                    <span class="plat-desc">Feed post</span>
+                </div>
+                <div class="content-block">
+                    <div class="content-label">Caption</div>
+                    <div class="content-text" id="ig-caption"></div>
+                    <button class="btn-copy" onclick="copyText('ig-caption', this)"><i class="bi bi-clipboard"></i> Copy Caption</button>
+                </div>
+                <div class="content-block" style="border-top:1px solid var(--border);">
+                    <div class="content-label">Hashtags</div>
+                    <div class="content-text hashtag-text" id="ig-hashtags"></div>
+                    <button class="btn-copy" onclick="copyText('ig-hashtags', this)"><i class="bi bi-clipboard"></i> Copy Hashtags</button>
+                    <button class="btn-copy ms-2" onclick="copyBoth()" style="background:rgba(124,111,255,0.2);"><i class="bi bi-clipboard-plus"></i> Copy Both</button>
+                </div>
             </div>
-            <div class="content-block">
-                <div class="content-label">Caption</div>
-                <div class="content-text" id="ig-caption"></div>
-                <button class="btn-copy" onclick="copyText('ig-caption', this)"><i class="bi bi-clipboard"></i> Copy Caption</button>
+
+            <div class="platform-section" id="sec-facebook">
+                <div class="platform-header">
+                    <span style="font-size:1.2rem;">👥</span>
+                    <span class="plat-name">Facebook Post</span>
+                    <span class="plat-desc">Page post</span>
+                </div>
+                <div class="content-block">
+                    <div class="content-text" id="fb-post"></div>
+                    <button class="btn-copy" onclick="copyText('fb-post', this)"><i class="bi bi-clipboard"></i> Copy Post</button>
+                </div>
             </div>
-            <div class="content-block" style="border-top:1px solid var(--border);padding-top:14px;">
-                <div class="content-label">Hashtags</div>
-                <div class="content-text hashtag-text" id="ig-hashtags"></div>
-                <button class="btn-copy" onclick="copyText('ig-hashtags', this)"><i class="bi bi-clipboard"></i> Copy Hashtags</button>
-                <button class="btn-copy ms-2" onclick="copyBoth()" style="background:rgba(124,111,255,0.2);">
-                    <i class="bi bi-clipboard-plus"></i> Copy Caption + Hashtags
+
+            <div class="platform-section" id="sec-whatsapp">
+                <div class="platform-header">
+                    <span style="font-size:1.2rem;">💬</span>
+                    <span class="plat-name">WhatsApp Status / Broadcast</span>
+                    <span class="plat-desc">Short & personal</span>
+                </div>
+                <div class="content-block">
+                    <div class="content-text" id="wa-message"></div>
+                    <button class="btn-copy" onclick="copyText('wa-message', this)"><i class="bi bi-clipboard"></i> Copy Message</button>
+                </div>
+            </div>
+
+            <div class="platform-section" id="sec-story">
+                <div class="platform-header">
+                    <span style="font-size:1.2rem;">⚡</span>
+                    <span class="plat-name">Story Slides</span>
+                    <span class="plat-desc">Instagram / Facebook Stories</span>
+                </div>
+                <div class="content-block">
+                    <div class="content-label">3 slide texts</div>
+                    <div class="content-text story-text" id="story-text"></div>
+                    <button class="btn-copy" onclick="copyText('story-text', this)"><i class="bi bi-clipboard"></i> Copy All Slides</button>
+                </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="d-flex gap-2 mt-3 flex-wrap justify-content-center" id="actionBtns">
+                <button class="btn-copy" onclick="saveToQueue()" style="padding:10px 20px;font-size:0.85rem;background:rgba(124,111,255,0.15);border-color:rgba(124,111,255,0.3);color:#a78bfa;">
+                    <i class="bi bi-calendar-plus"></i> Save to Queue
+                </button>
+                <button class="btn-copy" onclick="postToFacebook()" id="fbPostBtn" style="padding:10px 20px;font-size:0.85rem;background:rgba(24,119,242,0.15);border-color:rgba(24,119,242,0.3);color:#60a5fa;">
+                    📘 Post to Facebook Now
+                </button>
+            </div>
+
+            <div class="text-center mt-3">
+                <button class="btn-copy" onclick="generatePosts()" style="padding:10px 28px;font-size:0.85rem;">
+                    <i class="bi bi-arrow-clockwise"></i> Regenerate
                 </button>
             </div>
         </div>
+    </div>
 
-        <!-- Facebook -->
-        <div class="platform-section" id="sec-facebook">
-            <div class="platform-header">
-                <span class="plat-icon">👥</span>
-                <span class="plat-name">Facebook Post</span>
-                <span class="plat-desc">Page post</span>
-            </div>
-            <div class="content-block">
-                <div class="content-text" id="fb-post"></div>
-                <button class="btn-copy" onclick="copyText('fb-post', this)"><i class="bi bi-clipboard"></i> Copy Post</button>
-            </div>
-        </div>
+    <!-- RIGHT: Ready-made Templates -->
+    <div class="tmpl-sidebar">
+        <div class="tmpl-card">
+            <div class="tmpl-title">⚡ Ready-Made Templates</div>
+            <div style="font-size:0.75rem;color:var(--muted);margin-bottom:12px;">Click any template to copy it directly — no AI needed. Replace [BUSINESS] with your name.</div>
 
-        <!-- WhatsApp -->
-        <div class="platform-section" id="sec-whatsapp">
-            <div class="platform-header">
-                <span class="plat-icon">💬</span>
-                <span class="plat-name">WhatsApp Status / Broadcast</span>
-                <span class="plat-desc">Short & personal</span>
-            </div>
-            <div class="content-block">
-                <div class="content-text" id="wa-message"></div>
-                <button class="btn-copy" onclick="copyText('wa-message', this)"><i class="bi bi-clipboard"></i> Copy Message</button>
-            </div>
-        </div>
+            {% set biz = business.business_name %}
 
-        <!-- Story -->
-        <div class="platform-section" id="sec-story">
-            <div class="platform-header">
-                <span class="plat-icon">⚡</span>
-                <span class="plat-name">Story Slides</span>
-                <span class="plat-desc">Instagram / Facebook Stories</span>
-            </div>
-            <div class="content-block">
-                <div class="content-label">3 slide texts — use each as a separate story slide</div>
-                <div class="content-text story-text" id="story-text"></div>
-                <button class="btn-copy" onclick="copyText('story-text', this)"><i class="bi bi-clipboard"></i> Copy All Slides</button>
-            </div>
-        </div>
+            {% set templates = [
+                {
+                    "label": "Weekend Special",
+                    "emoji": "🎉",
+                    "platforms": ["Instagram", "Facebook"],
+                    "text": "🎉 Weekend Special Alert!\n\nThis weekend only — enjoy an exclusive deal at " + biz + ". Don't miss out!\n\n📍 Come visit us\n📲 Share with a friend who needs this!\n\n#WeekendSpecial #" + biz|replace(' ','') + " #LocalBusiness #SpecialOffer"
+                },
+                {
+                    "label": "New Item Launch",
+                    "emoji": "✨",
+                    "platforms": ["Instagram", "Facebook"],
+                    "text": "✨ Something NEW is here!\n\nWe're excited to announce our latest addition at " + biz + ". You're going to love it 🙌\n\nCome in and try it — tell us what you think!\n\n#NewLaunch #" + biz|replace(' ','') + " #MustTry #ComingSoon"
+                },
+                {
+                    "label": "Happy Hour",
+                    "emoji": "🍹",
+                    "platforms": ["Instagram", "WhatsApp"],
+                    "text": "🍹 Happy Hour at " + biz + "!\n\nEvery day 5–7pm. Great deals, great vibes.\n\nBring your crew and enjoy! 🙌\n\n📍 " + biz + "\n\n#HappyHour #HappyHourDeals #" + biz|replace(' ','')
+                },
+                {
+                    "label": "Buy 1 Get 1",
+                    "emoji": "🔥",
+                    "platforms": ["Instagram", "Facebook", "WhatsApp"],
+                    "text": "🔥 Buy 1 Get 1 FREE — Today Only!\n\nYes, you read that right! Head to " + biz + " today and grab your BOGO deal 🎁\n\nOffer ends tonight — don't wait!\n\n#BOGO #Buy1Get1 #" + biz|replace(' ','') + " #TodayOnly"
+                },
+                {
+                    "label": "Customer Appreciation",
+                    "emoji": "❤️",
+                    "platforms": ["Instagram", "Facebook"],
+                    "text": "❤️ Thank YOU!\n\nWe just want to take a moment to appreciate every single one of our amazing customers. " + biz + " wouldn't be here without you.\n\nThank you for your support, your smiles, and your loyalty 🙏\n\n#ThankYou #CustomerAppreciation #" + biz|replace(' ','') + " #Grateful"
+                },
+                {
+                    "label": "Birthday Offer",
+                    "emoji": "🎂",
+                    "platforms": ["WhatsApp", "Instagram"],
+                    "text": "🎂 It's your birthday month?\n\nCelebrate with us at " + biz + "! We have a special surprise waiting for you 🎁\n\nJust show this post when you visit. Valid all month!\n\n#BirthdayOffer #" + biz|replace(' ','') + " #BirthdayTreat"
+                },
+                {
+                    "label": "Flash Sale",
+                    "emoji": "⚡",
+                    "platforms": ["WhatsApp", "Instagram"],
+                    "text": "⚡ FLASH SALE — Next 3 hours only!\n\n" + biz + " is running an exclusive deal RIGHT NOW. Don't sleep on this one ⏰\n\nFirst come, first served. See you soon! 🏃\n\n#FlashSale #LimitedTime #" + biz|replace(' ','') + " #HurryUp"
+                },
+                {
+                    "label": "Grand Opening / Event",
+                    "emoji": "🎊",
+                    "platforms": ["Instagram", "Facebook"],
+                    "text": "🎊 Big News from " + biz + "!\n\nWe're celebrating and we want YOU to be part of it 🎉\n\nJoin us for an unforgettable experience. Mark your calendar and bring your friends!\n\n📅 Save the date\n📍 " + biz + "\n\n#GrandOpening #" + biz|replace(' ','') + " #CelebrationTime #JoinUs"
+                }
+            ] %}
 
-        <!-- Action buttons -->
-        <div class="d-flex gap-2 mt-3 flex-wrap justify-content-center" id="actionBtns">
-            <button class="btn-copy" onclick="saveToQueue()" style="padding:10px 20px;font-size:0.85rem;background:rgba(124,111,255,0.15);border-color:rgba(124,111,255,0.3);color:#a78bfa;">
-                <i class="bi bi-calendar-plus"></i> Save to Queue
-            </button>
-            <button class="btn-copy" onclick="postToFacebook()" id="fbPostBtn" style="padding:10px 20px;font-size:0.85rem;background:rgba(24,119,242,0.15);border-color:rgba(24,119,242,0.3);color:#60a5fa;">
-                📘 Post to Facebook Now
-            </button>
-            <a href="/social-queue" class="btn-copy" style="padding:10px 20px;font-size:0.85rem;text-decoration:none;">
-                📅 View Queue
-            </a>
-        </div>
-
-        <!-- Regenerate -->
-        <div class="text-center mt-3">
-            <button class="btn-copy" onclick="generatePosts()" style="padding:10px 28px;font-size:0.85rem;">
-                <i class="bi bi-arrow-clockwise"></i> Regenerate
-            </button>
+            {% for t in templates %}
+            <div class="tmpl-item" onclick="expandTemplate(this)">
+                <div class="tmpl-item-label">{{ t.emoji }} {{ t.label }}</div>
+                <div class="tmpl-item-text">{{ t.text[:80] }}...</div>
+                <div class="tmpl-platforms">
+                    {% for p in t.platforms %}<span class="tmpl-plat">{{ p }}</span>{% endfor %}
+                </div>
+                <div class="tmpl-actions" style="display:none;" data-text="{{ t.text|e }}">
+                    <button class="tmpl-btn" onclick="copyTemplate(this, event)"><i class="bi bi-clipboard"></i> Copy</button>
+                    <button class="tmpl-btn green" onclick="useAsPrompt(this, event)">✨ AI Improve</button>
+                </div>
+            </div>
+            {% endfor %}
         </div>
     </div>
+
 </div>
 
 <script>
@@ -225,17 +301,28 @@ function setExample(el) {
     document.getElementById('promoInput').focus();
 }
 
+function showError(msg) {
+    const box = document.getElementById('errBox');
+    box.textContent = '❌ ' + msg;
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function hideError() {
+    document.getElementById('errBox').style.display = 'none';
+}
+
 async function generatePosts() {
     const promo = document.getElementById('promoInput').value.trim();
     if (!promo) { document.getElementById('promoInput').focus(); return; }
 
+    hideError();
     document.getElementById('generateBtn').disabled = true;
     document.getElementById('results').style.display = 'none';
     document.getElementById('loadingState').style.display = 'block';
 
     try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 45000);
+        const timer = setTimeout(() => controller.abort(), 50000);
         const res = await fetch('/generate-social-post', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -243,13 +330,21 @@ async function generatePosts() {
             signal: controller.signal
         });
         clearTimeout(timer);
+
+        if (!res.ok) {
+            showError('Server error ' + res.status + '. Try again.');
+            return;
+        }
+
         const data = await res.json();
-        if (!data.success) { alert(data.error || 'Error generating posts'); return; }
+        if (!data.success) {
+            showError(data.error || 'Generation failed. Try again.');
+            return;
+        }
 
         const c = data.content;
         lastContent = c;
 
-        // Populate
         if (c.instagram) {
             document.getElementById('ig-caption').textContent = c.instagram.caption || '';
             document.getElementById('ig-hashtags').textContent = c.instagram.hashtags || '';
@@ -258,7 +353,6 @@ async function generatePosts() {
         if (c.whatsapp) document.getElementById('wa-message').textContent = c.whatsapp.message || '';
         if (c.story) document.getElementById('story-text').textContent = c.story.text || '';
 
-        // Show/hide sections
         const show = selectedPlat === 'all';
         document.getElementById('sec-instagram').style.display = (show || selectedPlat === 'instagram') ? '' : 'none';
         document.getElementById('sec-facebook').style.display = (show || selectedPlat === 'facebook') ? '' : 'none';
@@ -269,7 +363,11 @@ async function generatePosts() {
         document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     } catch(e) {
-        alert('Error: ' + e.message);
+        if (e.name === 'AbortError') {
+            showError('Request timed out. AI took too long — try again.');
+        } else {
+            showError('Network error: ' + e.message);
+        }
     } finally {
         document.getElementById('generateBtn').disabled = false;
         document.getElementById('loadingState').style.display = 'none';
@@ -292,29 +390,54 @@ function copyBoth() {
     navigator.clipboard.writeText(caption + '\n\n' + tags);
 }
 
+// Templates
+function expandTemplate(item) {
+    const actions = item.querySelector('.tmpl-actions');
+    const isOpen = actions.style.display !== 'none';
+    document.querySelectorAll('.tmpl-actions').forEach(a => a.style.display = 'none');
+    if (!isOpen) actions.style.display = 'flex';
+}
+
+function copyTemplate(btn, e) {
+    e.stopPropagation();
+    const text = btn.closest('.tmpl-actions').dataset.text;
+    navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '✓ Copied!';
+        btn.style.background = 'rgba(34,197,94,0.2)';
+        btn.style.color = '#4ade80';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; btn.style.color = ''; }, 2000);
+    });
+}
+
+function useAsPrompt(btn, e) {
+    e.stopPropagation();
+    const text = btn.closest('.tmpl-actions').dataset.text;
+    const label = btn.closest('.tmpl-item').querySelector('.tmpl-item-label').textContent.trim();
+    document.getElementById('promoInput').value = label.replace(/^[^\w]+/, '');
+    document.getElementById('promoInput').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('promoInput').focus();
+}
+
 async function saveToQueue() {
     const caption = document.getElementById('ig-caption').textContent;
     const hashtags = document.getElementById('ig-hashtags').textContent;
     const fbPost = document.getElementById('fb-post').textContent;
     const content = fbPost || caption;
-    if (!content) { alert('Generate posts first'); return; }
+    if (!content) { showError('Generate posts first'); return; }
     const res = await fetch('/api/save-to-queue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content, hashtags, platform: 'facebook' })
     });
     const data = await res.json();
-    if (data.success) {
-        alert('Saved to queue! Go to Social Queue to schedule or post.');
-    } else {
-        alert('Error: ' + (data.error || 'Could not save'));
-    }
+    if (data.success) alert('Saved to queue!');
+    else showError(data.error || 'Could not save');
 }
 
 async function postToFacebook() {
     const fbPost = document.getElementById('fb-post').textContent;
-    const content = fbPost;
-    if (!content) { alert('Generate posts first, or select Facebook platform'); return; }
+    if (!fbPost) { showError('Generate posts first, or select Facebook platform'); return; }
     if (!confirm('Post this to Facebook now?')) return;
     const btn = document.getElementById('fbPostBtn');
     btn.disabled = true;
@@ -323,22 +446,19 @@ async function postToFacebook() {
         const res = await fetch('/api/post-to-social', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ platform: 'facebook', content })
+            body: JSON.stringify({ platform: 'facebook', content: fbPost })
         });
         const data = await res.json();
         if (data.success && data.results?.facebook?.success) {
-            btn.textContent = '✓ Posted to Facebook!';
-            btn.style.background = 'rgba(34,197,94,0.2)';
-            btn.style.borderColor = 'rgba(34,197,94,0.3)';
+            btn.textContent = '✓ Posted!';
             btn.style.color = '#4ade80';
         } else {
-            const err = data.results?.facebook?.error || data.error || 'Check Facebook connection';
-            alert('Failed: ' + err);
+            showError(data.results?.facebook?.error || data.error || 'Check Facebook connection at /social-connect');
             btn.disabled = false;
             btn.textContent = '📘 Post to Facebook Now';
         }
     } catch(e) {
-        alert('Error: ' + e.message);
+        showError('Error: ' + e.message);
         btn.disabled = false;
         btn.textContent = '📘 Post to Facebook Now';
     }
