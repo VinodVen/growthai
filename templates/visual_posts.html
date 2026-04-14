@@ -336,6 +336,8 @@
             </div>
         </div>
 
+        <!-- Format -->
+
         <!-- Download -->
         <div class="panel-section">
             <button class="btn-download" id="btnDownload" onclick="downloadPost()">
@@ -343,6 +345,40 @@
             </button>
             <div style="color:var(--muted);font-size:0.72rem;text-align:center;margin-top:8px;">
                 PNG • Ready to post on Instagram, Facebook, WhatsApp
+            </div>
+        </div>
+
+        <!-- Post to Social -->
+        <div class="panel-section">
+            <span class="panel-label">Post Directly to Social</span>
+
+            <!-- Caption for the post -->
+            <div style="margin-bottom:10px;">
+                <label style="font-size:0.72rem;color:var(--muted);font-weight:600;display:block;margin-bottom:4px;">Caption (goes with the image)</label>
+                <textarea class="ctrl" id="socialCaption" rows="3" placeholder="Add a caption for your post... use #hashtags too"></textarea>
+            </div>
+
+            <!-- Platform buttons -->
+            <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <button class="btn-social-post" id="btnPostFB" onclick="postToSocial('facebook')"
+                    style="flex:1;background:#1877f2;border:none;color:#fff;font-weight:700;border-radius:10px;padding:11px;font-size:0.82rem;cursor:pointer;transition:opacity 0.15s;">
+                    <i class="bi bi-facebook me-1"></i> Post to Facebook
+                </button>
+                <button class="btn-social-post" id="btnPostIG" onclick="postToSocial('instagram')"
+                    style="flex:1;background:linear-gradient(135deg,#f58529,#dd2a7b,#8134af);border:none;color:#fff;font-weight:700;border-radius:10px;padding:11px;font-size:0.82rem;cursor:pointer;transition:opacity 0.15s;">
+                    <i class="bi bi-instagram me-1"></i> Post to Instagram
+                </button>
+            </div>
+            <button class="btn-social-post" id="btnPostBoth" onclick="postToSocial('both')"
+                style="width:100%;background:linear-gradient(135deg,#7c6fff,#a855f7);border:none;color:#fff;font-weight:700;border-radius:10px;padding:11px;font-size:0.85rem;cursor:pointer;margin-bottom:8px;transition:opacity 0.15s;">
+                ✨ Post to Both at Once
+            </button>
+
+            <!-- Status message -->
+            <div id="socialStatus" style="display:none;border-radius:10px;padding:10px 14px;font-size:0.82rem;margin-top:4px;"></div>
+
+            <div style="color:var(--muted);font-size:0.7rem;margin-top:8px;line-height:1.5;">
+                Requires Facebook/Instagram connected. <a href="/social-connect" style="color:#7c6fff;">Connect here →</a>
             </div>
         </div>
 
@@ -565,6 +601,84 @@ function copyCaption() {
         btn.innerHTML = '<i class="bi bi-check me-1"></i> Copied!';
         setTimeout(() => btn.innerHTML = orig, 2000);
     });
+}
+
+async function postToSocial(platform) {
+    const caption = document.getElementById('socialCaption').value.trim();
+    const statusEl = document.getElementById('socialStatus');
+
+    // Disable all post buttons
+    ['btnPostFB','btnPostIG','btnPostBoth'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.disabled = true; el.style.opacity = '0.5'; }
+    });
+
+    statusEl.style.display = 'block';
+    statusEl.style.background = 'rgba(124,111,255,0.1)';
+    statusEl.style.color = '#a78bfa';
+    statusEl.style.border = '1px solid rgba(124,111,255,0.2)';
+    statusEl.textContent = '📸 Capturing image...';
+
+    try {
+        // Step 1: capture canvas as base64
+        const canvas = document.getElementById('postCanvas');
+        const imgCanvas = await html2canvas(canvas, { scale: 2, useCORS: true, backgroundColor: null, logging: false });
+        const imageData = imgCanvas.toDataURL('image/png');
+
+        statusEl.textContent = '⬆️ Uploading image...';
+
+        // Step 2: upload image to server to get a public URL
+        const uploadRes = await fetch('/api/upload-post-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_data: imageData })
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadData.success) throw new Error(uploadData.error || 'Upload failed');
+
+        statusEl.textContent = '🚀 Posting to ' + (platform === 'both' ? 'Facebook & Instagram' : platform) + '...';
+
+        // Step 3: post to social media
+        const postRes = await fetch('/api/post-to-social', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                platform: platform,
+                content: caption || document.getElementById('fieldHeadline').value + ' — ' + document.getElementById('fieldSub').value,
+                image_url: uploadData.url
+            })
+        });
+        const postData = await postRes.json();
+
+        // Show result
+        let msg = '';
+        const results = postData.results || {};
+        if (results.facebook) {
+            msg += results.facebook.success ? '✅ Facebook: Posted!' : '❌ Facebook: ' + results.facebook.error;
+        }
+        if (results.instagram) {
+            msg += (msg ? '\n' : '') + (results.instagram.success ? '✅ Instagram: Posted!' : '❌ Instagram: ' + results.instagram.error);
+        }
+        if (!msg) msg = postData.success ? '✅ Posted!' : '❌ ' + (postData.error || 'Post failed');
+
+        const allOk = postData.success;
+        statusEl.style.background = allOk ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)';
+        statusEl.style.color = allOk ? '#4ade80' : '#f87171';
+        statusEl.style.border = `1px solid ${allOk ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.25)'}`;
+        statusEl.style.whiteSpace = 'pre-line';
+        statusEl.textContent = msg;
+
+    } catch(e) {
+        statusEl.style.background = 'rgba(248,113,113,0.1)';
+        statusEl.style.color = '#f87171';
+        statusEl.style.border = '1px solid rgba(248,113,113,0.25)';
+        statusEl.textContent = '❌ Error: ' + e.message;
+    } finally {
+        ['btnPostFB','btnPostIG','btnPostBoth'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.disabled = false; el.style.opacity = '1'; }
+        });
+    }
 }
 
 // Initialize

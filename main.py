@@ -3187,6 +3187,35 @@ def facebook_disconnect():
     flash("Facebook disconnected.", "success")
     return redirect("/social-connect")
 
+@app.route("/api/upload-post-image", methods=["POST"])
+def upload_post_image():
+    """Accept base64 PNG from client, save to static/post-images/, return public URL."""
+    b = current_business()
+    if not b:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    try:
+        import base64 as _b64, uuid as _uuid, os as _os
+        data = request.get_json()
+        img_data = data.get("image_data", "")  # base64 PNG, may include data:image/png;base64, prefix
+        if not img_data:
+            return jsonify({"success": False, "error": "No image data"})
+        # Strip data URL prefix if present
+        if "," in img_data:
+            img_data = img_data.split(",", 1)[1]
+        img_bytes = _b64.b64decode(img_data)
+        filename = f"post_{b.id}_{_uuid.uuid4().hex[:8]}.png"
+        folder = _os.path.join(app.root_path, "static", "post-images")
+        _os.makedirs(folder, exist_ok=True)
+        filepath = _os.path.join(folder, filename)
+        with open(filepath, "wb") as f:
+            f.write(img_bytes)
+        public_url = request.host_url.rstrip("/") + f"/static/post-images/{filename}"
+        return jsonify({"success": True, "url": public_url, "filename": filename})
+    except Exception as e:
+        print(f"Image upload error: {e}")
+        return jsonify({"success": False, "error": str(e)})
+
+
 @app.route("/api/post-to-social", methods=["POST"])
 def post_to_social():
     b = current_business()
@@ -3198,36 +3227,71 @@ def post_to_social():
         platform = data.get("platform", "facebook")  # facebook, instagram, both
         content = data.get("content", "").strip()
         hashtags = data.get("hashtags", "").strip()
-        schedule_at = data.get("schedule_at", "").strip()  # ISO datetime or empty = now
-        if not content:
-            return jsonify({"success": False, "error": "Content is required"})
+        image_url = data.get("image_url", "").strip()  # public URL of image (optional)
+        schedule_at = data.get("schedule_at", "").strip()
 
         full_text = content + ("\n\n" + hashtags if hashtags else "")
 
         results = {}
 
-        def post_facebook(full_text):
+        def post_facebook(text, img_url=None):
             conn = SocialConnection.query.filter_by(business_id=b.id, platform="facebook").first()
             if not conn:
-                return {"success": False, "error": "Facebook not connected"}
-            res = _requests.post(
-                f"https://graph.facebook.com/v18.0/{conn.page_id}/feed",
-                data={"message": full_text, "access_token": conn.access_token}
-            ).json()
+                return {"success": False, "error": "Facebook not connected. Go to Social Connect first."}
+            if img_url:
+                # Post as photo with caption
+                res = _requests.post(
+                    f"https://graph.facebook.com/v18.0/{conn.page_id}/photos",
+                    data={"url": img_url, "caption": text, "access_token": conn.access_token}
+                ).json()
+            else:
+                res = _requests.post(
+                    f"https://graph.facebook.com/v18.0/{conn.page_id}/feed",
+                    data={"message": text, "access_token": conn.access_token}
+                ).json()
             if "error" in res:
                 return {"success": False, "error": res["error"].get("message", "Post failed")}
-            return {"success": True, "post_id": res.get("id", "")}
+            return {"success": True, "post_id": res.get("id", res.get("post_id", ""))}
+
+        def post_instagram(text, img_url=None):
+            conn = SocialConnection.query.filter_by(business_id=b.id, platform="instagram").first()
+            if not conn or not conn.ig_user_id:
+                return {"success": False, "error": "Instagram not connected. Go to Social Connect first."}
+            if not img_url:
+                return {"success": False, "error": "Instagram requires an image."}
+            # Step 1: Create media container
+            container_res = _requests.post(
+                f"https://graph.facebook.com/v18.0/{conn.ig_user_id}/media",
+                data={"image_url": img_url, "caption": text, "access_token": conn.access_token}
+            ).json()
+            if "error" in container_res:
+                return {"success": False, "error": container_res["error"].get("message", "IG media create failed")}
+            creation_id = container_res.get("id")
+            if not creation_id:
+                return {"success": False, "error": "No creation_id from Instagram"}
+            # Step 2: Publish
+            publish_res = _requests.post(
+                f"https://graph.facebook.com/v18.0/{conn.ig_user_id}/media_publish",
+                data={"creation_id": creation_id, "access_token": conn.access_token}
+            ).json()
+            if "error" in publish_res:
+                return {"success": False, "error": publish_res["error"].get("message", "IG publish failed")}
+            return {"success": True, "post_id": publish_res.get("id", "")}
 
         if platform in ("facebook", "both"):
-            results["facebook"] = post_facebook(full_text)
+            results["facebook"] = post_facebook(full_text, image_url or None)
+        if platform in ("instagram", "both"):
+            results["instagram"] = post_instagram(full_text, image_url or None)
 
-        # Save to queue regardless
+        any_success = any(r.get("success") for r in results.values())
+
+        # Save to history
         sp = SocialPost(
             business_id=b.id,
             platform=platform,
             content=content,
             hashtags=hashtags,
-            status="posted" if any(r.get("success") for r in results.values()) else "failed",
+            status="posted" if any_success else "failed",
             posted_at=datetime.utcnow(),
             fb_post_id=results.get("facebook", {}).get("post_id", ""),
             sort_order=SocialPost.query.filter_by(business_id=b.id).count()
@@ -3235,8 +3299,7 @@ def post_to_social():
         db.session.add(sp)
         db.session.commit()
 
-        success = any(r.get("success") for r in results.values()) if results else False
-        return jsonify({"success": success, "results": results})
+        return jsonify({"success": any_success, "results": results})
     except Exception as e:
         print(f"Post to social error: {e}")
         return jsonify({"success": False, "error": str(e)})
