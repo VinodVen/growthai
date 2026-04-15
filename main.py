@@ -2952,45 +2952,15 @@ def visual_posts():
     profile = BusinessProfile.query.filter_by(business_id=b.id).first()
     return render_template("visual_posts.html", business=b, profile=profile)
 
-def _run_social_job(job_id, prompt):
-    """Background thread: calls OpenAI and stores result in DB (works across Render workers)."""
-    with app.app_context():
-        try:
-            import json as _json
-            from sqlalchemy import text as _text
-            raw = _call_openai(prompt, max_tokens=600, timeout=55)
-            print(f"[social-job] {job_id} raw={raw[:200]}")
-            clean = re.sub(r'```[a-z]*', '', raw).strip().strip('`').strip()
-            start = clean.find("{")
-            end   = clean.rfind("}") + 1
-            if start < 0 or end <= start:
-                db.engine.execute(_text(
-                    "UPDATE social_jobs SET status='error', error=:e WHERE id=:id"
-                ).bindparams(e=f"AI returned unexpected text: {raw[:200]}", id=job_id))
-                return
-            result_json = _json.dumps(_json.loads(clean[start:end]))
-            with db.engine.begin() as conn:
-                conn.execute(_text(
-                    "UPDATE social_jobs SET status='done', result_json=:r WHERE id=:id"
-                ).bindparams(r=result_json, id=job_id))
-        except Exception as e:
-            print(f"[social-job] {job_id} error: {e}")
-            try:
-                with db.engine.begin() as conn:
-                    conn.execute(_text(
-                        "UPDATE social_jobs SET status='error', error=:e WHERE id=:id"
-                    ).bindparams(e=str(e), id=job_id))
-            except Exception:
-                pass
-
 @app.route("/generate-social-post", methods=["POST"])
 def generate_social_post():
+    import json as _json
     b = current_business()
     if not b:
         return jsonify({"success": False, "error": "Not authenticated"}), 401
     if not client:
         return jsonify({"success": False, "error": "AI not configured — add OPENAI_API_KEY"})
-    data = request.get_json()
+    data = request.get_json() or {}
     promo = (data.get("promo") or "").strip()
     if not promo:
         return jsonify({"success": False, "error": "Please describe your promotion"})
@@ -3001,43 +2971,26 @@ def generate_social_post():
     except Exception:
         tone = "friendly"
 
+    # Ultra-short prompt so gpt-4o-mini replies in <10 seconds
     prompt = (
-        f'Write social media posts for "{b.business_name}" promoting: "{promo}". Tone: {tone}.\n'
-        f'Reply with ONLY valid JSON, no markdown fences:\n'
-        f'{{"instagram":{{"caption":"caption with emojis","hashtags":"#tag1 #tag2 #tag3 #tag4 #tag5"}},'
-        f'"facebook":{{"post":"facebook post text"}},'
-        f'"whatsapp":{{"message":"short whatsapp message"}},'
-        f'"story":{{"text":"Line 1\\nLine 2\\nLine 3"}}}}'
+        'Reply ONLY with JSON (no markdown). Keys: instagram, facebook, whatsapp, story.\n'
+        f'Business: {b.business_name}. Promotion: {promo}. Tone: {tone}.\n'
+        'instagram: {caption, hashtags}  facebook: {post}  whatsapp: {message}  story: {text with \\n}'
     )
 
-    job_id = str(uuid.uuid4())
-    from sqlalchemy import text as _text
-    with db.engine.begin() as conn:
-        conn.execute(_text(
-            "INSERT INTO social_jobs (id, status) VALUES (:id, 'pending')"
-        ).bindparams(id=job_id))
-    t = threading.Thread(target=_run_social_job, args=(job_id, prompt), daemon=True)
-    t.start()
-    return jsonify({"success": True, "job_id": job_id})
-
-@app.route("/api/social-job/<job_id>")
-def social_job_status(job_id):
-    import json as _json
-    from sqlalchemy import text as _text
     try:
-        with db.engine.connect() as conn:
-            row = conn.execute(_text(
-                "SELECT status, result_json, error FROM social_jobs WHERE id=:id"
-            ).bindparams(id=job_id)).fetchone()
-        if not row:
-            return jsonify({"status": "pending"})
-        if row[0] == "done":
-            return jsonify({"status": "done", "result": _json.loads(row[1])})
-        if row[0] == "error":
-            return jsonify({"status": "error", "error": row[2]})
-        return jsonify({"status": "pending"})
+        raw = _call_openai(prompt, max_tokens=350, timeout=20)
+        print(f"[social-post] raw={raw[:300]}")
+        clean = re.sub(r'```[a-z]*', '', raw).strip().strip('`').strip()
+        start = clean.find("{")
+        end   = clean.rfind("}") + 1
+        if start < 0 or end <= start:
+            return jsonify({"success": False, "error": f"AI returned: {raw[:200]}"})
+        result = _json.loads(clean[start:end])
+        return jsonify({"success": True, "content": result})
     except Exception as e:
-        return jsonify({"status": "pending"})
+        print(f"[social-post] error: {e}")
+        return jsonify({"success": False, "error": str(e)})
 
 
 # ============================================
