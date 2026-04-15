@@ -134,7 +134,7 @@
         <!-- Loading -->
         <div class="loading-state" id="loadingState">
             <div class="spinner-ring"></div>
-            <div style="color:var(--muted);font-size:0.88rem;">AI is writing your posts... (up to 30 seconds)</div>
+            <div style="color:var(--muted);font-size:0.88rem;" id="loadingMsg">⏳ Connecting to AI...</div>
         </div>
 
         <!-- Results -->
@@ -323,21 +323,27 @@ async function generatePosts() {
     hideError();
     document.getElementById('generateBtn').disabled = true;
     document.getElementById('results').style.display = 'none';
-    document.getElementById('loadingState').style.display = 'block';
+
+    const loadEl = document.getElementById('loadingState');
+    const setStatus = (msg) => {
+        loadEl.style.display = 'block';
+        document.getElementById('loadingMsg').textContent = msg;
+    };
+    setStatus('⏳ Connecting to AI...');
 
     try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 50000);
+        setStatus('🤖 AI is writing your posts...');
         const res = await fetch('/generate-social-post', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ promo, platform: selectedPlat }),
-            signal: controller.signal
+            body: JSON.stringify({ promo, platform: selectedPlat })
         });
-        clearTimeout(timer);
+
+        setStatus('📦 Processing response (status: ' + res.status + ')...');
 
         if (!res.ok) {
-            showError('Server error ' + res.status + '. Try again.');
+            const txt = await res.text();
+            showError('Server error ' + res.status + ': ' + txt.slice(0, 200));
             return;
         }
 
