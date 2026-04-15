@@ -328,12 +328,12 @@ function showResults(c) {
     if (c.story) document.getElementById('story-text').textContent = c.story.text || '';
 
     const show = selectedPlat === 'all';
-    document.getElementById('sec-instagram').style.display = (show || selectedPlat === 'instagram') ? '' : 'none';
-    document.getElementById('sec-facebook').style.display = (show || selectedPlat === 'facebook') ? '' : 'none';
-    document.getElementById('sec-whatsapp').style.display = (show || selectedPlat === 'whatsapp') ? '' : 'none';
-    document.getElementById('sec-story').style.display = (show || selectedPlat === 'story') ? '' : 'none';
+    document.getElementById('sec-instagram').style.display = (show || selectedPlat === 'instagram') ? 'block' : 'none';
+    document.getElementById('sec-facebook').style.display = (show || selectedPlat === 'facebook') ? 'block' : 'none';
+    document.getElementById('sec-whatsapp').style.display = (show || selectedPlat === 'whatsapp') ? 'block' : 'none';
+    document.getElementById('sec-story').style.display = (show || selectedPlat === 'story') ? 'block' : 'none';
 
-    document.getElementById('results').style.display = '';
+    document.getElementById('results').style.display = 'block';
     document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
