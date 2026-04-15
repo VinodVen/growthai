@@ -317,6 +317,7 @@ function hideError() {
 }
 
 function showResults(c) {
+    if (!c) { showError('AI returned empty result — please try again.'); return; }
     lastContent = c;
     if (c.instagram) {
         document.getElementById('ig-caption').textContent = c.instagram.caption || '';
@@ -346,8 +347,10 @@ async function pollJob(jobId, dots) {
         setStatus('🤖 AI is writing' + '.'.repeat(dots) + ' (' + Math.round(elapsed) + 's)');
         try {
             const r = await fetch('/api/social-job/' + jobId);
+            if (!r.ok) { continue; }  // server hiccup, keep polling
             const j = await r.json();
             if (j.status === 'done') {
+                if (!j.result) { showError('AI returned empty result — please try again.'); return false; }
                 showResults(j.result);
                 return true;
             }
@@ -355,9 +358,9 @@ async function pollJob(jobId, dots) {
                 showError(j.error || 'AI generation failed');
                 return false;
             }
+            // 'pending' or 'not_found' — keep polling
         } catch(e) {
-            showError('Network error while polling: ' + e.message);
-            return false;
+            // keep polling on transient network errors
         }
     }
     showError('AI took too long. Please try again.');
