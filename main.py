@@ -2971,28 +2971,25 @@ def generate_social_post():
             biz_type = "business"
             tone = "friendly"
 
+        # Keep prompt short so OpenAI responds in < 20 seconds (Render kills at 30s)
         prompt = (
-            f'You are a social media expert for a {biz_type} called "{b.business_name}".\n'
-            f'Promotion: "{promo}"\n'
-            f'Tone: {tone}\n\n'
-            f'Reply with ONLY a JSON object — no explanation, no markdown, no code block. Example structure:\n'
-            f'{{"instagram":{{"caption":"...","hashtags":"#tag1 #tag2 #tag3"}},'
-            f'"facebook":{{"post":"..."}},'
-            f'"whatsapp":{{"message":"..."}},'
-            f'"story":{{"text":"line1\\nline2\\nline3"}}}}'
+            f'Write social media posts for "{b.business_name}" promoting: "{promo}". Tone: {tone}.\n'
+            f'Reply with ONLY this JSON, no other text:\n'
+            f'{{"instagram":{{"caption":"write caption here with emojis","hashtags":"#tag1 #tag2 #tag3 #tag4 #tag5"}},'
+            f'"facebook":{{"post":"write facebook post here"}},'
+            f'"whatsapp":{{"message":"write short whatsapp message here"}},'
+            f'"story":{{"text":"Short line 1\nShort line 2\nShort line 3"}}}}'
         )
 
-        raw = _call_openai(prompt, max_tokens=1500, timeout=45)
+        raw = _call_openai(prompt, max_tokens=800, timeout=25)
         print(f"[social-post] raw={raw[:300]}")
 
         import re as _re
-        # Strip markdown fences
         clean = _re.sub(r'```[a-z]*', '', raw).strip().strip('`').strip()
-        # Find first { to last }
         start = clean.find("{")
         end   = clean.rfind("}") + 1
         if start < 0 or end <= start:
-            return jsonify({"success": False, "error": f"AI did not return JSON. Got: {raw[:200]}"})
+            return jsonify({"success": False, "error": f"AI returned: {raw[:200]}"})
         result = _json.loads(clean[start:end])
         return jsonify({"success": True, "content": result})
     except _json.JSONDecodeError as e:
