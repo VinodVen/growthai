@@ -316,6 +316,54 @@ function hideError() {
     document.getElementById('errBox').style.display = 'none';
 }
 
+function showResults(c) {
+    lastContent = c;
+    if (c.instagram) {
+        document.getElementById('ig-caption').textContent = c.instagram.caption || '';
+        document.getElementById('ig-hashtags').textContent = c.instagram.hashtags || '';
+    }
+    if (c.facebook) document.getElementById('fb-post').textContent = c.facebook.post || '';
+    if (c.whatsapp) document.getElementById('wa-message').textContent = c.whatsapp.message || '';
+    if (c.story) document.getElementById('story-text').textContent = c.story.text || '';
+
+    const show = selectedPlat === 'all';
+    document.getElementById('sec-instagram').style.display = (show || selectedPlat === 'instagram') ? '' : 'none';
+    document.getElementById('sec-facebook').style.display = (show || selectedPlat === 'facebook') ? '' : 'none';
+    document.getElementById('sec-whatsapp').style.display = (show || selectedPlat === 'whatsapp') ? '' : 'none';
+    document.getElementById('sec-story').style.display = (show || selectedPlat === 'story') ? '' : 'none';
+
+    document.getElementById('results').style.display = '';
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function pollJob(jobId, dots) {
+    const setStatus = (msg) => { document.getElementById('loadingMsg').textContent = msg; };
+    let elapsed = 0;
+    while (elapsed < 90) {
+        await new Promise(r => setTimeout(r, 2500));
+        elapsed += 2.5;
+        dots = (dots % 3) + 1;
+        setStatus('🤖 AI is writing' + '.'.repeat(dots) + ' (' + Math.round(elapsed) + 's)');
+        try {
+            const r = await fetch('/api/social-job/' + jobId);
+            const j = await r.json();
+            if (j.status === 'done') {
+                showResults(j.result);
+                return true;
+            }
+            if (j.status === 'error') {
+                showError(j.error || 'AI generation failed');
+                return false;
+            }
+        } catch(e) {
+            showError('Network error while polling: ' + e.message);
+            return false;
+        }
+    }
+    showError('AI took too long. Please try again.');
+    return false;
+}
+
 async function generatePosts() {
     const promo = document.getElementById('promoInput').value.trim();
     if (!promo) { document.getElementById('promoInput').focus(); return; }
@@ -323,62 +371,23 @@ async function generatePosts() {
     hideError();
     document.getElementById('generateBtn').disabled = true;
     document.getElementById('results').style.display = 'none';
-
-    const loadEl = document.getElementById('loadingState');
-    const setStatus = (msg) => {
-        loadEl.style.display = 'block';
-        document.getElementById('loadingMsg').textContent = msg;
-    };
-    setStatus('⏳ Connecting to AI...');
+    document.getElementById('loadingState').style.display = 'block';
+    document.getElementById('loadingMsg').textContent = '⏳ Starting AI...';
 
     try {
-        setStatus('🤖 AI is writing your posts...');
         const res = await fetch('/generate-social-post', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ promo, platform: selectedPlat })
         });
-
-        setStatus('📦 Processing response (status: ' + res.status + ')...');
-
-        if (!res.ok) {
-            const txt = await res.text();
-            showError('Server error ' + res.status + ': ' + txt.slice(0, 200));
-            return;
-        }
-
         const data = await res.json();
         if (!data.success) {
-            showError(data.error || 'Generation failed. Try again.');
+            showError(data.error || 'Failed to start generation');
             return;
         }
-
-        const c = data.content;
-        lastContent = c;
-
-        if (c.instagram) {
-            document.getElementById('ig-caption').textContent = c.instagram.caption || '';
-            document.getElementById('ig-hashtags').textContent = c.instagram.hashtags || '';
-        }
-        if (c.facebook) document.getElementById('fb-post').textContent = c.facebook.post || '';
-        if (c.whatsapp) document.getElementById('wa-message').textContent = c.whatsapp.message || '';
-        if (c.story) document.getElementById('story-text').textContent = c.story.text || '';
-
-        const show = selectedPlat === 'all';
-        document.getElementById('sec-instagram').style.display = (show || selectedPlat === 'instagram') ? '' : 'none';
-        document.getElementById('sec-facebook').style.display = (show || selectedPlat === 'facebook') ? '' : 'none';
-        document.getElementById('sec-whatsapp').style.display = (show || selectedPlat === 'whatsapp') ? '' : 'none';
-        document.getElementById('sec-story').style.display = (show || selectedPlat === 'story') ? '' : 'none';
-
-        document.getElementById('results').style.display = '';
-        document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
-
+        await pollJob(data.job_id, 0);
     } catch(e) {
-        if (e.name === 'AbortError') {
-            showError('Request timed out. AI took too long — try again.');
-        } else {
-            showError('Network error: ' + e.message);
-        }
+        showError('Network error: ' + e.message);
     } finally {
         document.getElementById('generateBtn').disabled = false;
         document.getElementById('loadingState').style.display = 'none';

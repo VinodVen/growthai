@@ -7,6 +7,9 @@ import smtplib
 import hmac
 import hashlib
 import base64
+import threading
+import uuid
+import time
 from datetime import datetime, timedelta, timezone
 from flask import Flask, render_template, request, redirect, session, url_for, flash, jsonify
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -2948,57 +2951,66 @@ def visual_posts():
     profile = BusinessProfile.query.filter_by(business_id=b.id).first()
     return render_template("visual_posts.html", business=b, profile=profile)
 
+# In-memory job store for social post generation (bypasses Render 30s timeout)
+_social_jobs = {}
+
+def _run_social_job(job_id, prompt):
+    """Background thread: calls OpenAI and stores result in _social_jobs."""
+    try:
+        import json as _json
+        raw = _call_openai(prompt, max_tokens=600, timeout=55)
+        print(f"[social-job] {job_id} raw={raw[:200]}")
+        clean = re.sub(r'```[a-z]*', '', raw).strip().strip('`').strip()
+        start = clean.find("{")
+        end   = clean.rfind("}") + 1
+        if start < 0 or end <= start:
+            _social_jobs[job_id] = {"status": "error", "error": f"AI returned unexpected text: {raw[:200]}"}
+            return
+        result = _json.loads(clean[start:end])
+        _social_jobs[job_id] = {"status": "done", "result": result}
+    except Exception as e:
+        print(f"[social-job] {job_id} error: {e}")
+        _social_jobs[job_id] = {"status": "error", "error": str(e)}
+
 @app.route("/generate-social-post", methods=["POST"])
 def generate_social_post():
     b = current_business()
     if not b:
         return jsonify({"success": False, "error": "Not authenticated"}), 401
+    if not client:
+        return jsonify({"success": False, "error": "AI not configured — add OPENAI_API_KEY"})
+    data = request.get_json()
+    promo = (data.get("promo") or "").strip()
+    if not promo:
+        return jsonify({"success": False, "error": "Please describe your promotion"})
+
     try:
-        import json as _json
-        data = request.get_json()
-        promo = data.get("promo", "").strip()
-        platform = data.get("platform", "all")
-        if not promo:
-            return jsonify({"success": False, "error": "Please describe your promotion"})
-        if not client:
-            return jsonify({"success": False, "error": "AI not configured"})
-        try:
-            profile = BusinessProfile.query.filter_by(business_id=b.id).first()
-            biz_type = (getattr(profile, 'business_type', None) if profile else None) or "business"
-            tone = (getattr(profile, 'tone', None) if profile else None) or "friendly"
-        except Exception as profile_err:
-            print(f"Profile fetch error (non-fatal): {profile_err}")
-            biz_type = "business"
-            tone = "friendly"
+        profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+        tone = (getattr(profile, 'tone', None) if profile else None) or "friendly"
+    except Exception:
+        tone = "friendly"
 
-        # Keep prompt short so OpenAI responds in < 20 seconds (Render kills at 30s)
-        prompt = (
-            f'Write social media posts for "{b.business_name}" promoting: "{promo}". Tone: {tone}.\n'
-            f'Reply with ONLY this JSON, no other text:\n'
-            f'{{"instagram":{{"caption":"write caption here with emojis","hashtags":"#tag1 #tag2 #tag3 #tag4 #tag5"}},'
-            f'"facebook":{{"post":"write facebook post here"}},'
-            f'"whatsapp":{{"message":"write short whatsapp message here"}},'
-            f'"story":{{"text":"Short line 1\nShort line 2\nShort line 3"}}}}'
-        )
+    prompt = (
+        f'Write social media posts for "{b.business_name}" promoting: "{promo}". Tone: {tone}.\n'
+        f'Reply with ONLY valid JSON, no markdown fences:\n'
+        f'{{"instagram":{{"caption":"caption with emojis","hashtags":"#tag1 #tag2 #tag3 #tag4 #tag5"}},'
+        f'"facebook":{{"post":"facebook post text"}},'
+        f'"whatsapp":{{"message":"short whatsapp message"}},'
+        f'"story":{{"text":"Line 1\\nLine 2\\nLine 3"}}}}'
+    )
 
-        raw = _call_openai(prompt, max_tokens=800, timeout=25)
-        print(f"[social-post] raw={raw[:300]}")
+    job_id = str(uuid.uuid4())
+    _social_jobs[job_id] = {"status": "pending"}
+    t = threading.Thread(target=_run_social_job, args=(job_id, prompt), daemon=True)
+    t.start()
+    return jsonify({"success": True, "job_id": job_id})
 
-        import re as _re
-        clean = _re.sub(r'```[a-z]*', '', raw).strip().strip('`').strip()
-        start = clean.find("{")
-        end   = clean.rfind("}") + 1
-        if start < 0 or end <= start:
-            return jsonify({"success": False, "error": f"AI returned: {raw[:200]}"})
-        result = _json.loads(clean[start:end])
-        return jsonify({"success": True, "content": result})
-    except _json.JSONDecodeError as e:
-        raw_snippet = raw[:300] if 'raw' in dir() else 'N/A'
-        print(f"[social-post] JSON parse error: {e} | raw: {raw_snippet}")
-        return jsonify({"success": False, "error": f"AI response could not be parsed. Raw: {raw_snippet}"})
-    except Exception as e:
-        print(f"[social-post] error: {e}")
-        return jsonify({"success": False, "error": str(e)})
+@app.route("/api/social-job/<job_id>")
+def social_job_status(job_id):
+    job = _social_jobs.get(job_id)
+    if not job:
+        return jsonify({"status": "not_found"})
+    return jsonify(job)
 
 
 # ============================================
