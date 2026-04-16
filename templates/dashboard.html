@@ -947,5 +947,48 @@ async function aiPanelSend() {
     }
 }
 </script>
+
+<!-- Session timeout: warn at 25 min, logout at 30 min of inactivity -->
+<div id="timeoutModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#13131f;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:32px;max-width:380px;width:90%;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:12px;">⏱️</div>
+        <div style="font-weight:800;color:#fff;font-size:1.1rem;margin-bottom:8px;">Still there?</div>
+        <div style="color:#6b6b8a;font-size:0.85rem;margin-bottom:20px;">You'll be logged out in <span id="timeoutCountdown">5:00</span> due to inactivity.</div>
+        <button onclick="resetTimer()" style="background:linear-gradient(135deg,#7c6fff,#a855f7);border:none;color:#fff;font-weight:700;border-radius:10px;padding:12px 28px;cursor:pointer;font-size:0.9rem;width:100%;">Yes, keep me logged in</button>
+    </div>
+</div>
+
+<script>
+(function() {
+    const WARN_AFTER   = 25 * 60 * 1000;
+    const LOGOUT_AFTER = 30 * 60 * 1000;
+    let warnTimer, logoutTimer, countdownInterval, countdownSec = 300;
+
+    function resetTimer() {
+        clearTimeout(warnTimer); clearTimeout(logoutTimer); clearInterval(countdownInterval);
+        document.getElementById('timeoutModal').style.display = 'none';
+        countdownSec = 300;
+        warnTimer   = setTimeout(showWarning, WARN_AFTER);
+        logoutTimer = setTimeout(function(){ window.location.href = '/logout'; }, LOGOUT_AFTER);
+    }
+
+    function showWarning() {
+        countdownSec = 300;
+        document.getElementById('timeoutModal').style.display = 'flex';
+        countdownInterval = setInterval(function() {
+            countdownSec--;
+            const m = Math.floor(countdownSec / 60), s = countdownSec % 60;
+            document.getElementById('timeoutCountdown').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+            if (countdownSec <= 0) clearInterval(countdownInterval);
+        }, 1000);
+    }
+
+    ['mousemove','mousedown','keydown','touchstart','scroll','click'].forEach(function(e) {
+        document.addEventListener(e, resetTimer, { passive: true });
+    });
+    window.resetTimer = resetTimer;
+    resetTimer();
+})();
+</script>
 </body>
 </html>
