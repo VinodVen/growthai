@@ -149,9 +149,18 @@ class Business(db.Model):
     slug = db.Column(db.String(200), unique=True)          # e.g. marios-pizza-3
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, nullable=True)
-    referral_code = db.Column(db.String(20), unique=True, nullable=True)  # their shareable ref code
-    referred_by_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=True)  # who referred them
-    referral_count = db.Column(db.Integer, default=0)  # how many signups they've referred
+    referral_code = db.Column(db.String(20), unique=True, nullable=True)
+    referred_by_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=True)
+    referral_count = db.Column(db.Integer, default=0)
+    # White-label / branding
+    brand_name = db.Column(db.String(200))          # custom name shown in header
+    brand_color = db.Column(db.String(20), default="#7c3aed")  # primary color
+    logo_url = db.Column(db.String(500))            # uploaded logo URL
+    custom_subdomain = db.Column(db.String(100))    # e.g. "grill" → grill.revvio.ai
+    # Feature permissions (comma-separated disabled features)
+    disabled_features = db.Column(db.Text, default="")
+    # Onboarding
+    onboarding_done = db.Column(db.Boolean, default=False)
 
 class BusinessProfile(db.Model):
     """Stores automation settings filled in by the business owner."""
@@ -456,6 +465,12 @@ def _do_migrations():
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referred_by_id INTEGER REFERENCES businesses(id)",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS brand_name VARCHAR(200)",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS brand_color VARCHAR(20) DEFAULT '#7c3aed'",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS logo_url VARCHAR(500)",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS custom_subdomain VARCHAR(100)",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS disabled_features TEXT DEFAULT ''",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS onboarding_done BOOLEAN DEFAULT FALSE",
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS whatsapp_phone VARCHAR(50)",
         "ALTER TABLE customers ADD COLUMN IF NOT EXISTS whatsapp_opted_in BOOLEAN DEFAULT FALSE",
         "CREATE TABLE IF NOT EXISTS social_connections (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), platform VARCHAR(30), page_id VARCHAR(100), page_name VARCHAR(200), access_token TEXT, ig_user_id VARCHAR(100), connected_at TIMESTAMP DEFAULT NOW())",
@@ -602,6 +617,30 @@ def current_business():
             except Exception:
                 db.session.rollback()
     return b
+
+PLAN_FEATURES = {
+    "free":       {"customers": 100, "campaigns": 5,  "features": ["customers","campaigns","social_posts"]},
+    "pro":        {"customers": 2000,"campaigns": 50, "features": ["customers","campaigns","social_posts","whatsapp","journeys","qr_checkin","visual_posts","roi","ai_agent"]},
+    "enterprise": {"customers": 999999,"campaigns":9999,"features": ["customers","campaigns","social_posts","whatsapp","journeys","qr_checkin","visual_posts","roi","ai_agent","square","white_label"]},
+}
+
+def has_feature(b, feature):
+    """Check if a business can access a feature based on plan + disabled_features."""
+    if not b:
+        return False
+    plan = getattr(b, 'plan', 'free') or 'free'
+    allowed = PLAN_FEATURES.get(plan, PLAN_FEATURES['free'])['features']
+    if feature not in allowed:
+        return False
+    disabled = getattr(b, 'disabled_features', '') or ''
+    return feature not in [f.strip() for f in disabled.split(',') if f.strip()]
+
+def brand(b):
+    """Return display name and color for a business (white-label aware)."""
+    name = (getattr(b, 'brand_name', None) if b else None) or 'Revvio'
+    color = (getattr(b, 'brand_color', None) if b else None) or '#7c3aed'
+    logo = getattr(b, 'logo_url', None) if b else None
+    return {"name": name, "color": color, "logo": logo}
 
 def trial_days_left(b):
     """Return days left in trial, or None if not on trial."""
@@ -2002,6 +2041,7 @@ def dashboard():
 
     return render_template(
         "dashboard.html",
+        business=b,
         business_name=b.business_name,
         total_customers=total_customers,
         total_campaigns=total_campaigns,
@@ -2021,6 +2061,9 @@ def dashboard():
         is_demo=session.get("is_demo", False),
         trial_days=trial_days_left(b),
         insights=insights,
+        profile=profile,
+        customer_count=total_customers,
+        campaign_count=total_campaigns,
     )
 
 @app.route("/customers")
@@ -5420,6 +5463,55 @@ def do_checkin(slug):
     except Exception as e:
         print(f"Check-in error: {e}")
         return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/dismiss-onboarding", methods=["POST"])
+def dismiss_onboarding():
+    b = current_business()
+    if not b:
+        return jsonify({"ok": False}), 401
+    b.onboarding_done = True
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    return jsonify({"ok": True})
+
+@app.route("/branding", methods=["GET", "POST"])
+def branding_settings():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    msg = None
+    if request.method == "POST":
+        brand_name = request.form.get("brand_name", "").strip()
+        brand_color = request.form.get("brand_color", "#7c3aed").strip()
+        custom_subdomain = re.sub(r"[^a-z0-9-]", "", request.form.get("custom_subdomain", "").strip().lower())
+        disabled = request.form.getlist("disabled_features")
+        b.brand_name = brand_name or None
+        b.brand_color = brand_color or "#7c3aed"
+        b.custom_subdomain = custom_subdomain or None
+        b.disabled_features = ",".join(disabled)
+        # Logo upload
+        logo_file = request.files.get("logo")
+        if logo_file and logo_file.filename:
+            import base64 as _b64
+            ext = logo_file.filename.rsplit(".", 1)[-1].lower()
+            if ext in ("png", "jpg", "jpeg", "gif", "webp", "svg"):
+                save_dir = os.path.join("static", "logos")
+                os.makedirs(save_dir, exist_ok=True)
+                fname = f"logo_{b.id}.{ext}"
+                logo_file.save(os.path.join(save_dir, fname))
+                b.logo_url = f"/static/logos/{fname}"
+        try:
+            db.session.commit()
+            msg = "saved"
+        except Exception as e:
+            db.session.rollback()
+            msg = f"error:{e}"
+    br = brand(b)
+    plan_info = PLAN_FEATURES.get(b.plan or "free", PLAN_FEATURES["free"])
+    disabled_list = [f.strip() for f in (getattr(b, "disabled_features", "") or "").split(",") if f.strip()]
+    return render_template("branding.html", business=b, br=br, plan_info=plan_info, disabled_list=disabled_list, msg=msg)
 
 @app.route("/my-qr")
 def my_qr():
