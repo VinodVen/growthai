@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Products & Services — Revvio</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+:root{--bg:#0f0f13;--card:#1a1a24;--border:#2a2a3a;--purple:#7c3aed;--muted:#6b7280;--text:#f1f1f5;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;gap:16px;}
+.topbar a{color:var(--muted);text-decoration:none;font-size:0.85rem;}
+.topbar a:hover{color:var(--text);}
+.topbar .title{font-weight:700;font-size:1rem;}
+.topbar .page-link{margin-left:auto;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.4);color:#a78bfa;padding:6px 14px;border-radius:8px;font-size:0.8rem;font-weight:600;text-decoration:none;}
+.topbar .page-link:hover{background:rgba(124,58,237,0.25);}
+.container{max-width:900px;margin:0 auto;padding:28px 20px;}
+h1{font-size:1.4rem;font-weight:700;margin-bottom:4px;}
+.subtitle{color:var(--muted);font-size:0.85rem;margin-bottom:24px;}
+.add-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:28px;}
+.add-card h2{font-size:0.95rem;font-weight:700;margin-bottom:16px;color:#a78bfa;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.form-row.three{grid-template-columns:2fr 1fr 1fr;}
+label{display:block;font-size:0.75rem;color:var(--muted);margin-bottom:4px;font-weight:500;}
+input,textarea,select{width:100%;background:#111118;border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:0.88rem;outline:none;font-family:inherit;}
+input:focus,textarea:focus,select:focus{border-color:var(--purple);}
+textarea{resize:vertical;min-height:60px;}
+.featured-toggle{display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--muted);margin-bottom:12px;}
+.featured-toggle input{width:auto;}
+.btn-add{background:var(--purple);color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:0.88rem;font-weight:600;cursor:pointer;}
+.btn-add:hover{opacity:0.85;}
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
+.product-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color 0.2s;}
+.product-card:hover{border-color:rgba(124,58,237,0.4);}
+.product-card.featured{border-color:rgba(251,191,36,0.5);}
+.product-img{width:100%;height:150px;object-fit:cover;background:#111118;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:2rem;}
+.product-img img{width:100%;height:100%;object-fit:cover;}
+.product-body{padding:14px;}
+.product-name{font-weight:700;font-size:0.95rem;margin-bottom:4px;}
+.product-desc{font-size:0.8rem;color:var(--muted);margin-bottom:8px;line-height:1.4;}
+.product-price{font-size:1rem;font-weight:700;color:#4ade80;margin-bottom:4px;}
+.product-cat{font-size:0.72rem;background:#1f1f2e;color:var(--muted);padding:2px 8px;border-radius:20px;display:inline-block;margin-bottom:10px;}
+.featured-badge{font-size:0.7rem;background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);padding:2px 8px;border-radius:20px;margin-left:6px;}
+.product-actions{display:flex;gap:8px;}
+.btn-sm{border:none;border-radius:6px;padding:5px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;}
+.btn-edit{background:rgba(124,58,237,0.15);color:#a78bfa;}
+.btn-edit:hover{background:rgba(124,58,237,0.3);}
+.btn-del{background:rgba(239,68,68,0.12);color:#f87171;}
+.btn-del:hover{background:rgba(239,68,68,0.25);}
+.btn-img{background:rgba(59,130,246,0.12);color:#60a5fa;}
+.btn-img:hover{background:rgba(59,130,246,0.25);}
+.empty{text-align:center;padding:48px 20px;color:var(--muted);}
+.empty i{font-size:2.5rem;margin-bottom:12px;display:block;}
+.alert-ok{background:#14532d22;border:1px solid #166534;color:#4ade80;padding:10px 16px;border-radius:8px;font-size:0.85rem;margin-bottom:16px;}
+/* Edit modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;width:90%;max-width:500px;}
+.modal h3{font-size:1rem;font-weight:700;margin-bottom:16px;}
+.modal-actions{display:flex;gap:10px;margin-top:16px;justify-content:flex-end;}
+.btn-cancel{background:#1f1f2e;color:var(--muted);border:none;border-radius:8px;padding:8px 18px;font-size:0.85rem;cursor:pointer;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="/dashboard"><i class="bi bi-arrow-left"></i> Dashboard</a>
+  <span style="color:var(--border)">|</span>
+  <span class="title">Products & Services</span>
+  <a href="/p/{{ business.slug }}" target="_blank" class="page-link"><i class="bi bi-box-arrow-up-right"></i> View Public Page</a>
+</div>
+
+<div class="container">
+  <h1>Products & Services</h1>
+  <p class="subtitle">These appear on your public page when customers scan your QR code. Share your link: <strong>revvio.ai/p/{{ business.slug }}</strong></p>
+
+  <div id="successMsg" class="alert-ok" style="display:none"><i class="bi bi-check-circle"></i> Saved!</div>
+
+  <!-- Add Product Form -->
+  <div class="add-card">
+    <h2><i class="bi bi-plus-circle"></i> Add Product / Service</h2>
+    <div class="form-row three">
+      <div><label>Name *</label><input type="text" id="pName" placeholder="e.g. Grilled Salmon"></div>
+      <div><label>Price</label><input type="text" id="pPrice" placeholder="e.g. $18.99"></div>
+      <div><label>Category</label><input type="text" id="pCat" placeholder="e.g. Main Course"></div>
+    </div>
+    <div class="form-row" style="grid-template-columns:1fr;">
+      <div><label>Description</label><textarea id="pDesc" placeholder="Short description of this product or service..."></textarea></div>
+    </div>
+    <div class="featured-toggle">
+      <input type="checkbox" id="pFeatured">
+      <label for="pFeatured" style="margin:0;cursor:pointer;">⭐ Mark as Featured (shown first and highlighted)</label>
+    </div>
+    <button class="btn-add" onclick="addProduct()"><i class="bi bi-plus-lg"></i> Add Product</button>
+  </div>
+
+  <!-- Products Grid -->
+  {% if products %}
+  <div class="products-grid" id="productsGrid">
+    {% for p in products %}
+    <div class="product-card {{ 'featured' if p.is_featured }}" id="card-{{ p.id }}">
+      <div class="product-img">
+        {% if p.image_url %}
+        <img src="{{ p.image_url }}" alt="{{ p.name }}">
+        {% else %}
+        <span>📦</span>
+        {% endif %}
+      </div>
+      <div class="product-body">
+        <div class="product-name">
+          {{ p.name }}
+          {% if p.is_featured %}<span class="featured-badge">⭐ Featured</span>{% endif %}
+        </div>
+        {% if p.description %}<div class="product-desc">{{ p.description[:100] }}{% if p.description|length > 100 %}...{% endif %}</div>{% endif %}
+        {% if p.price %}<div class="product-price">{{ p.price }}</div>{% endif %}
+        {% if p.category %}<span class="product-cat">{{ p.category }}</span>{% endif %}
+        <div class="product-actions">
+          <button class="btn-sm btn-edit" onclick="editProduct({{ p.id }}, '{{ p.name|e }}', '{{ p.price|e }}', '{{ p.category|e }}', `{{ p.description|e }}`, {{ 'true' if p.is_featured else 'false' }})">
+            <i class="bi bi-pencil"></i> Edit
+          </button>
+          <label class="btn-sm btn-img" style="cursor:pointer;">
+            <i class="bi bi-image"></i> Photo
+            <input type="file" accept="image/*" style="display:none" onchange="uploadImage({{ p.id }}, this)">
+          </label>
+          <button class="btn-sm btn-del" onclick="deleteProduct({{ p.id }})"><i class="bi bi-trash"></i></button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty" id="emptyState">
+    <i class="bi bi-box-seam"></i>
+    <div style="font-weight:600;margin-bottom:8px;">No products yet</div>
+    <div style="font-size:0.85rem;">Add your first product or service above</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3>Edit Product</h3>
+    <input type="hidden" id="editId">
+    <div style="margin-bottom:12px;"><label>Name</label><input type="text" id="editName"></div>
+    <div class="form-row">
+      <div><label>Price</label><input type="text" id="editPrice"></div>
+      <div><label>Category</label><input type="text" id="editCat"></div>
+    </div>
+    <div style="margin-bottom:12px;"><label>Description</label><textarea id="editDesc"></textarea></div>
+    <div class="featured-toggle">
+      <input type="checkbox" id="editFeatured">
+      <label for="editFeatured" style="margin:0;cursor:pointer;">⭐ Featured</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEdit()">Cancel</button>
+      <button class="btn-add" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function showSuccess() {
+  const el = document.getElementById('successMsg');
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+async function addProduct() {
+  const name = document.getElementById('pName').value.trim();
+  if (!name) { alert('Product name is required'); return; }
+  const data = {
+    name,
+    price: document.getElementById('pPrice').value.trim(),
+    category: document.getElementById('pCat').value.trim(),
+    description: document.getElementById('pDesc').value.trim(),
+    is_featured: document.getElementById('pFeatured').checked,
+  };
+  const r = await fetch('/api/products', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  const j = await r.json();
+  if (j.success) {
+    showSuccess();
+    setTimeout(() => location.reload(), 500);
+  } else {
+    alert('Error: ' + (j.error || 'Failed'));
+  }
+}
+
+function editProduct(id, name, price, cat, desc, featured) {
+  document.getElementById('editId').value = id;
+  document.getElementById('editName').value = name;
+  document.getElementById('editPrice').value = price;
+  document.getElementById('editCat').value = cat;
+  document.getElementById('editDesc').value = desc;
+  document.getElementById('editFeatured').checked = featured;
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeEdit() {
+  document.getElementById('editModal').classList.remove('open');
+}
+
+async function saveEdit() {
+  const id = document.getElementById('editId').value;
+  const data = {
+    name: document.getElementById('editName').value.trim(),
+    price: document.getElementById('editPrice').value.trim(),
+    category: document.getElementById('editCat').value.trim(),
+    description: document.getElementById('editDesc').value.trim(),
+    is_featured: document.getElementById('editFeatured').checked,
+  };
+  const r = await fetch(`/api/products/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+  const j = await r.json();
+  if (j.success) { closeEdit(); showSuccess(); setTimeout(() => location.reload(), 500); }
+  else alert('Error: ' + (j.error || 'Failed'));
+}
+
+async function deleteProduct(id) {
+  if (!confirm('Delete this product?')) return;
+  const r = await fetch(`/api/products/${id}`, {method:'DELETE'});
+  const j = await r.json();
+  if (j.success) {
+    document.getElementById('card-' + id)?.remove();
+    showSuccess();
+  }
+}
+
+async function uploadImage(id, input) {
+  if (!input.files[0]) return;
+  const form = new FormData();
+  form.append('image', input.files[0]);
+  const r = await fetch(`/api/upload-product-image/${id}`, {method:'POST', body:form});
+  const j = await r.json();
+  if (j.success) { showSuccess(); setTimeout(() => location.reload(), 500); }
+  else alert('Upload failed: ' + (j.error || ''));
+}
+</script>
+</body>
+</html>

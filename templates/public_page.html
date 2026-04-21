@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>{{ business.business_name }}</title>
+<meta name="description" content="Browse {{ business.business_name }}'s products and services.">
+<style>
+:root {
+  --brand: {{ br.color or '#7c3aed' }};
+  --bg: #f8f8fc;
+  --card: #ffffff;
+  --text: #1a1a2e;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; min-height:100vh; }
+
+/* Header */
+.hero { background:var(--brand); color:#fff; padding:32px 20px 48px; text-align:center; position:relative; overflow:hidden; }
+.hero::after { content:''; position:absolute; bottom:-20px; left:0; right:0; height:40px; background:var(--bg); border-radius:50% 50% 0 0 / 100% 100% 0 0; }
+.hero-logo { width:80px; height:80px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:800; color:#fff; margin:0 auto 14px; overflow:hidden; }
+.hero-logo img { width:100%; height:100%; object-fit:cover; }
+.hero h1 { font-size:1.6rem; font-weight:800; margin-bottom:6px; }
+.hero p { font-size:0.88rem; opacity:0.85; }
+.hero .address { font-size:0.8rem; opacity:0.7; margin-top:6px; }
+
+/* Nav pills */
+.cats { display:flex; gap:8px; overflow-x:auto; padding:16px 16px 0; scrollbar-width:none; }
+.cats::-webkit-scrollbar { display:none; }
+.cat-pill { white-space:nowrap; padding:6px 16px; border-radius:20px; border:1.5px solid var(--border); background:#fff; font-size:0.8rem; font-weight:600; color:var(--muted); cursor:pointer; flex-shrink:0; transition:all 0.15s; }
+.cat-pill.active { background:var(--brand); color:#fff; border-color:var(--brand); }
+
+/* Products */
+.section { padding:16px; }
+.section-title { font-size:0.8rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin:16px 0 10px; }
+.products-list { display:flex; flex-direction:column; gap:12px; }
+.product-card { background:#fff; border-radius:14px; border:1px solid var(--border); overflow:hidden; display:flex; box-shadow:0 1px 4px rgba(0,0,0,0.05); }
+.product-card.featured { border-color:var(--brand); box-shadow:0 2px 12px rgba(124,58,237,0.12); }
+.product-img { width:90px; height:90px; flex-shrink:0; background:#f3f4f6; display:flex; align-items:center; justify-content:center; font-size:1.8rem; }
+.product-img img { width:100%; height:100%; object-fit:cover; }
+.product-info { padding:12px 14px; flex:1; }
+.product-name { font-weight:700; font-size:0.95rem; margin-bottom:3px; }
+.product-desc { font-size:0.78rem; color:var(--muted); line-height:1.4; margin-bottom:6px; }
+.product-footer { display:flex; align-items:center; justify-content:space-between; }
+.product-price { font-weight:800; color:var(--brand); font-size:1rem; }
+.feat-tag { font-size:0.65rem; background:rgba(124,58,237,0.1); color:var(--brand); padding:2px 8px; border-radius:10px; font-weight:700; }
+.cat-tag { font-size:0.7rem; color:var(--muted); background:#f3f4f6; padding:2px 8px; border-radius:10px; }
+
+/* Check-in form */
+.checkin-box { background:#fff; border-radius:20px 20px 0 0; padding:24px 20px 32px; margin-top:24px; border-top:3px solid var(--brand); position:sticky; bottom:0; box-shadow:0 -4px 24px rgba(0,0,0,0.08); }
+.checkin-box h2 { font-size:1.1rem; font-weight:800; margin-bottom:4px; }
+.checkin-box p { font-size:0.82rem; color:var(--muted); margin-bottom:16px; }
+.field { margin-bottom:12px; }
+.field label { display:block; font-size:0.75rem; font-weight:600; color:var(--muted); margin-bottom:4px; }
+.field input { width:100%; border:1.5px solid var(--border); border-radius:10px; padding:11px 14px; font-size:0.95rem; outline:none; font-family:inherit; background:#f8f8fc; }
+.field input:focus { border-color:var(--brand); background:#fff; }
+.btn-checkin { width:100%; background:var(--brand); color:#fff; border:none; border-radius:12px; padding:14px; font-size:1rem; font-weight:700; cursor:pointer; margin-top:4px; }
+.btn-checkin:disabled { opacity:0.6; }
+.success-box { text-align:center; padding:24px; }
+.success-box .check { font-size:3rem; margin-bottom:12px; }
+.success-box h2 { font-size:1.2rem; font-weight:800; margin-bottom:8px; color:var(--brand); }
+.success-box p { font-size:0.88rem; color:var(--muted); }
+.powered { text-align:center; padding:16px; font-size:0.7rem; color:#ccc; }
+.powered a { color:#a78bfa; text-decoration:none; }
+.no-products { text-align:center; padding:40px 20px; color:var(--muted); font-size:0.9rem; }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-logo">
+    {% if br.logo %}
+    <img src="{{ br.logo }}" alt="{{ business.business_name }}">
+    {% else %}
+    {{ business.business_name[0].upper() }}
+    {% endif %}
+  </div>
+  <h1>{{ br.name if br.name != 'Revvio' else business.business_name }}</h1>
+  {% if profile and profile.business_type %}
+  <p>{{ profile.business_type | title }}</p>
+  {% endif %}
+  {% if business.address %}
+  <div class="address">📍 {{ business.address }}</div>
+  {% endif %}
+</div>
+
+{% if products %}
+<!-- Category filter pills -->
+{% set categories = products | map(attribute='category') | select | unique | list %}
+{% if categories %}
+<div class="cats">
+  <div class="cat-pill active" onclick="filterCat('all', this)">All</div>
+  {% for cat in categories %}
+  {% if cat %}
+  <div class="cat-pill" onclick="filterCat('{{ cat|e }}', this)">{{ cat }}</div>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Featured section -->
+{% set featured = products | selectattr('is_featured') | list %}
+{% if featured %}
+<div class="section">
+  <div class="section-title">⭐ Featured</div>
+  <div class="products-list" id="featured-section">
+    {% for p in featured %}
+    <div class="product-card featured" data-cat="{{ p.category or '' }}">
+      <div class="product-img">
+        {% if p.image_url %}<img src="{{ p.image_url }}" alt="{{ p.name }}">
+        {% else %}📦{% endif %}
+      </div>
+      <div class="product-info">
+        <div class="product-name">{{ p.name }}</div>
+        {% if p.description %}<div class="product-desc">{{ p.description }}</div>{% endif %}
+        <div class="product-footer">
+          {% if p.price %}<div class="product-price">{{ p.price }}</div>{% endif %}
+          <span class="feat-tag">⭐ Featured</span>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- All products -->
+<div class="section">
+  {% if featured %}<div class="section-title">All Products & Services</div>{% endif %}
+  <div class="products-list" id="all-products">
+    {% for p in products %}
+    {% if not p.is_featured %}
+    <div class="product-card" data-cat="{{ p.category or '' }}">
+      <div class="product-img">
+        {% if p.image_url %}<img src="{{ p.image_url }}" alt="{{ p.name }}">
+        {% else %}📦{% endif %}
+      </div>
+      <div class="product-info">
+        <div class="product-name">{{ p.name }}</div>
+        {% if p.description %}<div class="product-desc">{{ p.description }}</div>{% endif %}
+        <div class="product-footer">
+          {% if p.price %}<div class="product-price">{{ p.price }}</div>{% endif %}
+          {% if p.category %}<span class="cat-tag">{{ p.category }}</span>{% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+{% else %}
+<div class="no-products">No products listed yet.</div>
+{% endif %}
+
+<!-- Check-in form -->
+<div class="checkin-box">
+  <div id="formView">
+    <h2>Join our VIP list</h2>
+    <p>Get exclusive offers and updates from {{ business.business_name }} — enter your details below.</p>
+    <div class="field">
+      <label>Your Name</label>
+      <input type="text" id="ciName" placeholder="John Smith" autocomplete="name">
+    </div>
+    <div class="field">
+      <label>Phone Number</label>
+      <input type="tel" id="ciPhone" placeholder="+1 555 000 0000" autocomplete="tel">
+    </div>
+    <button class="btn-checkin" id="ciBtn" onclick="doCheckin()">Join & Get Offers 🎁</button>
+  </div>
+  <div id="successView" class="success-box" style="display:none">
+    <div class="check">🎉</div>
+    <h2>You're in!</h2>
+    <p>Welcome to {{ business.business_name }}! Look out for exclusive offers on your phone.</p>
+  </div>
+</div>
+
+<div class="powered">Powered by <a href="https://revvio.ai" target="_blank">Revvio</a></div>
+
+<script>
+function filterCat(cat, el) {
+  document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.product-card').forEach(card => {
+    const c = card.dataset.cat || '';
+    card.style.display = (cat === 'all' || c === cat) ? 'flex' : 'none';
+  });
+  const featSec = document.getElementById('featured-section');
+  if (featSec) {
+    const anyVisible = Array.from(featSec.querySelectorAll('.product-card')).some(c => c.style.display !== 'none');
+    featSec.closest('.section').style.display = anyVisible ? '' : 'none';
+  }
+}
+
+async function doCheckin() {
+  const name = document.getElementById('ciName').value.trim();
+  const phone = document.getElementById('ciPhone').value.trim();
+  if (!name || !phone) { alert('Please enter your name and phone number'); return; }
+  const btn = document.getElementById('ciBtn');
+  btn.disabled = true;
+  btn.textContent = 'Joining...';
+  try {
+    const r = await fetch('/api/do-checkin/{{ business.slug }}', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({name, phone})
+    });
+    const j = await r.json();
+    if (j.success) {
+      document.getElementById('formView').style.display = 'none';
+      document.getElementById('successView').style.display = 'block';
+    } else {
+      alert(j.error || 'Something went wrong. Please try again.');
+      btn.disabled = false;
+      btn.textContent = 'Join & Get Offers 🎁';
+    }
+  } catch(e) {
+    alert('Network error. Please try again.');
+    btn.disabled = false;
+    btn.textContent = 'Join & Get Offers 🎁';
+  }
+}
+</script>
+</body>
+</html>

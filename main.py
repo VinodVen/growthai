@@ -382,6 +382,21 @@ class SquareConnection(db.Model):
     webhook_signature_key = db.Column(db.String(200))
     connected_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class Product(db.Model):
+    """Business products/services shown on the public landing page."""
+    __tablename__ = "products"
+    id = db.Column(db.Integer, primary_key=True)
+    business_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    price = db.Column(db.String(50))         # e.g. "$12.99" or "From $50"
+    category = db.Column(db.String(100))
+    image_url = db.Column(db.String(500))
+    is_featured = db.Column(db.Boolean, default=False)
+    sort_order = db.Column(db.Integer, default=0)
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class CheckIn(db.Model):
     """QR code walk-in check-ins — customer scans QR at counter."""
     __tablename__ = "checkins"
@@ -465,6 +480,7 @@ def _do_migrations():
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referred_by_id INTEGER REFERENCES businesses(id)",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0",
+        "CREATE TABLE IF NOT EXISTS products (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), name VARCHAR(200) NOT NULL, description TEXT, price VARCHAR(50), category VARCHAR(100), image_url VARCHAR(500), is_featured BOOLEAN DEFAULT FALSE, sort_order INTEGER DEFAULT 0, active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT NOW())",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS brand_name VARCHAR(200)",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS brand_color VARCHAR(20) DEFAULT '#7c3aed'",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS logo_url VARCHAR(500)",
@@ -5476,6 +5492,106 @@ def dismiss_onboarding():
         db.session.rollback()
     return jsonify({"ok": True})
 
+@app.route("/products")
+def products_page():
+    b = current_business()
+    if not b:
+        return redirect("/login")
+    products = Product.query.filter_by(business_id=b.id).order_by(Product.sort_order, Product.id).all()
+    return render_template("products.html", business=b, products=products)
+
+@app.route("/api/products", methods=["POST"])
+def add_product():
+    b = current_business()
+    if not b:
+        return jsonify({"success": False}), 401
+    data = request.get_json() or {}
+    p = Product(
+        business_id=b.id,
+        name=(data.get("name") or "").strip(),
+        description=(data.get("description") or "").strip(),
+        price=(data.get("price") or "").strip(),
+        category=(data.get("category") or "").strip(),
+        is_featured=bool(data.get("is_featured")),
+        sort_order=data.get("sort_order", 0),
+    )
+    if not p.name:
+        return jsonify({"success": False, "error": "Name required"})
+    db.session.add(p)
+    try:
+        db.session.commit()
+        return jsonify({"success": True, "id": p.id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/products/<int:pid>", methods=["PUT"])
+def update_product(pid):
+    b = current_business()
+    if not b:
+        return jsonify({"success": False}), 401
+    p = Product.query.filter_by(id=pid, business_id=b.id).first_or_404()
+    data = request.get_json() or {}
+    for field in ("name", "description", "price", "category"):
+        if field in data:
+            setattr(p, field, (data[field] or "").strip())
+    if "is_featured" in data:
+        p.is_featured = bool(data["is_featured"])
+    if "active" in data:
+        p.active = bool(data["active"])
+    try:
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/products/<int:pid>", methods=["DELETE"])
+def delete_product(pid):
+    b = current_business()
+    if not b:
+        return jsonify({"success": False}), 401
+    p = Product.query.filter_by(id=pid, business_id=b.id).first_or_404()
+    db.session.delete(p)
+    try:
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route("/api/upload-product-image/<int:pid>", methods=["POST"])
+def upload_product_image(pid):
+    b = current_business()
+    if not b:
+        return jsonify({"success": False}), 401
+    p = Product.query.filter_by(id=pid, business_id=b.id).first_or_404()
+    f = request.files.get("image")
+    if not f:
+        return jsonify({"success": False, "error": "No file"})
+    ext = f.filename.rsplit(".", 1)[-1].lower()
+    if ext not in ("png", "jpg", "jpeg", "gif", "webp"):
+        return jsonify({"success": False, "error": "Invalid file type"})
+    save_dir = os.path.join("static", "product-images")
+    os.makedirs(save_dir, exist_ok=True)
+    fname = f"product_{b.id}_{pid}.{ext}"
+    f.save(os.path.join(save_dir, fname))
+    p.image_url = f"/static/product-images/{fname}"
+    db.session.commit()
+    return jsonify({"success": True, "url": p.image_url})
+
+# ── Public business landing page ──────────────────────────────────────────────
+@app.route("/p/<slug>")
+def public_page(slug):
+    """Customer-facing landing page — products + check-in form."""
+    b = Business.query.filter_by(slug=slug).first_or_404()
+    products = Product.query.filter_by(business_id=b.id, active=True).order_by(
+        Product.is_featured.desc(), Product.sort_order, Product.id
+    ).all()
+    profile = BusinessProfile.query.filter_by(business_id=b.id).first()
+    br = brand(b)
+    return render_template("public_page.html", business=b, products=products, profile=profile, br=br)
+
 @app.route("/branding", methods=["GET", "POST"])
 def branding_settings():
     b = current_business()
@@ -5528,7 +5644,7 @@ def my_qr():
         CheckIn.business_id == b.id,
         CheckIn.created_at >= datetime.utcnow() - timedelta(days=7)
     ).count()
-    join_url = request.host_url.rstrip("/") + f"/checkin/{b.slug}"
+    join_url = request.host_url.rstrip("/") + f"/p/{b.slug}"
     return render_template("my_qr.html", business=b, checkins=checkins,
                            today_count=today_count, week_count=week_count,
                            join_url=join_url, now=datetime.utcnow())
