@@ -152,6 +152,11 @@ class Business(db.Model):
     referral_code = db.Column(db.String(20), unique=True, nullable=True)
     referred_by_id = db.Column(db.Integer, db.ForeignKey("businesses.id"), nullable=True)
     referral_count = db.Column(db.Integer, default=0)
+    # Welcome offer / coupon
+    welcome_offer_enabled = db.Column(db.Boolean, default=False)
+    welcome_offer_text = db.Column(db.String(200))   # e.g. "$5 off your first visit"
+    welcome_offer_amount = db.Column(db.String(50))  # e.g. "$5" or "₹100"
+    welcome_offer_expiry_days = db.Column(db.Integer, default=30)
     # White-label / branding
     brand_name = db.Column(db.String(200))          # custom name shown in header
     brand_color = db.Column(db.String(20), default="#7c3aed")  # primary color
@@ -405,7 +410,10 @@ class CheckIn(db.Model):
     customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"), nullable=True)
     name = db.Column(db.String(200))
     phone = db.Column(db.String(50))
-    source = db.Column(db.String(30), default="qr")  # qr, manual
+    source = db.Column(db.String(30), default="qr")
+    coupon_code = db.Column(db.String(20))
+    coupon_redeemed = db.Column(db.Boolean, default=False)
+    coupon_redeemed_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class CampaignRedemption(db.Model):
@@ -481,6 +489,13 @@ def _do_migrations():
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referred_by_id INTEGER REFERENCES businesses(id)",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS referral_count INTEGER DEFAULT 0",
         "CREATE TABLE IF NOT EXISTS products (id SERIAL PRIMARY KEY, business_id INTEGER REFERENCES businesses(id), name VARCHAR(200) NOT NULL, description TEXT, price VARCHAR(50), category VARCHAR(100), image_url VARCHAR(500), is_featured BOOLEAN DEFAULT FALSE, sort_order INTEGER DEFAULT 0, active BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT NOW())",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS welcome_offer_enabled BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS welcome_offer_text VARCHAR(200)",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS welcome_offer_amount VARCHAR(50)",
+        "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS welcome_offer_expiry_days INTEGER DEFAULT 30",
+        "ALTER TABLE checkins ADD COLUMN IF NOT EXISTS coupon_code VARCHAR(20)",
+        "ALTER TABLE checkins ADD COLUMN IF NOT EXISTS coupon_redeemed BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE checkins ADD COLUMN IF NOT EXISTS coupon_redeemed_at TIMESTAMP",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS brand_name VARCHAR(200)",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS brand_color VARCHAR(20) DEFAULT '#7c3aed'",
         "ALTER TABLE businesses ADD COLUMN IF NOT EXISTS logo_url VARCHAR(500)",
@@ -5468,6 +5483,18 @@ def do_checkin(slug):
             db.session.add(customer)
             db.session.flush()
 
+        # Generate coupon code if welcome offer is enabled
+        coupon_code = None
+        offer_text = None
+        offer_amount = None
+        expiry_days = 30
+        if getattr(b, 'welcome_offer_enabled', False):
+            import random, string
+            coupon_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+            offer_text = getattr(b, 'welcome_offer_text', None) or "Welcome offer"
+            offer_amount = getattr(b, 'welcome_offer_amount', None) or "Special discount"
+            expiry_days = getattr(b, 'welcome_offer_expiry_days', None) or 30
+
         # Record check-in
         ci = CheckIn(
             business_id=b.id,
@@ -5475,19 +5502,34 @@ def do_checkin(slug):
             name=name,
             phone=phone,
             source="qr",
+            coupon_code=coupon_code,
         )
         db.session.add(ci)
         db.session.commit()
 
-        # Send thank-you SMS
+        # Send thank-you SMS with coupon if enabled
         if twilio_client and phone:
             try:
-                msg = f"Thanks for visiting {b.business_name}, {customer.first_name}! 🎉 We're glad you're here. Show this to get a special treat today!"
+                if coupon_code:
+                    msg = f"🎉 Welcome to {b.business_name}, {customer.first_name}! Your {offer_amount} welcome offer code: {coupon_code}. Show this at checkout. Valid {expiry_days} days."
+                else:
+                    msg = f"Thanks for visiting {b.business_name}, {customer.first_name}! 🎉 We're glad you're here. Look out for exclusive offers!"
                 twilio_client.messages.create(body=msg, from_=twilio_phone, to=phone)
             except Exception as sms_err:
                 print(f"Check-in SMS failed: {sms_err}")
 
-        return jsonify({"success": True, "is_new": is_new, "name": customer.first_name})
+        return jsonify({
+            "success": True,
+            "is_new": is_new,
+            "name": customer.first_name,
+            "coupon": {
+                "code": coupon_code,
+                "offer_text": offer_text,
+                "offer_amount": offer_amount,
+                "expiry_days": expiry_days,
+                "business": b.business_name,
+            } if coupon_code else None
+        })
     except Exception as e:
         print(f"Check-in error: {e}")
         return jsonify({"success": False, "error": str(e)})
@@ -5619,6 +5661,14 @@ def branding_settings():
         b.brand_color = brand_color or "#7c3aed"
         b.custom_subdomain = custom_subdomain or None
         b.disabled_features = ",".join(disabled)
+        # Welcome offer
+        b.welcome_offer_enabled = request.form.get("welcome_offer_enabled") == "1"
+        b.welcome_offer_amount = request.form.get("welcome_offer_amount", "").strip() or None
+        b.welcome_offer_text = request.form.get("welcome_offer_text", "").strip() or None
+        try:
+            b.welcome_offer_expiry_days = int(request.form.get("welcome_offer_expiry_days", 30))
+        except Exception:
+            b.welcome_offer_expiry_days = 30
         # Logo upload
         logo_file = request.files.get("logo")
         if logo_file and logo_file.filename:
@@ -5640,6 +5690,31 @@ def branding_settings():
     plan_info = PLAN_FEATURES.get(b.plan or "free", PLAN_FEATURES["free"])
     disabled_list = [f.strip() for f in (getattr(b, "disabled_features", "") or "").split(",") if f.strip()]
     return render_template("branding.html", business=b, br=br, plan_info=plan_info, disabled_list=disabled_list, msg=msg)
+
+@app.route("/redeem/<code>")
+def redeem_coupon(code):
+    """Business staff page to verify + redeem a customer coupon."""
+    ci = CheckIn.query.filter_by(coupon_code=code.upper()).first()
+    if not ci:
+        return render_template("redeem.html", status="invalid", code=code)
+    b = Business.query.get(ci.business_id)
+    return render_template("redeem.html", status="redeemed" if ci.coupon_redeemed else "valid",
+                           ci=ci, business=b, code=code)
+
+@app.route("/api/redeem-coupon/<code>", methods=["POST"])
+def api_redeem_coupon(code):
+    b = current_business()
+    if not b:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    ci = CheckIn.query.filter_by(coupon_code=code.upper(), business_id=b.id).first()
+    if not ci:
+        return jsonify({"success": False, "error": "Coupon not found"})
+    if ci.coupon_redeemed:
+        return jsonify({"success": False, "error": "Already redeemed"})
+    ci.coupon_redeemed = True
+    ci.coupon_redeemed_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({"success": True, "name": ci.name})
 
 @app.route("/api/blast-page-link", methods=["POST"])
 def blast_page_link():

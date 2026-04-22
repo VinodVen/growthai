@@ -209,10 +209,45 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
     </div>
     <button class="btn-checkin" id="ciBtn" onclick="doCheckin()">Join & Get Offers 🎁</button>
   </div>
-  <div id="successView" class="success-box" style="display:none">
-    <div class="check">🎉</div>
-    <h2>You're in!</h2>
-    <p>Welcome to {{ business.business_name }}! Look out for exclusive offers on your phone.</p>
+  <div id="successView" style="display:none">
+    <!-- Default success (no coupon) -->
+    <div id="noOfferView" class="success-box">
+      <div class="check">🎉</div>
+      <h2>You're in!</h2>
+      <p>Welcome to {{ business.business_name }}! Look out for exclusive offers on your phone.</p>
+    </div>
+    <!-- Coupon card -->
+    <div id="couponView" style="display:none;padding:8px 0 16px;">
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:2rem;margin-bottom:6px;">🎁</div>
+        <div style="font-size:1.1rem;font-weight:800;color:#fff;">Welcome Gift!</div>
+        <div style="font-size:0.82rem;color:rgba(255,255,255,0.55);margin-top:4px;">Show this to staff to redeem</div>
+      </div>
+      <!-- Coupon ticket -->
+      <div style="background:#fff;border-radius:18px;overflow:hidden;margin:0 4px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+        <!-- Top strip -->
+        <div id="couponTop" style="background:linear-gradient(135deg,#7c3aed,#3b82f6);padding:20px;text-align:center;">
+          <div style="font-size:2.5rem;font-weight:900;color:#fff;letter-spacing:-1px;" id="couponAmount"></div>
+          <div style="font-size:0.9rem;color:rgba(255,255,255,0.85);margin-top:4px;" id="couponText"></div>
+        </div>
+        <!-- Dashed divider -->
+        <div style="display:flex;align-items:center;padding:0 16px;background:#f8f8fc;">
+          <div style="width:20px;height:20px;border-radius:50%;background:#1e1b4b;margin-left:-28px;flex-shrink:0;"></div>
+          <div style="flex:1;border-top:2px dashed #d1d5db;margin:0 8px;"></div>
+          <div style="width:20px;height:20px;border-radius:50%;background:#1e1b4b;margin-right:-28px;flex-shrink:0;"></div>
+        </div>
+        <!-- Barcode section -->
+        <div style="background:#f8f8fc;padding:16px;text-align:center;">
+          <img id="couponQR" src="" alt="Coupon QR" style="width:120px;height:120px;border-radius:8px;">
+          <div style="font-size:1.1rem;font-weight:800;letter-spacing:0.15em;color:#1a1a2e;margin-top:10px;" id="couponCode"></div>
+          <div style="font-size:0.72rem;color:#9ca3af;margin-top:4px;" id="couponExpiry"></div>
+          <div style="font-size:0.72rem;color:#9ca3af;margin-top:2px;" id="couponBiz"></div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:14px;font-size:0.78rem;color:rgba(255,255,255,0.45);">
+        📱 We also sent this code to your phone via SMS
+      </div>
+    </div>
   </div>
 </div>
 
@@ -254,6 +289,17 @@ async function doCheckin() {
     if (j.success) {
       document.getElementById('formView').style.display = 'none';
       document.getElementById('successView').style.display = 'block';
+      if (j.coupon && j.coupon.code) {
+        document.getElementById('noOfferView').style.display = 'none';
+        document.getElementById('couponView').style.display = 'block';
+        document.getElementById('couponAmount').textContent = j.coupon.offer_amount;
+        document.getElementById('couponText').textContent = j.coupon.offer_text;
+        document.getElementById('couponCode').textContent = j.coupon.code;
+        document.getElementById('couponBiz').textContent = j.coupon.business;
+        const expDate = new Date(); expDate.setDate(expDate.getDate() + (j.coupon.expiry_days || 30));
+        document.getElementById('couponExpiry').textContent = 'Valid until ' + expDate.toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'});
+        document.getElementById('couponQR').src = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=' + encodeURIComponent(window.location.origin + '/redeem/' + j.coupon.code);
+      }
     } else {
       alert(j.error || 'Something went wrong. Please try again.');
       btn.disabled = false;

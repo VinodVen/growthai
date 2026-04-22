@@ -169,6 +169,44 @@
       </div>
     </div>
 
+    <!-- Welcome Offer / Coupon -->
+    <div class="card">
+      <h2><i class="bi bi-gift" style="color:#f59e0b"></i> Welcome Offer Coupon</h2>
+      <p class="card-desc">When a new customer joins via your public page, show them a digital coupon with a discount. Country-wise: use $ for USA, ₹ for India, £ for UK, etc.</p>
+
+      <div class="feature-item" style="max-width:320px;margin-bottom:16px;">
+        <input type="checkbox" name="welcome_offer_enabled" id="offerEnabled" value="1"
+          {% if business.welcome_offer_enabled %}checked{% endif %}
+          onchange="document.getElementById('offerFields').style.display=this.checked?'block':'none'">
+        <label for="offerEnabled" style="margin:0;cursor:pointer;font-weight:600;">Enable welcome coupon</label>
+      </div>
+
+      <div id="offerFields" style="display:{{ 'block' if business.welcome_offer_enabled else 'none' }};">
+        <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div class="field-group">
+            <label>Offer Amount <span style="font-size:0.7rem;color:#6b7280">(shown big on coupon)</span></label>
+            <input type="text" name="welcome_offer_amount" value="{{ business.welcome_offer_amount or '' }}" placeholder="e.g. $5  or  ₹100  or  £3">
+          </div>
+          <div class="field-group">
+            <label>Valid For (days)</label>
+            <input type="number" name="welcome_offer_expiry_days" value="{{ business.welcome_offer_expiry_days or 30 }}" min="1" max="365">
+          </div>
+        </div>
+        <div class="field-group">
+          <label>Offer Description <span style="font-size:0.7rem;color:#6b7280">(shown below amount)</span></label>
+          <input type="text" name="welcome_offer_text" value="{{ business.welcome_offer_text or '' }}" placeholder="e.g. off your first visit  or  welcome discount">
+        </div>
+        <div style="background:#111118;border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px;">
+          <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;">Preview:</div>
+          <div style="background:linear-gradient(135deg,#7c3aed,#3b82f6);border-radius:10px;padding:14px;text-align:center;color:#fff;">
+            <div style="font-size:1.8rem;font-weight:900;" id="previewAmount">{{ business.welcome_offer_amount or '$5' }}</div>
+            <div style="font-size:0.85rem;opacity:0.85;" id="previewText">{{ business.welcome_offer_text or 'off your first visit' }}</div>
+          </div>
+          <div style="text-align:center;padding:10px;font-size:0.75rem;color:var(--muted);">CODE: XXXXXXXX · Valid {{ business.welcome_offer_expiry_days or 30 }} days</div>
+        </div>
+      </div>
+    </div>
+
     <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i> Save Settings</button>
   </form>
 </div>

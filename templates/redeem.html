@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redeem Coupon</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:#0f0c29; color:#fff; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+.card { background:#1a1730; border:1px solid rgba(255,255,255,0.1); border-radius:24px; padding:32px 28px; max-width:400px; width:100%; text-align:center; }
+.icon { font-size:3.5rem; margin-bottom:16px; }
+h1 { font-size:1.4rem; font-weight:800; margin-bottom:8px; }
+p { font-size:0.88rem; color:rgba(255,255,255,0.55); line-height:1.5; }
+.code-box { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:16px; margin:20px 0; }
+.code-label { font-size:0.7rem; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px; }
+.code-val { font-size:1.8rem; font-weight:900; letter-spacing:0.15em; color:#fff; }
+.customer-info { background:rgba(124,58,237,0.12); border:1px solid rgba(124,58,237,0.3); border-radius:12px; padding:14px; margin:16px 0; text-align:left; }
+.customer-info .row { display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:6px; }
+.customer-info .row:last-child { margin-bottom:0; }
+.customer-info .label { color:rgba(255,255,255,0.45); }
+.customer-info .val { font-weight:600; }
+.btn { width:100%; border:none; border-radius:14px; padding:15px; font-size:1rem; font-weight:700; cursor:pointer; margin-top:8px; }
+.btn-redeem { background:linear-gradient(135deg,#10b981,#059669); color:#fff; box-shadow:0 4px 20px rgba(16,185,129,0.3); }
+.btn-redeem:hover { opacity:0.9; }
+.btn-back { background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.6); margin-top:10px; }
+.status-valid { color:#4ade80; }
+.status-invalid { color:#f87171; }
+.status-used { color:#f59e0b; }
+.badge { display:inline-block; padding:4px 14px; border-radius:20px; font-size:0.78rem; font-weight:700; margin-bottom:16px; }
+.badge-valid { background:rgba(74,222,128,0.15); color:#4ade80; border:1px solid rgba(74,222,128,0.3); }
+.badge-invalid { background:rgba(248,113,113,0.15); color:#f87171; border:1px solid rgba(248,113,113,0.3); }
+.badge-used { background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid rgba(245,158,11,0.3); }
+</style>
+</head>
+<body>
+<div class="card">
+
+{% if status == 'invalid' %}
+  <div class="icon">❌</div>
+  <span class="badge badge-invalid">Invalid Coupon</span>
+  <h1>Code Not Found</h1>
+  <p>The coupon code <strong>{{ code }}</strong> doesn't exist or has expired.</p>
+
+{% elif status == 'redeemed' %}
+  <div class="icon">✅</div>
+  <span class="badge badge-used">Already Redeemed</span>
+  <h1>Already Used</h1>
+  <div class="customer-info">
+    <div class="row"><span class="label">Customer</span><span class="val">{{ ci.name }}</span></div>
+    <div class="row"><span class="label">Redeemed</span><span class="val">{{ ci.coupon_redeemed_at.strftime('%b %d, %Y %I:%M %p') if ci.coupon_redeemed_at else 'Unknown' }}</span></div>
+  </div>
+  <p>This coupon was already redeemed and cannot be used again.</p>
+
+{% else %}
+  <div class="icon">🎁</div>
+  <span class="badge badge-valid">Valid Coupon</span>
+  <h1>Coupon Valid!</h1>
+  <div class="code-box">
+    <div class="code-label">Coupon Code</div>
+    <div class="code-val">{{ code }}</div>
+  </div>
+  <div class="customer-info">
+    <div class="row"><span class="label">Customer</span><span class="val">{{ ci.name }}</span></div>
+    <div class="row"><span class="label">Phone</span><span class="val">{{ ci.phone or '—' }}</span></div>
+    <div class="row"><span class="label">Joined</span><span class="val">{{ ci.created_at.strftime('%b %d, %Y') }}</span></div>
+    {% if business %}
+    <div class="row"><span class="label">Business</span><span class="val">{{ business.business_name }}</span></div>
+    {% endif %}
+  </div>
+  <button class="btn btn-redeem" id="redeemBtn" onclick="redeemNow()">
+    <i class="bi bi-check-circle-fill"></i> Mark as Redeemed
+  </button>
+  <div id="redeemMsg" style="display:none;margin-top:14px;font-size:0.88rem;"></div>
+{% endif %}
+
+  <button class="btn btn-back" onclick="history.back()"><i class="bi bi-arrow-left"></i> Go Back</button>
+</div>
+
+<script>
+async function redeemNow() {
+  const btn = document.getElementById('redeemBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
+  const r = await fetch('/api/redeem-coupon/{{ code }}', {method:'POST'});
+  const j = await r.json();
+  const msg = document.getElementById('redeemMsg');
+  msg.style.display = 'block';
+  if (j.success) {
+    btn.style.display = 'none';
+    msg.style.color = '#4ade80';
+    msg.innerHTML = '✅ Redeemed successfully! Offer applied for ' + j.name + '.';
+    document.querySelector('.badge').textContent = 'Redeemed';
+    document.querySelector('.badge').className = 'badge badge-used';
+  } else {
+    msg.style.color = '#f87171';
+    msg.textContent = '❌ ' + (j.error || 'Failed');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Mark as Redeemed';
+  }
+}
+</script>
+</body>
+</html>
