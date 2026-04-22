@@ -5629,6 +5629,32 @@ def branding_settings():
     disabled_list = [f.strip() for f in (getattr(b, "disabled_features", "") or "").split(",") if f.strip()]
     return render_template("branding.html", business=b, br=br, plan_info=plan_info, disabled_list=disabled_list, msg=msg)
 
+@app.route("/api/blast-page-link", methods=["POST"])
+def blast_page_link():
+    """Send the public page link to all customers via SMS."""
+    b = current_business()
+    if not b:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    data = request.get_json() or {}
+    custom_msg = (data.get("message") or "").strip()
+    page_url = request.host_url.rstrip("/") + f"/p/{b.slug}"
+    sent = 0
+    failed = 0
+    customers = Customer.query.filter_by(business_id=b.id, unsubscribed=False).filter(
+        Customer.phone.isnot(None), Customer.phone != ""
+    ).all()
+    if not customers:
+        return jsonify({"success": False, "error": "No customers with phone numbers found"})
+    msg_text = custom_msg or f"Hi! {b.business_name} has a special page for you — browse our products & join our VIP offers list: {page_url}"
+    for c in customers:
+        try:
+            _send_sms(c.phone, msg_text)
+            sent += 1
+        except Exception as e:
+            print(f"[blast] failed for {c.phone}: {e}")
+            failed += 1
+    return jsonify({"success": True, "sent": sent, "failed": failed, "total": len(customers)})
+
 @app.route("/my-qr")
 def my_qr():
     """Business dashboard — QR code + recent check-ins."""

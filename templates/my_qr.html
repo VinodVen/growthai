@@ -100,6 +100,18 @@
                 </div>
             </div>
 
+            <!-- Blast to customers -->
+            <div class="how-card mb-4" style="border:1px solid rgba(74,222,128,0.25);background:linear-gradient(135deg,rgba(74,222,128,0.05),rgba(16,185,129,0.05));">
+                <div class="section-title" style="color:#4ade80;">📣 Send Page Link to All Customers</div>
+                <div style="font-size:0.8rem;color:#6b6b8a;margin-bottom:14px;line-height:1.5;">Send your public page link to all existing customers via SMS so they can browse your products and join your VIP list.</div>
+                <textarea id="blastMsg" rows="3" style="width:100%;background:#0d0d1a;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 14px;color:#e2e2f0;font-size:0.82rem;resize:none;font-family:inherit;margin-bottom:10px;" placeholder="Custom message (optional) — leave blank for default message"></textarea>
+                <div style="font-size:0.72rem;color:#4a4a6a;margin-bottom:12px;">Default: "Hi! [Business] has a special page — browse products & join our VIP list: [your link]"</div>
+                <button onclick="blastLink()" id="blastBtn" style="width:100%;background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;border-radius:10px;padding:11px;font-weight:700;font-size:0.88rem;cursor:pointer;">
+                    <i class="bi bi-send-fill me-2"></i> Send to All Customers
+                </button>
+                <div id="blastResult" style="display:none;margin-top:12px;text-align:center;font-size:0.85rem;font-weight:700;"></div>
+            </div>
+
             <!-- How it works -->
             <div class="how-card">
                 <div class="section-title">How It Works</div>
@@ -175,6 +187,38 @@ function copyUrl() {
         btn.innerHTML = '<i class="bi bi-check me-1"></i> Copied!';
         setTimeout(() => btn.innerHTML = orig, 2000);
     });
+}
+
+async function blastLink() {
+    const btn = document.getElementById('blastBtn');
+    const result = document.getElementById('blastResult');
+    if (!confirm('Send your page link to all customers with phone numbers via SMS?')) return;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i> Sending...';
+    result.style.display = 'none';
+    try {
+        const r = await fetch('/api/blast-page-link', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({message: document.getElementById('blastMsg').value.trim()})
+        });
+        const j = await r.json();
+        if (j.success) {
+            result.style.display = 'block';
+            result.style.color = '#4ade80';
+            result.innerHTML = `✅ Sent to ${j.sent} customer${j.sent !== 1 ? 's' : ''}!${j.failed > 0 ? ` (${j.failed} failed)` : ''}`;
+        } else {
+            result.style.display = 'block';
+            result.style.color = '#f87171';
+            result.innerHTML = '❌ ' + (j.error || 'Failed to send');
+        }
+    } catch(e) {
+        result.style.display = 'block';
+        result.style.color = '#f87171';
+        result.innerHTML = '❌ Network error';
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-send-fill me-2"></i> Send to All Customers';
 }
 
 function printQR() {
