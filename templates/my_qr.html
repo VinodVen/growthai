@@ -100,6 +100,50 @@
                 </div>
             </div>
 
+            <!-- Coupon Analytics -->
+            {% if total_coupons > 0 %}
+            <div class="how-card mb-4" style="border:1px solid rgba(251,191,36,0.25);background:linear-gradient(135deg,rgba(251,191,36,0.05),rgba(245,158,11,0.05));">
+                <div class="section-title" style="color:#fbbf24;">🎟️ Coupon Analytics</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+                    <div style="background:rgba(0,0,0,0.2);border-radius:10px;padding:12px;text-align:center;">
+                        <div style="font-size:1.8rem;font-weight:900;color:#fff;">{{ total_coupons }}</div>
+                        <div style="font-size:0.7rem;color:#6b6b8a;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;">Issued</div>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.2);border-radius:10px;padding:12px;text-align:center;">
+                        <div style="font-size:1.8rem;font-weight:900;color:#4ade80;">{{ redeemed_coupons }}</div>
+                        <div style="font-size:0.7rem;color:#6b6b8a;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;">Redeemed</div>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.2);border-radius:10px;padding:12px;text-align:center;">
+                        <div style="font-size:1.8rem;font-weight:900;color:#f59e0b;">{{ pending_coupons }}</div>
+                        <div style="font-size:0.7rem;color:#6b6b8a;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;">Pending</div>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.2);border-radius:10px;padding:12px;text-align:center;">
+                        <div style="font-size:1.8rem;font-weight:900;color:#a78bfa;">{{ redemption_rate }}%</div>
+                        <div style="font-size:0.7rem;color:#6b6b8a;text-transform:uppercase;letter-spacing:0.08em;margin-top:2px;">Redeem Rate</div>
+                    </div>
+                </div>
+                <!-- Redemption progress bar -->
+                <div style="background:rgba(0,0,0,0.3);border-radius:20px;height:6px;margin-bottom:14px;">
+                    <div style="background:linear-gradient(90deg,#4ade80,#10b981);border-radius:20px;height:6px;width:{{ redemption_rate }}%;transition:width 0.5s;"></div>
+                </div>
+                {% if recent_redemptions %}
+                <div style="font-size:0.7rem;font-weight:700;color:#6b6b8a;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">Recent Redemptions</div>
+                {% for ci in recent_redemptions %}
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <div>
+                        <div style="font-size:0.85rem;font-weight:600;color:#fff;">{{ ci.name }}</div>
+                        <div style="font-size:0.72rem;color:#6b6b8a;">{{ ci.coupon_code }}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.72rem;color:#4ade80;font-weight:600;">✅ Redeemed</div>
+                        <div style="font-size:0.68rem;color:#4a4a6a;">{{ ci.coupon_redeemed_at.strftime('%b %d, %I:%M %p') if ci.coupon_redeemed_at else '' }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% endif %}
+            </div>
+            {% endif %}
+
             <!-- Blast to customers -->
             <div class="how-card mb-4" style="border:1px solid rgba(74,222,128,0.25);background:linear-gradient(135deg,rgba(74,222,128,0.05),rgba(16,185,129,0.05));">
                 <div class="section-title" style="color:#4ade80;">📣 Send Page Link to All Customers</div>

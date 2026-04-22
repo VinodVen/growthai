@@ -5758,9 +5758,26 @@ def my_qr():
         CheckIn.created_at >= datetime.utcnow() - timedelta(days=7)
     ).count()
     join_url = request.host_url.rstrip("/") + f"/p/{b.slug}"
+
+    # Coupon analytics
+    total_coupons = CheckIn.query.filter(
+        CheckIn.business_id == b.id, CheckIn.coupon_code.isnot(None)
+    ).count()
+    redeemed_coupons = CheckIn.query.filter(
+        CheckIn.business_id == b.id, CheckIn.coupon_redeemed == True
+    ).count()
+    pending_coupons = total_coupons - redeemed_coupons
+    redemption_rate = round(redeemed_coupons / total_coupons * 100) if total_coupons > 0 else 0
+    recent_redemptions = CheckIn.query.filter(
+        CheckIn.business_id == b.id, CheckIn.coupon_redeemed == True
+    ).order_by(CheckIn.coupon_redeemed_at.desc()).limit(10).all()
+
     return render_template("my_qr.html", business=b, checkins=checkins,
                            today_count=today_count, week_count=week_count,
-                           join_url=join_url, now=datetime.utcnow())
+                           join_url=join_url, now=datetime.utcnow(),
+                           total_coupons=total_coupons, redeemed_coupons=redeemed_coupons,
+                           pending_coupons=pending_coupons, redemption_rate=redemption_rate,
+                           recent_redemptions=recent_redemptions)
 
 
 # ============================================
