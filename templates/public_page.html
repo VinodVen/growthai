@@ -161,13 +161,27 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
   <div id="formView">
     <h2>Join our VIP list</h2>
     <p>Get exclusive offers and updates from {{ business.business_name }} — enter your details below.</p>
-    <div class="field">
-      <label>Your Name</label>
-      <input type="text" id="ciName" placeholder="John Smith" autocomplete="name">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="field">
+        <label>First Name *</label>
+        <input type="text" id="ciFirst" placeholder="John" autocomplete="given-name">
+      </div>
+      <div class="field">
+        <label>Last Name</label>
+        <input type="text" id="ciLast" placeholder="Smith" autocomplete="family-name">
+      </div>
     </div>
     <div class="field">
-      <label>Phone Number</label>
+      <label>Phone Number *</label>
       <input type="tel" id="ciPhone" placeholder="+1 555 000 0000" autocomplete="tel">
+    </div>
+    <div class="field">
+      <label>Email Address</label>
+      <input type="email" id="ciEmail" placeholder="john@email.com" autocomplete="email">
+    </div>
+    <div class="field">
+      <label>Date of Birth <span style="font-size:0.7rem;color:var(--muted)">(for birthday offers 🎂)</span></label>
+      <input type="date" id="ciDob">
     </div>
     <button class="btn-checkin" id="ciBtn" onclick="doCheckin()">Join & Get Offers 🎁</button>
   </div>
@@ -196,9 +210,13 @@ function filterCat(cat, el) {
 }
 
 async function doCheckin() {
-  const name = document.getElementById('ciName').value.trim();
+  const first = document.getElementById('ciFirst').value.trim();
+  const last = document.getElementById('ciLast').value.trim();
+  const name = first + (last ? ' ' + last : '');
   const phone = document.getElementById('ciPhone').value.trim();
-  if (!name || !phone) { alert('Please enter your name and phone number'); return; }
+  const email = document.getElementById('ciEmail').value.trim();
+  const dob = document.getElementById('ciDob').value.trim();
+  if (!first || !phone) { alert('Please enter your first name and phone number'); return; }
   const btn = document.getElementById('ciBtn');
   btn.disabled = true;
   btn.textContent = 'Joining...';
@@ -206,7 +224,7 @@ async function doCheckin() {
     const r = await fetch('/api/do-checkin/{{ business.slug }}', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({name, phone})
+      body: JSON.stringify({name, phone, email, dob})
     });
     const j = await r.json();
     if (j.success) {

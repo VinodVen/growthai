@@ -5436,11 +5436,15 @@ def do_checkin(slug):
         data = request.get_json()
         name = (data.get("name") or "").strip()
         phone = (data.get("phone") or "").strip()
+        email = (data.get("email") or "").strip() or None
+        dob = (data.get("dob") or "").strip() or None
         if not name or not phone:
             return jsonify({"success": False, "error": "Name and phone are required"})
 
-        # Find or create customer
+        # Find or create customer (match by phone or email)
         customer = Customer.query.filter_by(business_id=b.id, phone=phone).first()
+        if not customer and email:
+            customer = Customer.query.filter_by(business_id=b.id, email=email).first()
         is_new = False
         if not customer:
             parts = name.strip().split(" ", 1)
@@ -5449,12 +5453,20 @@ def do_checkin(slug):
                 first_name=parts[0],
                 last_name=parts[1] if len(parts) > 1 else "",
                 phone=phone,
+                email=email,
+                dob=dob,
                 source="qr_checkin",
                 created_at=datetime.utcnow(),
             )
+            is_new = True
+        else:
+            # Update missing fields for existing customer
+            if email and not customer.email:
+                customer.email = email
+            if dob and not customer.dob:
+                customer.dob = dob
             db.session.add(customer)
             db.session.flush()
-            is_new = True
 
         # Record check-in
         ci = CheckIn(
