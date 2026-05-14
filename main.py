@@ -4370,6 +4370,26 @@ def settings():
         return redirect("/settings")
     return render_template("settings.html", business=b)
 
+
+@app.route("/api/change-password", methods=["POST"])
+def api_change_password():
+    b = current_business()
+    if not b:
+        return jsonify({"success": False, "error": "Not authenticated"}), 401
+    data = request.get_json() or {}
+    current_pw = data.get("current", "")
+    new_pw = data.get("new_password", "")
+    if not current_pw or not new_pw:
+        return jsonify({"success": False, "error": "All fields required"})
+    if len(new_pw) < 8:
+        return jsonify({"success": False, "error": "Password must be at least 8 characters"})
+    if not bcrypt.checkpw(current_pw.encode(), b.password.encode()):
+        return jsonify({"success": False, "error": "Current password is incorrect"})
+    b.password = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt()).decode()
+    db.session.commit()
+    return jsonify({"success": True})
+
+
 @app.route("/upgrade")
 def upgrade():
     b = current_business()

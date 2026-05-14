@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Performance Test Engineer — Revvio</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Inter',sans-serif; color:#1e1b4b; background:#fff; font-size:13px; line-height:1.7; }
+
+  .cover { background:linear-gradient(135deg,#0f0c29,#302b63,#24243e); color:#fff; padding:64px 60px 50px; page-break-after:always; }
+  .cover-badge { display:inline-block; background:#7c3aed; border-radius:6px; padding:5px 14px; font-size:0.78rem; font-weight:700; letter-spacing:0.05em; margin-bottom:18px; }
+  .cover h1 { font-size:2.2rem; font-weight:800; margin-bottom:6px; }
+  .cover h1 span { color:#a78bfa; }
+  .cover-sub { opacity:0.65; font-size:0.95rem; margin-bottom:32px; }
+  .cover-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; max-width:680px; }
+  .cover-card { background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:9px; padding:14px 18px; }
+  .cover-card .label { font-size:0.65rem; opacity:0.5; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px; }
+  .cover-card .val { font-weight:600; font-size:0.9rem; }
+
+  .page { padding:44px 60px; max-width:900px; margin:0 auto; }
+  h1 { font-size:1.5rem; font-weight:800; color:#1e1b4b; margin:32px 0 8px; padding-bottom:10px; border-bottom:3px solid #7c3aed; }
+  h2 { font-size:1.05rem; font-weight:700; color:#1e1b4b; margin:24px 0 8px; display:flex; align-items:center; gap:8px; }
+  h2::before { content:''; display:inline-block; width:4px; height:16px; background:#7c3aed; border-radius:2px; flex-shrink:0; }
+  p { color:#374151; font-size:0.88rem; margin-bottom:10px; }
+  ul { padding-left:22px; margin-bottom:12px; }
+  li { margin-bottom:5px; font-size:0.88rem; color:#374151; }
+  li strong { color:#1e1b4b; }
+
+  .highlight-box { background:#f5f3ff; border-left:4px solid #7c3aed; padding:14px 18px; border-radius:0 10px 10px 0; margin:14px 0 20px; }
+  .highlight-box p { margin:0; font-size:0.88rem; }
+
+  table { width:100%; border-collapse:collapse; margin:14px 0 20px; font-size:0.85rem; }
+  thead tr { background:linear-gradient(135deg,#7c3aed,#3b82f6); color:#fff; }
+  thead th { padding:10px 14px; text-align:left; font-weight:600; }
+  tbody tr:nth-child(even) { background:#f9fafb; }
+  td { padding:9px 14px; border-bottom:1px solid #e5e7eb; vertical-align:top; }
+
+  .tag { display:inline-block; background:#ede9fe; color:#7c3aed; border-radius:5px; padding:2px 9px; font-size:0.72rem; font-weight:600; margin:2px; }
+  .tag-green { background:#dcfce7; color:#166534; }
+  .tag-blue { background:#dbeafe; color:#1e40af; }
+
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:14px 0; }
+  .info-card { background:#f9fafb; border:1px solid #e5e7eb; border-radius:10px; padding:16px 20px; }
+  .info-card h3 { font-size:0.88rem; font-weight:700; color:#7c3aed; margin-bottom:10px; }
+
+  .apply-box { background:linear-gradient(135deg,#0f0c29,#302b63); color:#fff; border-radius:14px; padding:28px 32px; margin:28px 0; text-align:center; }
+  .apply-box h2 { color:#fff; font-size:1.2rem; justify-content:center; margin-bottom:8px; }
+  .apply-box h2::before { display:none; }
+  .apply-box p { color:rgba(255,255,255,0.7); margin-bottom:16px; }
+  .apply-box a { display:inline-block; background:#7c3aed; color:#fff; border-radius:8px; padding:12px 32px; font-weight:700; text-decoration:none; font-size:0.95rem; }
+
+  .footer { background:#1e1b4b; color:#a5b4fc; text-align:center; padding:24px; font-size:0.78rem; margin-top:30px; }
+  .page-break { page-break-before:always; }
+  @media print { table { page-break-inside:avoid; } }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-badge">JOB OPENING — MAY 2026</div>
+  <h1>Performance Test Engineer<br><span>Revvio.ai</span></h1>
+  <p class="cover-sub">AI-Powered Marketing SaaS Platform — Join our growing engineering team</p>
+  <div class="cover-grid">
+    <div class="cover-card"><div class="label">Location</div><div class="val">Remote / USA</div></div>
+    <div class="cover-card"><div class="label">Type</div><div class="val">Full-Time</div></div>
+    <div class="cover-card"><div class="label">Department</div><div class="val">Engineering / QA</div></div>
+    <div class="cover-card"><div class="label">Experience</div><div class="val">2–5 Years</div></div>
+    <div class="cover-card"><div class="label">Stack</div><div class="val">Python / Flask / PostgreSQL</div></div>
+    <div class="cover-card"><div class="label">Reports To</div><div class="val">Lead Engineer</div></div>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ABOUT REVVIO -->
+<h1>About Revvio</h1>
+<p>Revvio is an AI-powered multi-tenant SaaS marketing platform built for local businesses — restaurants, salons, gyms, retail stores, and more. It helps business owners grow their customer base through automated marketing campaigns, QR code check-in, AI social post generation, customer journeys, and revenue tracking.</p>
+
+<div class="highlight-box">
+  <p><strong>Stack:</strong> Python 3.11 · Flask · PostgreSQL · SQLAlchemy · Render.com (cloud) · OpenAI GPT-4o-mini · Twilio · Stripe · Meta Graph API · Square POS</p>
+  <p style="margin-top:6px;"><strong>Scale:</strong> Multi-tenant — one app serves hundreds of businesses simultaneously, each with isolated data, customers, and campaigns.</p>
+</div>
+
+<div class="two-col">
+  <div class="info-card">
+    <h3>📊 Platform Stats</h3>
+    <ul style="list-style:none;padding:0;">
+      <li>• 134 API routes / endpoints</li>
+      <li>• 13 database models (PostgreSQL)</li>
+      <li>• 5,800+ lines of Python</li>
+      <li>• 7 third-party API integrations</li>
+      <li>• Multi-tenant (100s of businesses)</li>
+      <li>• Cron automation engine (every 30 min)</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h3>🔥 Key Features Under Test</h3>
+    <ul style="list-style:none;padding:0;">
+      <li>• AI content generation (OpenAI)</li>
+      <li>• SMS/Email blast to thousands</li>
+      <li>• QR check-in + coupon redemption</li>
+      <li>• Journey automation engine</li>
+      <li>• Stripe payment webhooks</li>
+      <li>• Real-time analytics dashboard</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ROLE OVERVIEW -->
+<h1>Role Overview</h1>
+<p>We are looking for a <strong>Performance Test Engineer</strong> to help us ensure Revvio can scale reliably as we grow from hundreds to thousands of businesses. You will design, build, and execute performance and load tests, identify bottlenecks, and work closely with the backend engineer to fix them.</p>
+<p>This is a high-impact role — you will be the first dedicated QA/Performance hire and will set the testing culture for the engineering team.</p>
+
+<!-- RESPONSIBILITIES -->
+<h1>Responsibilities</h1>
+
+<h2>Performance & Load Testing</h2>
+<ul>
+  <li>Design and execute load tests simulating concurrent multi-tenant usage across 100s of businesses</li>
+  <li>Test high-traffic endpoints: <code>/api/do-checkin/&lt;slug&gt;</code>, <code>/cron/run-automations</code>, <code>/generate-social-post</code>, <code>/bulk-send</code></li>
+  <li>Simulate bulk SMS/email campaign delivery to 500–2000 customers per business</li>
+  <li>Measure response times, throughput, error rates, and database query latency under load</li>
+  <li>Test AI content generation endpoint stability under concurrent requests (OpenAI integration)</li>
+  <li>Identify and document database N+1 query issues, slow queries, missing indexes</li>
+</ul>
+
+<h2>API & Integration Testing</h2>
+<ul>
+  <li>Write functional API tests for all 134 REST endpoints</li>
+  <li>Test Twilio webhook reliability, Stripe payment webhook signature validation, Square POS sync</li>
+  <li>Validate multi-tenant data isolation — ensure business A cannot see business B's data</li>
+  <li>Test authentication edge cases: session expiry, concurrent logins, invalid tokens</li>
+  <li>Test QR check-in flow end-to-end: join → coupon generation → SMS delivery → redemption</li>
+</ul>
+
+<h2>Database Performance</h2>
+<ul>
+  <li>Analyze PostgreSQL query plans for slow queries using EXPLAIN ANALYZE</li>
+  <li>Test database connection pool behavior under peak load (SQLAlchemy pool_size=10)</li>
+  <li>Validate live migration safety — run migrations against staging database and verify data integrity</li>
+  <li>Stress test the customer journey automation engine with large audience enrollments</li>
+</ul>
+
+<h2>Monitoring & Reporting</h2>
+<ul>
+  <li>Set up performance baselines and regression thresholds</li>
+  <li>Create performance dashboards and share results with the engineering team</li>
+  <li>Document findings with clear reproduction steps and recommended fixes</li>
+  <li>Work with Render.com metrics (CPU, memory, response time) during load tests</li>
+</ul>
+
+<!-- REQUIREMENTS -->
+<h1 class="page-break">Requirements</h1>
+
+<h2>Must-Have Skills</h2>
+<ul>
+  <li><strong>Performance testing tools:</strong> Locust, JMeter, k6, or Gatling — at least one in-depth</li>
+  <li><strong>API testing:</strong> REST API testing with Postman, pytest, or similar</li>
+  <li><strong>Python:</strong> Comfortable reading and writing Python test scripts</li>
+  <li><strong>SQL / PostgreSQL:</strong> Ability to write queries, read EXPLAIN plans, identify slow queries</li>
+  <li><strong>HTTP fundamentals:</strong> Understanding of request/response, headers, status codes, webhooks</li>
+  <li><strong>Load test design:</strong> Know the difference between stress, spike, soak, and breakpoint tests</li>
+</ul>
+
+<h2>Nice-to-Have Skills</h2>
+<ul>
+  <li>Experience testing Flask or Django applications</li>
+  <li>Familiarity with Twilio, Stripe, or Meta API integrations</li>
+  <li>Experience with CI/CD pipelines (GitHub Actions)</li>
+  <li>Knowledge of connection pooling, database indexing strategy</li>
+  <li>Experience with Render.com, Railway, or similar PaaS platforms</li>
+  <li>Background in multi-tenant SaaS testing</li>
+</ul>
+
+<h2>Soft Skills</h2>
+<ul>
+  <li>Detail-oriented — you catch edge cases others miss</li>
+  <li>Clear communicator — you can explain a bottleneck to a non-technical founder</li>
+  <li>Self-starter — comfortable working independently on a small team</li>
+  <li>Proactive — you find bugs before customers do</li>
+</ul>
+
+<!-- SPECIFIC TEST SCENARIOS -->
+<h1>Key Test Scenarios You Will Own</h1>
+<table>
+  <thead><tr><th>Scenario</th><th>Endpoint / Feature</th><th>Test Type</th></tr></thead>
+  <tbody>
+    <tr><td>100 customers scan QR simultaneously</td><td>POST /api/do-checkin/&lt;slug&gt;</td><td>Load / Spike</td></tr>
+    <tr><td>Bulk SMS to 2,000 customers</td><td>POST /bulk-send + Twilio API</td><td>Stress / Integration</td></tr>
+    <tr><td>AI post generation under concurrency</td><td>POST /generate-social-post</td><td>Concurrency / Timeout</td></tr>
+    <tr><td>Cron automation engine at scale</td><td>GET /cron/run-automations</td><td>Soak / Performance</td></tr>
+    <tr><td>Dashboard load with 2,000 customers</td><td>GET /dashboard</td><td>Performance / DB Query</td></tr>
+    <tr><td>50 businesses logged in simultaneously</td><td>All authenticated routes</td><td>Multi-tenant Load</td></tr>
+    <tr><td>Stripe webhook flood</td><td>POST /stripe/webhook</td><td>Stress / Security</td></tr>
+    <tr><td>Journey engine with 500 enrolled customers</td><td>process_journeys() internal</td><td>Performance / Soak</td></tr>
+    <tr><td>Customer import — 1,000 row CSV</td><td>POST /upload-customers</td><td>Performance</td></tr>
+    <tr><td>Multi-tenant data isolation</td><td>All /api/* endpoints</td><td>Security / Functional</td></tr>
+  </tbody>
+</table>
+
+<!-- TECH STACK THEY WILL TEST -->
+<h1>Tech Stack You Will Work With</h1>
+<div class="two-col">
+  <div>
+    <p><strong>Backend</strong></p>
+    <span class="tag">Python 3.11</span>
+    <span class="tag">Flask 3.0</span>
+    <span class="tag">SQLAlchemy</span>
+    <span class="tag">Gunicorn</span>
+    <span class="tag">PostgreSQL</span>
+    <br><br>
+    <p><strong>Third-Party APIs</strong></p>
+    <span class="tag tag-blue">OpenAI GPT-4o-mini</span>
+    <span class="tag tag-blue">Twilio SMS</span>
+    <span class="tag tag-blue">Stripe</span>
+    <span class="tag tag-blue">Meta Graph API</span>
+    <span class="tag tag-blue">Square POS</span>
+  </div>
+  <div>
+    <p><strong>Infrastructure</strong></p>
+    <span class="tag tag-green">Render.com</span>
+    <span class="tag tag-green">GitHub</span>
+    <span class="tag tag-green">PostgreSQL (Render DB)</span>
+    <br><br>
+    <p><strong>Testing Tools (you choose)</strong></p>
+    <span class="tag">Locust</span>
+    <span class="tag">k6</span>
+    <span class="tag">pytest</span>
+    <span class="tag">Postman</span>
+    <span class="tag">JMeter</span>
+  </div>
+</div>
+
+<!-- WHAT WE OFFER -->
+<h1>What We Offer</h1>
+<ul>
+  <li><strong>Full access to codebase</strong> — you'll work directly in the production codebase with no black-box restrictions</li>
+  <li><strong>Direct collaboration</strong> with the founding engineer — fast feedback loops, no bureaucracy</li>
+  <li><strong>High ownership</strong> — you define the testing strategy, tooling, and standards</li>
+  <li><strong>Remote-first</strong> — work from anywhere, flexible hours</li>
+  <li><strong>Competitive compensation</strong> — based on experience and location</li>
+  <li><strong>Equity potential</strong> — early-stage company with strong growth trajectory</li>
+</ul>
+
+<!-- HOW TO APPLY -->
+<div class="apply-box">
+  <h2>How to Apply</h2>
+  <p>Send your resume, a brief note on your performance testing experience, and any relevant test scripts or reports you've written.</p>
+  <a href="mailto:vinod.lev91@gmail.com">Apply: vinod.lev91@gmail.com</a>
+  <p style="margin-top:12px;font-size:0.78rem;opacity:0.6;">Subject line: Performance Test Engineer — Revvio</p>
+</div>
+
+<div class="highlight-box">
+  <p><strong>Bonus:</strong> If you can write a quick Locust or k6 script that tests our <code>POST /api/do-checkin/&lt;slug&gt;</code> endpoint and share it with your application, you'll go straight to the top of the list.</p>
+</div>
+
+</div>
+<div class="footer">
+  Revvio.ai — Performance Test Engineer Job Description · May 2026<br>
+  revvio.ai · AI-Powered Marketing Platform for Local Businesses
+</div>
+</body>
+</html>

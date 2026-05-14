@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Revvio — Internal Technical Documentation</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+  :root { --purple:#7c3aed; --blue:#3b82f6; --green:#10b981; --text:#1e1b4b; --muted:#6b7280; --border:#e5e7eb; --bg:#f9fafb; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Inter',sans-serif; color:var(--text); background:#fff; font-size:13px; line-height:1.6; }
+  .cover { background:linear-gradient(135deg,#0f0c29,#302b63,#24243e); color:#fff; padding:80px 60px 60px; page-break-after:always; }
+  .cover-logo { font-size:2.8rem; font-weight:800; letter-spacing:-1px; margin-bottom:10px; }
+  .cover-logo span { color:#a78bfa; }
+  .cover-tagline { font-size:1.1rem; opacity:0.7; margin-bottom:40px; }
+  .cover-meta { display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:500px; }
+  .cover-meta-item { background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:14px 18px; }
+  .cover-meta-item .label { font-size:0.7rem; opacity:0.5; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; }
+  .cover-meta-item .val { font-weight:600; font-size:0.95rem; }
+  .cover-badge { display:inline-block; background:#7c3aed; border-radius:6px; padding:4px 12px; font-size:0.75rem; font-weight:600; margin-bottom:24px; letter-spacing:0.05em; }
+  .page { padding:48px 60px; max-width:900px; margin:0 auto; }
+  h1 { font-size:1.7rem; font-weight:800; color:var(--text); margin:32px 0 8px; padding-bottom:10px; border-bottom:2px solid var(--purple); }
+  h2 { font-size:1.15rem; font-weight:700; color:var(--text); margin:28px 0 10px; display:flex; align-items:center; gap:8px; }
+  h2::before { content:''; display:inline-block; width:4px; height:18px; background:var(--purple); border-radius:2px; }
+  h3 { font-size:1rem; font-weight:600; color:#374151; margin:20px 0 8px; }
+  p { margin-bottom:10px; color:#374151; font-size:0.88rem; }
+  ul { padding-left:20px; margin-bottom:10px; }
+  li { margin-bottom:4px; font-size:0.88rem; color:#374151; }
+  code { font-family:'JetBrains Mono',monospace; background:#f3f4f6; border:1px solid var(--border); border-radius:4px; padding:1px 6px; font-size:0.8rem; color:#7c3aed; }
+  pre { font-family:'JetBrains Mono',monospace; background:#1e1b4b; color:#e0e7ff; border-radius:10px; padding:20px 24px; font-size:0.78rem; line-height:1.7; margin:14px 0; overflow-x:auto; white-space:pre-wrap; }
+  table { width:100%; border-collapse:collapse; margin:14px 0; font-size:0.82rem; }
+  thead tr { background:linear-gradient(135deg,#7c3aed,#3b82f6); color:#fff; }
+  thead th { padding:10px 14px; text-align:left; font-weight:600; font-size:0.8rem; }
+  tbody tr:nth-child(even) { background:#f9fafb; }
+  tbody tr:hover { background:#f0ebff; }
+  td { padding:9px 14px; border-bottom:1px solid var(--border); vertical-align:top; }
+  td:first-child { font-weight:500; }
+  .toc { background:#f5f3ff; border:1px solid #ddd6fe; border-radius:12px; padding:24px 28px; margin:24px 0 32px; }
+  .toc h2 { font-size:1rem; margin:0 0 14px; }
+  .toc h2::before { display:none; }
+  .toc ol { padding-left:20px; column-count:2; column-gap:30px; }
+  .toc li { margin-bottom:6px; font-size:0.85rem; }
+  .toc a { color:var(--purple); text-decoration:none; font-weight:500; }
+  .toc a:hover { text-decoration:underline; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:20px; font-size:0.72rem; font-weight:600; }
+  .badge-free { background:#f3f4f6; color:#6b7280; }
+  .badge-pro { background:#dbeafe; color:#1d4ed8; }
+  .badge-ent { background:#ede9fe; color:#7c3aed; }
+  .badge-req { background:#dcfce7; color:#16a34a; }
+  .badge-opt { background:#fef9c3; color:#a16207; }
+  .callout { border-left:4px solid var(--purple); background:#f5f3ff; border-radius:0 8px 8px 0; padding:14px 18px; margin:14px 0; font-size:0.85rem; }
+  .callout-warn { border-color:#f59e0b; background:#fffbeb; }
+  .callout-info { border-color:#3b82f6; background:#eff6ff; }
+  .section-icon { font-size:1.1rem; margin-right:4px; }
+  .chip { display:inline-block; background:#ede9fe; color:#7c3aed; border-radius:6px; padding:2px 8px; font-size:0.72rem; font-weight:600; margin-right:4px; margin-bottom:4px; }
+  .flow-box { background:#f9fafb; border:1px solid var(--border); border-radius:10px; padding:16px 20px; margin:10px 0; font-size:0.83rem; }
+  .flow-arrow { color:#7c3aed; font-weight:700; }
+  .stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:14px 0; }
+  .stat-card { background:linear-gradient(135deg,#7c3aed,#3b82f6); border-radius:10px; padding:16px; color:#fff; text-align:center; }
+  .stat-card .num { font-size:1.5rem; font-weight:800; }
+  .stat-card .lbl { font-size:0.7rem; opacity:0.8; margin-top:2px; }
+  .footer { background:#1e1b4b; color:#a5b4fc; text-align:center; padding:30px; font-size:0.8rem; margin-top:40px; }
+  .page-break { page-break-before:always; }
+  @media print {
+    body { font-size:11px; }
+    .cover { page-break-after:always; }
+    h1 { page-break-before:auto; }
+    table { page-break-inside:avoid; }
+    pre { page-break-inside:avoid; }
+    .page-break { page-break-before:always; }
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="cover">
+  <div class="cover-logo">Revvio<span>.</span></div>
+  <div class="cover-tagline">AI-Powered Marketing Platform for Local Businesses</div>
+  <div class="cover-badge">INTERNAL TECHNICAL DOCUMENTATION</div>
+  <div class="cover-meta">
+    <div class="cover-meta-item"><div class="label">Version</div><div class="val">1.0</div></div>
+    <div class="cover-meta-item"><div class="label">Last Updated</div><div class="val">April 2026</div></div>
+    <div class="cover-meta-item"><div class="label">Stack</div><div class="val">Python / Flask / PostgreSQL</div></div>
+    <div class="cover-meta-item"><div class="label">Hosted On</div><div class="val">Render.com</div></div>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+  <h2>📋 Table of Contents</h2>
+  <ol>
+    <li><a href="#overview">App Overview</a></li>
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#models">Database Models</a></li>
+    <li><a href="#env">Environment Variables</a></li>
+    <li><a href="#features">Feature Modules</a></li>
+    <li><a href="#routes">All Routes / API Endpoints</a></li>
+    <li><a href="#flows">User Flows</a></li>
+    <li><a href="#plans">Plans &amp; Permissions</a></li>
+    <li><a href="#integrations">Third-Party Integrations</a></li>
+    <li><a href="#deployment">Deployment</a></li>
+    <li><a href="#admin">Admin Panel</a></li>
+  </ol>
+</div>
+
+<!-- 1. OVERVIEW -->
+<h1 id="overview">1. App Overview</h1>
+<p>Revvio is a multi-tenant SaaS platform that helps local businesses grow their customer base through AI-driven marketing automation.</p>
+
+<div class="stat-grid">
+  <div class="stat-card"><div class="num">14</div><div class="lbl">Feature Modules</div></div>
+  <div class="stat-card"><div class="num">80+</div><div class="lbl">API Routes</div></div>
+  <div class="stat-card"><div class="num">13</div><div class="lbl">DB Models</div></div>
+  <div class="stat-card"><div class="num">7</div><div class="lbl">Integrations</div></div>
+</div>
+
+<h3>Core Capabilities</h3>
+<ul>
+  <li>AI-generated marketing campaigns (Email, SMS, WhatsApp)</li>
+  <li>Automated customer journeys with multi-step triggers</li>
+  <li>QR code check-in with welcome coupons &amp; analytics</li>
+  <li>Public business landing page with product catalog</li>
+  <li>AI-powered social media post generation &amp; publishing</li>
+  <li>Revenue ROI tracking &amp; Square POS integration</li>
+  <li>White-label branding per client (Enterprise plan)</li>
+  <li>Admin panel for managing all client accounts</li>
+</ul>
+
+<div class="callout">All customer data, campaigns, and settings are scoped by <code>business_id</code>. No data leaks between tenants.</div>
+
+<!-- 2. ARCHITECTURE -->
+<h1 id="architecture" class="page-break">2. Architecture</h1>
+<pre>
+┌─────────────────────────────────────────────────────┐
+│                    Client Browser                   │
+│          (HTML templates served by Flask)           │
+└─────────────────────┬───────────────────────────────┘
+                      │ HTTPS
+┌─────────────────────▼───────────────────────────────┐
+│               Render.com (PaaS)                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  Gunicorn  (1 worker, timeout 120s, preload)  │  │
+│  │  Flask App  ──  main.py (single file)         │  │
+│  │  SQLAlchemy ORM  ──  PostgreSQL               │  │
+│  └───────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────┘
+
+External APIs
+├── OpenAI (gpt-4o-mini)      AI content generation
+├── Twilio                    SMS / WhatsApp delivery
+├── Resend                    Email delivery
+├── Stripe                    Subscriptions / billing
+├── Meta Graph API v18.0      Facebook / Instagram posting
+├── Square API                POS payment sync
+└── Google OAuth2             Social login
+</pre>
+
+<h3>Key Files</h3>
+<table>
+  <thead><tr><th>File</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>main.py</code></td><td>Entire backend — models, routes, business logic (~4000 lines)</td></tr>
+    <tr><td><code>templates/</code></td><td>Jinja2 HTML templates (one per page, ~50 files)</td></tr>
+    <tr><td><code>static/</code></td><td>CSS, JS, images, uploaded logos &amp; product photos</td></tr>
+    <tr><td><code>Procfile</code></td><td>Gunicorn startup command for Render deployment</td></tr>
+    <tr><td><code>requirements.txt</code></td><td>Python package dependencies</td></tr>
+  </tbody>
+</table>
+
+<!-- 3. DATABASE MODELS -->
+<h1 id="models" class="page-break">3. Database Models</h1>
+
+<h2>Business</h2>
+<p>Primary account — one per registered business. All data is scoped to this.</p>
+<table>
+  <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>Integer PK</td><td>Auto-increment</td></tr>
+    <tr><td>business_name</td><td>String(200)</td><td>Business display name</td></tr>
+    <tr><td>owner_name</td><td>String(200)</td><td>Owner full name</td></tr>
+    <tr><td>email</td><td>String(200) UNIQUE</td><td>Login email</td></tr>
+    <tr><td>password</td><td>String(200)</td><td>Bcrypt hashed password</td></tr>
+    <tr><td>plan</td><td>String(50)</td><td>free / pro / enterprise</td></tr>
+    <tr><td>stripe_customer_id</td><td>String(200)</td><td>Stripe billing ID</td></tr>
+    <tr><td>trial_ends_at</td><td>DateTime</td><td>30-day trial expiry</td></tr>
+    <tr><td>slug</td><td>String(200) UNIQUE</td><td>URL slug (e.g. grill-4)</td></tr>
+    <tr><td>brand_name</td><td>String(200)</td><td>White-label name (replaces Revvio)</td></tr>
+    <tr><td>brand_color</td><td>String(20)</td><td>Hex color (default #7c3aed)</td></tr>
+    <tr><td>logo_url</td><td>String(500)</td><td>Uploaded logo file path</td></tr>
+    <tr><td>custom_subdomain</td><td>String(100)</td><td>e.g. mybrand → mybrand.revvio.ai</td></tr>
+    <tr><td>disabled_features</td><td>Text</td><td>Comma-separated disabled features</td></tr>
+    <tr><td>onboarding_done</td><td>Boolean</td><td>Dismiss onboarding checklist</td></tr>
+    <tr><td>welcome_offer_enabled</td><td>Boolean</td><td>Enable join coupon</td></tr>
+    <tr><td>welcome_offer_amount</td><td>String(50)</td><td>e.g. "$5" or "₹100"</td></tr>
+    <tr><td>welcome_offer_text</td><td>String(200)</td><td>e.g. "off your first visit"</td></tr>
+    <tr><td>welcome_offer_expiry_days</td><td>Integer</td><td>Days coupon is valid</td></tr>
+    <tr><td>referral_code</td><td>String(20) UNIQUE</td><td>Shareable referral code</td></tr>
+    <tr><td>created_at</td><td>DateTime</td><td>Account creation date</td></tr>
+  </tbody>
+</table>
+
+<h2>Customer</h2>
+<p>One per customer per business. Isolated by business_id.</p>
+<table>
+  <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>Integer PK</td><td></td></tr>
+    <tr><td>business_id</td><td>FK → businesses</td><td>Owner business</td></tr>
+    <tr><td>first_name</td><td>String(100)</td><td></td></tr>
+    <tr><td>last_name</td><td>String(100)</td><td></td></tr>
+    <tr><td>email</td><td>String(200)</td><td></td></tr>
+    <tr><td>phone</td><td>String(50)</td><td></td></tr>
+    <tr><td>dob</td><td>String(20)</td><td>Date of birth YYYY-MM-DD</td></tr>
+    <tr><td>source</td><td>String(50)</td><td>signup / qr_checkin / import / manual</td></tr>
+    <tr><td>unsubscribed</td><td>Boolean</td><td>Email unsubscribed flag</td></tr>
+    <tr><td>sms_opted_in</td><td>Boolean</td><td>SMS consent</td></tr>
+    <tr><td>whatsapp_opted_in</td><td>Boolean</td><td>WhatsApp consent</td></tr>
+    <tr><td>checkin_token</td><td>String(64)</td><td>Unique QR token per customer</td></tr>
+    <tr><td>created_at</td><td>DateTime</td><td></td></tr>
+  </tbody>
+</table>
+
+<h2>Campaign</h2>
+<table>
+  <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>Integer PK</td><td></td></tr>
+    <tr><td>business_id</td><td>FK</td><td></td></tr>
+    <tr><td>customer_email</td><td>String(200)</td><td>Target email address</td></tr>
+    <tr><td>campaign_type</td><td>String(50)</td><td>birthday / winback / weekly / etc.</td></tr>
+    <tr><td>subject</td><td>String(300)</td><td>Email subject line</td></tr>
+    <tr><td>message</td><td>Text</td><td>Full message body</td></tr>
+    <tr><td>channel</td><td>String(20)</td><td>email / sms / whatsapp</td></tr>
+    <tr><td>status</td><td>String(20)</td><td>draft / sent / failed</td></tr>
+    <tr><td>open_count</td><td>Integer</td><td>Email open tracking count</td></tr>
+    <tr><td>click_count</td><td>Integer</td><td>Link click count</td></tr>
+    <tr><td>created_at</td><td>DateTime</td><td></td></tr>
+  </tbody>
+</table>
+
+<h2>CheckIn</h2>
+<table>
+  <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>Integer PK</td><td></td></tr>
+    <tr><td>business_id</td><td>FK</td><td></td></tr>
+    <tr><td>customer_id</td><td>FK → customers</td><td></td></tr>
+    <tr><td>name</td><td>String(200)</td><td>Customer name at check-in</td></tr>
+    <tr><td>phone</td><td>String(50)</td><td></td></tr>
+    <tr><td>source</td><td>String(30)</td><td>qr / manual</td></tr>
+    <tr><td>coupon_code</td><td>String(20)</td><td>Unique 10-char welcome coupon code</td></tr>
+    <tr><td>coupon_redeemed</td><td>Boolean</td><td>Has been used</td></tr>
+    <tr><td>coupon_redeemed_at</td><td>DateTime</td><td>Timestamp when redeemed</td></tr>
+    <tr><td>created_at</td><td>DateTime</td><td></td></tr>
+  </tbody>
+</table>
+
+<h2>Product</h2>
+<table>
+  <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>id</td><td>Integer PK</td><td></td></tr>
+    <tr><td>business_id</td><td>FK</td><td></td></tr>
+    <tr><td>name</td><td>String(200)</td><td>Product/service name</td></tr>
+    <tr><td>description</td><td>Text</td><td>Description shown on public page</td></tr>
+    <tr><td>price</td><td>String(50)</td><td>e.g. "$18.99" or "From $50"</td></tr>
+    <tr><td>category</td><td>String(100)</td><td>e.g. "Main Course"</td></tr>
+    <tr><td>image_url</td><td>String(500)</td><td>Uploaded photo path</td></tr>
+    <tr><td>is_featured</td><td>Boolean</td><td>Show in Featured section</td></tr>
+    <tr><td>sort_order</td><td>Integer</td><td>Display order</td></tr>
+    <tr><td>active</td><td>Boolean</td><td>Visible on public page</td></tr>
+  </tbody>
+</table>
+
+<h2>BusinessProfile</h2>
+<p>AI setup settings per business (one-to-one with Business).</p>
+<table>
+  <thead><tr><th>Column</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>business_id</td><td>FK UNIQUE</td><td></td></tr>
+    <tr><td>business_type</td><td>String(50)</td><td>restaurant / spa / gym / retail / etc.</td></tr>
+    <tr><td>tone</td><td>String(50)</td><td>friendly / professional / fun</td></tr>
+    <tr><td>peak_days</td><td>String(200)</td><td>e.g. "Friday,Saturday"</td></tr>
+    <tr><td>timezone</td><td>String(100)</td><td>e.g. "America/Chicago"</td></tr>
+    <tr><td>welcome_msg_enabled</td><td>Boolean</td><td>Auto welcome SMS on signup</td></tr>
+    <tr><td>weekly_special_enabled</td><td>Boolean</td><td>Weekly AI campaign</td></tr>
+    <tr><td>birthday_enabled</td><td>Boolean</td><td>Birthday automations</td></tr>
+    <tr><td>winback_enabled</td><td>Boolean</td><td>30-day win-back</td></tr>
+    <tr><td>google_review_enabled</td><td>Boolean</td><td>Review request automation</td></tr>
+    <tr><td>google_review_link</td><td>String(500)</td><td>Google review URL</td></tr>
+  </tbody>
+</table>
+
+<!-- 4. ENV VARS -->
+<h1 id="env" class="page-break">4. Environment Variables</h1>
+<p>Configure all of these in <strong>Render → Your Service → Environment</strong>.</p>
+<table>
+  <thead><tr><th>Variable</th><th>Status</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>DATABASE_URL</code></td><td><span class="badge badge-req">REQUIRED</span></td><td>PostgreSQL connection string (auto-set by Render)</td></tr>
+    <tr><td><code>SECRET_KEY</code></td><td><span class="badge badge-req">REQUIRED</span></td><td>Flask session secret (any random string)</td></tr>
+    <tr><td><code>OPENAI_API_KEY</code></td><td><span class="badge badge-req">REQUIRED</span></td><td>OpenAI API key (starts with sk-)</td></tr>
+    <tr><td><code>TWILIO_ACCOUNT_SID</code></td><td><span class="badge badge-req">REQUIRED</span></td><td>Twilio account SID</td></tr>
+    <tr><td><code>TWILIO_AUTH_TOKEN</code></td><td><span class="badge badge-req">REQUIRED</span></td><td>Twilio auth token</td></tr>
+    <tr><td><code>TWILIO_FROM_NUMBER</code></td><td><span class="badge badge-req">REQUIRED</span></td><td>Twilio phone number (e.g. +15551234567)</td></tr>
+    <tr><td><code>RESEND_API_KEY</code></td><td><span class="badge badge-req">REQUIRED</span></td><td>Resend email API key</td></tr>
+    <tr><td><code>RESEND_FROM_EMAIL</code></td><td><span class="badge badge-req">REQUIRED</span></td><td>From email (e.g. hello@revvio.ai)</td></tr>
+    <tr><td><code>STRIPE_SECRET_KEY</code></td><td><span class="badge badge-req">REQUIRED</span></td><td>Stripe secret key</td></tr>
+    <tr><td><code>STRIPE_PUBLISHABLE_KEY</code></td><td><span class="badge badge-req">REQUIRED</span></td><td>Stripe publishable key</td></tr>
+    <tr><td><code>ADMIN_EMAIL</code></td><td><span class="badge badge-req">REQUIRED</span></td><td>Superadmin login email</td></tr>
+    <tr><td><code>ADMIN_PASSWORD</code></td><td><span class="badge badge-req">REQUIRED</span></td><td>Superadmin login password</td></tr>
+    <tr><td><code>CRON_SECRET</code></td><td><span class="badge badge-req">REQUIRED</span></td><td>Secret key for cron automation endpoint</td></tr>
+    <tr><td><code>META_APP_ID</code></td><td><span class="badge badge-opt">OPTIONAL</span></td><td>Facebook App ID (for social posting)</td></tr>
+    <tr><td><code>META_APP_SECRET</code></td><td><span class="badge badge-opt">OPTIONAL</span></td><td>Facebook App Secret</td></tr>
+    <tr><td><code>SQUARE_APP_ID</code></td><td><span class="badge badge-opt">OPTIONAL</span></td><td>Square application ID (for POS)</td></tr>
+    <tr><td><code>SQUARE_APP_SECRET</code></td><td><span class="badge badge-opt">OPTIONAL</span></td><td>Square app secret</td></tr>
+    <tr><td><code>GOOGLE_CLIENT_ID</code></td><td><span class="badge badge-opt">OPTIONAL</span></td><td>Google OAuth client ID (social login)</td></tr>
+    <tr><td><code>GOOGLE_CLIENT_SECRET</code></td><td><span class="badge badge-opt">OPTIONAL</span></td><td>Google OAuth secret</td></tr>
+    <tr><td><code>STRIPE_WEBHOOK_SECRET</code></td><td><span class="badge badge-opt">OPTIONAL</span></td><td>Stripe webhook signing secret</td></tr>
+  </tbody>
+</table>
+
+<!-- 5. FEATURES -->
+<h1 id="features" class="page-break">5. Feature Modules</h1>
+
+<h2>5.1 Customer Management</h2>
+<ul>
+  <li>Add customers manually or via CSV / paste import</li>
+  <li>Fields: first name, last name, email, phone, DOB, WhatsApp, source</li>
+  <li>Segments: all, new, loyal, inactive, birthday, SMS-only, WhatsApp</li>
+  <li>Duplicate detection and merge</li>
+  <li>Unsubscribe / suppression list management</li>
+  <li>Individual customer profile with full campaign history</li>
+</ul>
+
+<h2>5.2 Campaigns</h2>
+<ul>
+  <li>Create email, SMS, or WhatsApp messages</li>
+  <li>AI-generated message content via OpenAI (gpt-4o-mini)</li>
+  <li>Schedule or send immediately to a segment</li>
+  <li>Open tracking (email pixel), link click tracking</li>
+  <li>Campaign cloning, editing, deleting</li>
+</ul>
+
+<h2>5.3 AI Automations</h2>
+<p>Toggle-based automations that run every 30 minutes via cron:</p>
+<table>
+  <thead><tr><th>Automation</th><th>Trigger</th><th>Action</th></tr></thead>
+  <tbody>
+    <tr><td>Welcome Message</td><td>New customer joins</td><td>Instant SMS/WhatsApp</td></tr>
+    <tr><td>Weekly Special</td><td>Every Tuesday</td><td>AI writes &amp; sends offer</td></tr>
+    <tr><td>Flash Deal</td><td>Slow days</td><td>AI sends flash discount</td></tr>
+    <tr><td>Birthday Offer</td><td>Customer's birthday</td><td>Personalized SMS</td></tr>
+    <tr><td>Win-Back</td><td>No visit in 30 days</td><td>Re-engagement SMS</td></tr>
+    <tr><td>Google Review Request</td><td>3 days after signup</td><td>Review link SMS</td></tr>
+    <tr><td>Loyalty Milestones</td><td>Visit count threshold</td><td>Reward message</td></tr>
+  </tbody>
+</table>
+<div class="callout callout-info">Cron endpoint: <code>GET /cron/run-automations?secret=CRON_SECRET</code><br>Triggered externally (cron-job.org) every 30 minutes.</div>
+
+<h2>5.4 Customer Journeys</h2>
+<ul>
+  <li>Visual multi-step automation builder</li>
+  <li>Triggers: signup / birthday / win-back / manual</li>
+  <li>Steps: wait X days → send email/SMS → check open → branch</li>
+  <li>Per-journey analytics (sent, opened, clicked)</li>
+  <li>Audience enrollment and preview</li>
+</ul>
+
+<h2>5.5 AI Social Posts</h2>
+<ul>
+  <li>Describe a promotion → AI writes Instagram, Facebook, WhatsApp, Story posts</li>
+  <li>Ready-made templates (no AI needed)</li>
+  <li>Post directly to connected Facebook/Instagram pages</li>
+  <li>Visual post queue with reordering</li>
+</ul>
+
+<h2>5.6 Visual Post Designer</h2>
+<ul>
+  <li>8 CSS-based design templates</li>
+  <li>Fill in headline, subtext, badge, business name, address</li>
+  <li>Download as PNG (html2canvas)</li>
+  <li>Post directly to Facebook/Instagram via Meta Graph API</li>
+</ul>
+
+<h2>5.7 Public Landing Page <code>/p/&lt;slug&gt;</code></h2>
+<ul>
+  <li>Dark gradient hero with business logo, name, address</li>
+  <li>Product/service catalog with photos and category filter</li>
+  <li>Featured products section</li>
+  <li>Join VIP list form: first name, last name, phone, email, DOB</li>
+  <li>Welcome coupon card shown after joining (if enabled)</li>
+</ul>
+
+<h2>5.8 QR Check-In</h2>
+<ul>
+  <li>QR code generated via api.qrserver.com pointing to <code>/p/&lt;slug&gt;</code></li>
+  <li>Print-ready QR page</li>
+  <li>Stats: today / week / all-time check-ins</li>
+  <li>Blast SMS: send public page link to all existing customers</li>
+  <li>Coupon analytics: issued, redeemed, pending, redemption rate</li>
+</ul>
+
+<h2>5.9 Welcome Coupon System</h2>
+<ul>
+  <li>Business configures in <code>/branding</code>: amount (e.g. $5 / ₹100), description, expiry days</li>
+  <li>Customer joins → unique 10-character alphanumeric code generated</li>
+  <li>Digital coupon card shown with QR code and expiry date</li>
+  <li>SMS sent to customer with coupon code</li>
+  <li>Staff scans coupon QR → <code>/redeem/&lt;code&gt;</code> → verify and mark as redeemed</li>
+  <li>Full analytics on QR dashboard page</li>
+</ul>
+
+<h2>5.10 Revenue ROI</h2>
+<ul>
+  <li>Log revenue manually per campaign</li>
+  <li>Total revenue tracked, average per visit calculated</li>
+  <li>Campaign-level ROI breakdown</li>
+</ul>
+
+<h2>5.11 Square POS Integration</h2>
+<ul>
+  <li>OAuth2 connect flow at <code>/square-connect</code></li>
+  <li>Auto-logs revenue when payment.created webhook fires</li>
+  <li>Manual sync of historical payments</li>
+  <li>Matches payments to customers by email/phone</li>
+</ul>
+
+<h2>5.12 Branding &amp; Permissions</h2>
+<ul>
+  <li>Upload logo, set brand name (replaces "Revvio" in header)</li>
+  <li>Pick brand color (hex picker)</li>
+  <li>Custom subdomain field (requires DNS setup)</li>
+  <li>Feature toggles — hide/show any feature per client</li>
+  <li>Configure welcome offer coupon</li>
+</ul>
+
+<h2>5.13 AI Business Assistant</h2>
+<ul>
+  <li>Full-page chat interface at <code>/ai-agent</code></li>
+  <li>Context-aware: knows customer count, campaigns, plan</li>
+  <li>Floating widget on dashboard (bottom-right corner)</li>
+  <li>Guides businesses through setup step by step</li>
+</ul>
+
+<h2>5.14 Onboarding Checklist</h2>
+<ul>
+  <li>6-step checklist shown to new users on dashboard</li>
+  <li>Progress bar with completion percentage</li>
+  <li>Steps: profile → customers → campaign → branding → QR → ROI</li>
+  <li>Dismissable via "Dismiss" button</li>
+</ul>
+
+<!-- 6. ROUTES -->
+<h1 id="routes" class="page-break">6. All Routes / API Endpoints</h1>
+
+<h2>Public / Auth</h2>
+<table>
+  <thead><tr><th>Route</th><th>Method</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>/</code></td><td>GET</td><td>Landing page</td></tr>
+    <tr><td><code>/register</code></td><td>GET/POST</td><td>Business registration</td></tr>
+    <tr><td><code>/login</code></td><td>GET/POST</td><td>Login</td></tr>
+    <tr><td><code>/logout</code></td><td>GET</td><td>Logout, clear session</td></tr>
+    <tr><td><code>/forgot-password</code></td><td>GET/POST</td><td>Password reset flow</td></tr>
+    <tr><td><code>/auth/google</code></td><td>POST</td><td>Google OAuth login</td></tr>
+    <tr><td><code>/r/&lt;code&gt;</code></td><td>GET</td><td>Referral link redirect</td></tr>
+  </tbody>
+</table>
+
+<h2>Dashboard &amp; Core</h2>
+<table>
+  <thead><tr><th>Route</th><th>Method</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>/dashboard</code></td><td>GET</td><td>Main dashboard with stats + onboarding</td></tr>
+    <tr><td><code>/setup</code></td><td>GET/POST</td><td>AI automations setup &amp; toggles</td></tr>
+    <tr><td><code>/settings</code></td><td>GET/POST</td><td>Account settings</td></tr>
+    <tr><td><code>/onboarding</code></td><td>GET/POST</td><td>New user onboarding wizard</td></tr>
+    <tr><td><code>/upgrade</code></td><td>GET</td><td>Pricing / upgrade page</td></tr>
+    <tr><td><code>/refer</code></td><td>GET</td><td>Referral program page</td></tr>
+    <tr><td><code>/api/dismiss-onboarding</code></td><td>POST</td><td>Mark onboarding checklist done</td></tr>
+  </tbody>
+</table>
+
+<h2>Customers</h2>
+<table>
+  <thead><tr><th>Route</th><th>Method</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>/customers</code></td><td>GET</td><td>Customer list with segments</td></tr>
+    <tr><td><code>/add-customer</code></td><td>GET/POST</td><td>Add single customer</td></tr>
+    <tr><td><code>/edit-customer/&lt;id&gt;</code></td><td>POST</td><td>Update customer</td></tr>
+    <tr><td><code>/delete-customer/&lt;id&gt;</code></td><td>POST</td><td>Delete customer</td></tr>
+    <tr><td><code>/upload-customers</code></td><td>GET/POST</td><td>CSV import</td></tr>
+    <tr><td><code>/paste-customers</code></td><td>POST</td><td>Paste bulk import</td></tr>
+    <tr><td><code>/customers/duplicates</code></td><td>GET</td><td>Find duplicate records</td></tr>
+    <tr><td><code>/customers/merge</code></td><td>POST</td><td>Merge duplicates</td></tr>
+    <tr><td><code>/customers/&lt;id&gt;/profile</code></td><td>GET</td><td>Individual customer profile</td></tr>
+    <tr><td><code>/suppression</code></td><td>GET</td><td>Suppression / unsubscribe list</td></tr>
+  </tbody>
+</table>
+
+<h2>Campaigns</h2>
+<table>
+  <thead><tr><th>Route</th><th>Method</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>/campaigns</code></td><td>GET</td><td>Campaign list</td></tr>
+    <tr><td><code>/create-campaign</code></td><td>GET/POST</td><td>Create new campaign</td></tr>
+    <tr><td><code>/send-campaign/&lt;id&gt;</code></td><td>POST</td><td>Send email campaign</td></tr>
+    <tr><td><code>/send-sms/&lt;id&gt;</code></td><td>POST</td><td>Send SMS campaign</td></tr>
+    <tr><td><code>/edit-campaign/&lt;id&gt;</code></td><td>POST</td><td>Edit campaign</td></tr>
+    <tr><td><code>/clone-campaign/&lt;id&gt;</code></td><td>POST</td><td>Duplicate campaign</td></tr>
+    <tr><td><code>/delete-campaign/&lt;id&gt;</code></td><td>POST</td><td>Delete campaign</td></tr>
+    <tr><td><code>/bulk-send</code></td><td>GET/POST</td><td>Bulk send to segment</td></tr>
+    <tr><td><code>/generate-message</code></td><td>POST</td><td>AI generate message content</td></tr>
+    <tr><td><code>/track/open/&lt;id&gt;</code></td><td>GET</td><td>Email open tracking pixel</td></tr>
+    <tr><td><code>/track/click/&lt;id&gt;</code></td><td>GET</td><td>Click tracking redirect</td></tr>
+    <tr><td><code>/unsubscribe/&lt;token&gt;</code></td><td>GET</td><td>Customer unsubscribe</td></tr>
+  </tbody>
+</table>
+
+<h2>Public Page &amp; QR</h2>
+<table>
+  <thead><tr><th>Route</th><th>Method</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>/p/&lt;slug&gt;</code></td><td>GET</td><td>Public business landing page</td></tr>
+    <tr><td><code>/api/do-checkin/&lt;slug&gt;</code></td><td>POST</td><td>Process join form submission</td></tr>
+    <tr><td><code>/my-qr</code></td><td>GET</td><td>QR dashboard + coupon analytics</td></tr>
+    <tr><td><code>/redeem/&lt;code&gt;</code></td><td>GET</td><td>Staff coupon verification page</td></tr>
+    <tr><td><code>/api/redeem-coupon/&lt;code&gt;</code></td><td>POST</td><td>Mark coupon as redeemed</td></tr>
+    <tr><td><code>/api/blast-page-link</code></td><td>POST</td><td>SMS blast public page to all customers</td></tr>
+  </tbody>
+</table>
+
+<h2>Products, Branding, Social, Admin</h2>
+<table>
+  <thead><tr><th>Route</th><th>Method</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>/products</code></td><td>GET</td><td>Product management page</td></tr>
+    <tr><td><code>/api/products</code></td><td>POST</td><td>Add product</td></tr>
+    <tr><td><code>/api/products/&lt;id&gt;</code></td><td>PUT/DELETE</td><td>Update or delete product</td></tr>
+    <tr><td><code>/api/upload-product-image/&lt;id&gt;</code></td><td>POST</td><td>Upload product photo</td></tr>
+    <tr><td><code>/branding</code></td><td>GET/POST</td><td>White-label + permissions + welcome offer</td></tr>
+    <tr><td><code>/social-posts</code></td><td>GET</td><td>AI social posts generator</td></tr>
+    <tr><td><code>/generate-social-post</code></td><td>POST</td><td>Generate posts via OpenAI</td></tr>
+    <tr><td><code>/social-connect</code></td><td>GET</td><td>Facebook/Instagram OAuth connect</td></tr>
+    <tr><td><code>/api/post-to-social</code></td><td>POST</td><td>Publish to Facebook/Instagram</td></tr>
+    <tr><td><code>/roi</code></td><td>GET</td><td>Revenue ROI dashboard</td></tr>
+    <tr><td><code>/ai-agent</code></td><td>GET</td><td>AI assistant full page</td></tr>
+    <tr><td><code>/api/ai-agent-chat</code></td><td>POST</td><td>Chat with AI assistant</td></tr>
+    <tr><td><code>/cron/run-automations</code></td><td>GET</td><td>Cron trigger (called externally)</td></tr>
+    <tr><td><code>/admin/dashboard</code></td><td>GET</td><td>Admin — all businesses overview</td></tr>
+    <tr><td><code>/admin/change-plan/&lt;id&gt;</code></td><td>POST</td><td>Admin — change business plan</td></tr>
+    <tr><td><code>/admin/login-as/&lt;id&gt;</code></td><td>POST</td><td>Admin — impersonate business</td></tr>
+  </tbody>
+</table>
+
+<!-- 7. USER FLOWS -->
+<h1 id="flows" class="page-break">7. User Flows</h1>
+
+<h2>New Business Registration</h2>
+<div class="flow-box">
+  <code>/register</code> → fill form → <code>/onboarding</code> wizard (business type, tone, peak days, automations) → <code>/dashboard</code> with onboarding checklist
+</div>
+
+<h2>Customer Joins via QR Code</h2>
+<div class="flow-box">
+  Customer scans QR code<br>
+  <span class="flow-arrow">→</span> <code>/p/&lt;slug&gt;</code> (sees products catalog)<br>
+  <span class="flow-arrow">→</span> Fills name / phone / email / DOB<br>
+  <span class="flow-arrow">→</span> POST <code>/api/do-checkin/&lt;slug&gt;</code><br>
+  <span class="flow-arrow">→</span> Customer created in DB, welcome SMS sent<br>
+  <span class="flow-arrow">→</span> Coupon card displayed (if welcome offer enabled)<br>
+  <span class="flow-arrow">→</span> SMS with coupon code sent to customer
+</div>
+
+<h2>Staff Redeems a Coupon</h2>
+<div class="flow-box">
+  Customer shows coupon QR code<br>
+  <span class="flow-arrow">→</span> Staff scans with phone → <code>/redeem/&lt;code&gt;</code><br>
+  <span class="flow-arrow">→</span> Sees: customer name, join date, offer details<br>
+  <span class="flow-arrow">→</span> Clicks "Mark as Redeemed"<br>
+  <span class="flow-arrow">→</span> POST <code>/api/redeem-coupon/&lt;code&gt;</code><br>
+  <span class="flow-arrow">→</span> Marked used in DB, analytics updated
+</div>
+
+<h2>Send AI Campaign</h2>
+<div class="flow-box">
+  <code>/create-campaign</code> → select type + channel<br>
+  <span class="flow-arrow">→</span> POST <code>/generate-message</code> (AI writes content)<br>
+  <span class="flow-arrow">→</span> Review &amp; edit message<br>
+  <span class="flow-arrow">→</span> POST <code>/send-campaign/&lt;id&gt;</code> or <code>/send-sms/&lt;id&gt;</code><br>
+  <span class="flow-arrow">→</span> Sent via Resend (email) or Twilio (SMS)<br>
+  <span class="flow-arrow">→</span> Opens and clicks tracked
+</div>
+
+<h2>Generate &amp; Post Social Content</h2>
+<div class="flow-box">
+  <code>/social-posts</code> → describe promotion in textarea<br>
+  <span class="flow-arrow">→</span> POST <code>/generate-social-post</code> (OpenAI, ~10s)<br>
+  <span class="flow-arrow">→</span> Shows Instagram, Facebook, WhatsApp, Story content<br>
+  <span class="flow-arrow">→</span> Click "Post to Facebook" → POST <code>/api/post-to-social</code><br>
+  <span class="flow-arrow">→</span> Published via Meta Graph API v18.0
+</div>
+
+<!-- 8. PLANS -->
+<h1 id="plans" class="page-break">8. Plans &amp; Permissions</h1>
+<table>
+  <thead><tr><th>Feature</th><th>Free</th><th>Pro</th><th>Enterprise</th></tr></thead>
+  <tbody>
+    <tr><td>Customers</td><td>100 max</td><td>2,000 max</td><td>Unlimited</td></tr>
+    <tr><td>Campaigns / month</td><td>5</td><td>50</td><td>Unlimited</td></tr>
+    <tr><td>AI Social Posts</td><td>✅</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Email Campaigns</td><td>✅</td><td>✅</td><td>✅</td></tr>
+    <tr><td>WhatsApp</td><td>❌</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Journeys</td><td>❌</td><td>✅</td><td>✅</td></tr>
+    <tr><td>QR Check-In</td><td>❌</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Visual Templates</td><td>❌</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Revenue ROI</td><td>❌</td><td>✅</td><td>✅</td></tr>
+    <tr><td>AI Assistant</td><td>❌</td><td>✅</td><td>✅</td></tr>
+    <tr><td>Square POS</td><td>❌</td><td>❌</td><td>✅</td></tr>
+    <tr><td>White-Label</td><td>❌</td><td>❌</td><td>✅</td></tr>
+  </tbody>
+</table>
+<div class="callout">Per-business feature overrides can be set in <code>/branding</code>. Admins can hide any feature per client regardless of plan level.</div>
+
+<!-- 9. INTEGRATIONS -->
+<h1 id="integrations" class="page-break">9. Third-Party Integrations</h1>
+
+<h2>OpenAI (gpt-4o-mini)</h2>
+<ul>
+  <li>Used for: campaign messages, social posts, AI assistant chat</li>
+  <li>Called via: <code>requests.post</code> (not openai SDK — avoids httpx conflicts)</li>
+  <li>Timeout: 20 seconds | max_tokens: 350</li>
+  <li>Helper function: <code>_call_openai(prompt, max_tokens, timeout)</code></li>
+</ul>
+
+<h2>Twilio</h2>
+<ul>
+  <li>Used for: SMS delivery, WhatsApp messages</li>
+  <li>Env vars: <code>TWILIO_ACCOUNT_SID</code>, <code>TWILIO_AUTH_TOKEN</code>, <code>TWILIO_FROM_NUMBER</code></li>
+  <li>Inbound SMS handled at: <code>POST /twilio/webhook</code></li>
+</ul>
+
+<h2>Resend</h2>
+<ul>
+  <li>Used for: Email delivery (transactional + marketing)</li>
+  <li>From address configured via <code>RESEND_FROM_EMAIL</code> env var</li>
+  <li>Supports custom domain email per client</li>
+</ul>
+
+<h2>Stripe</h2>
+<ul>
+  <li>Used for: Pro / Enterprise subscriptions</li>
+  <li>Plans: Starter ($19/mo), Pro ($50/mo)</li>
+  <li>Webhooks: payment confirmation, subscription lifecycle events</li>
+</ul>
+
+<h2>Meta Graph API v18.0</h2>
+<ul>
+  <li>Used for: Post to Facebook Pages and Instagram Business accounts</li>
+  <li>OAuth flow: <code>/social-connect</code> → <code>/facebook/callback</code></li>
+  <li>Stores long-lived page access token per business in DB</li>
+</ul>
+
+<h2>Square</h2>
+<ul>
+  <li>Used for: Auto-log revenue from POS payments</li>
+  <li>OAuth2 flow: <code>/square-connect</code> → <code>/square/callback</code></li>
+  <li>Webhook receiver: <code>POST /api/square-webhook</code> (payment.created events)</li>
+</ul>
+
+<h2>Google OAuth2</h2>
+<ul>
+  <li>Used for: "Sign in with Google" on registration and login pages</li>
+  <li>Endpoint: <code>POST /auth/google</code></li>
+</ul>
+
+<!-- 10. DEPLOYMENT -->
+<h1 id="deployment" class="page-break">10. Deployment</h1>
+
+<h2>Platform: Render.com</h2>
+<pre>
+# Procfile
+web: gunicorn main:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --preload
+</pre>
+
+<div class="callout callout-warn">
+  <strong>⚠️ Single worker required</strong> — background job state uses in-memory storage. Using multiple workers would lose job state between requests.
+</div>
+
+<h3>Important Deployment Notes</h3>
+<ul>
+  <li><strong>1 worker only</strong> — required for in-memory state consistency</li>
+  <li><strong>Timeout 120s</strong> — allows longer AI operations</li>
+  <li><strong>Render load balancer</strong> has its own 30s HTTP timeout on free tier</li>
+  <li><strong>Auto-deploy</strong> on push to <code>main</code> branch via GitHub</li>
+</ul>
+
+<h3>Database Migrations</h3>
+<p>Run automatically at startup in <code>_do_migrations()</code> (background thread, 2s delay). Uses <code>ALTER TABLE IF NOT EXISTS</code> — safe to run on every deploy.</p>
+
+<h3>Static File Storage</h3>
+<table>
+  <thead><tr><th>Directory</th><th>Contents</th></tr></thead>
+  <tbody>
+    <tr><td><code>/static/logos/</code></td><td>Uploaded business logos</td></tr>
+    <tr><td><code>/static/product-images/</code></td><td>Product photos</td></tr>
+    <tr><td><code>/static/post-images/</code></td><td>Generated social post images</td></tr>
+  </tbody>
+</table>
+
+<div class="callout callout-warn">
+  <strong>⚠️ Ephemeral filesystem warning</strong> — Static file uploads are lost on Render redeploy. For production stability, migrate to AWS S3 or Cloudflare R2.
+</div>
+
+<h3>Deploying Updates</h3>
+<pre>
+git add .
+git commit -m "description of changes"
+git push
+# Render automatically redeploys on push to main branch
+</pre>
+
+<!-- 11. ADMIN -->
+<h1 id="admin" class="page-break">11. Admin Panel</h1>
+
+<h3>Access</h3>
+<p>URL: <code>/admin/login</code><br>
+Credentials: <code>ADMIN_EMAIL</code> + <code>ADMIN_PASSWORD</code> environment variables</p>
+
+<h3>Admin Capabilities</h3>
+<ul>
+  <li>View all businesses: customer counts, campaign counts, plan, last login</li>
+  <li>Change any business's plan (free → pro → enterprise)</li>
+  <li>Login as any business for support (impersonation)</li>
+  <li>Add new business accounts manually</li>
+  <li>Delete business accounts and all associated data</li>
+  <li>Send messages to businesses</li>
+  <li>Manage campaign types (add / edit / delete categories)</li>
+  <li>View MRR summary and trial expiry alerts</li>
+</ul>
+
+<h3>Key Helper Functions</h3>
+<table>
+  <thead><tr><th>Function</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>current_business()</code></td><td>Get logged-in business from session</td></tr>
+    <tr><td><code>has_feature(b, feature)</code></td><td>Check plan + per-business feature permissions</td></tr>
+    <tr><td><code>brand(b)</code></td><td>Get white-label name / color / logo</td></tr>
+    <tr><td><code>_call_openai(prompt, max_tokens, timeout)</code></td><td>Call OpenAI API with error handling</td></tr>
+    <tr><td><code>_send_sms(to, body)</code></td><td>Send SMS via Twilio</td></tr>
+    <tr><td><code>get_segment(business_id, segment)</code></td><td>Filter customers by segment name</td></tr>
+    <tr><td><code>trial_days_left(b)</code></td><td>Days remaining in business trial</td></tr>
+    <tr><td><code>make_slug(name, uid)</code></td><td>Generate URL-safe slug from business name</td></tr>
+  </tbody>
+</table>
+
+</div>
+
+<div class="footer">
+  Revvio Internal Documentation v1.0 — April 2026<br>
+  Stack: Python / Flask / PostgreSQL / Render.com<br>
+  For questions, contact the development team.
+</div>
+
+<script>
+window.addEventListener('load', function() {
+  // Auto print dialog for easy PDF save
+  document.title = 'Revvio Documentation — Print to PDF';
+});
+</script>
+</body>
+</html>

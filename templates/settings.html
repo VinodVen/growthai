@@ -102,6 +102,24 @@
                 <small class="text-muted">Plan: <strong>{{ business.plan.title() }}</strong> &nbsp;·&nbsp; <a href="/upgrade">Upgrade Plan</a></small>
             </div>
 
+            <!-- Change Password -->
+            <hr class="mt-3">
+            <h5 class="fw-bold mb-3">Change Password</h5>
+            <div id="pwMsg" class="mb-2" style="display:none;"></div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Current Password</label>
+                <input type="password" class="form-control" id="pwCurrent" placeholder="Enter current password">
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">New Password</label>
+                <input type="password" class="form-control" id="pwNew" placeholder="Minimum 8 characters">
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">Confirm New Password</label>
+                <input type="password" class="form-control" id="pwConfirm" placeholder="Repeat new password">
+            </div>
+            <button onclick="changePassword()" class="btn btn-outline-primary w-100 fw-bold">Update Password</button>
+
             <hr class="mt-3">
             <div class="text-center">
                 <p class="text-muted small mb-2">Recording a demo? Load sample customers and campaigns.</p>
@@ -109,6 +127,38 @@
                     <button type="submit" class="btn btn-outline-secondary btn-sm">Load Demo Data</button>
                 </form>
             </div>
+
+<script>
+async function changePassword() {
+  const cur = document.getElementById('pwCurrent').value;
+  const nw  = document.getElementById('pwNew').value;
+  const con = document.getElementById('pwConfirm').value;
+  const msg = document.getElementById('pwMsg');
+  if (!cur || !nw || !con) { showMsg('All fields required.', 'danger'); return; }
+  if (nw !== con)           { showMsg('New passwords do not match.', 'danger'); return; }
+  if (nw.length < 8)        { showMsg('Password must be at least 8 characters.', 'danger'); return; }
+  const r = await fetch('/api/change-password', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({current: cur, new_password: nw})
+  });
+  const j = await r.json();
+  if (j.success) {
+    showMsg('✅ Password updated successfully!', 'success');
+    document.getElementById('pwCurrent').value = '';
+    document.getElementById('pwNew').value = '';
+    document.getElementById('pwConfirm').value = '';
+  } else {
+    showMsg('❌ ' + (j.error || 'Failed'), 'danger');
+  }
+}
+function showMsg(text, type) {
+  const el = document.getElementById('pwMsg');
+  el.style.display = 'block';
+  el.className = 'alert alert-' + type + ' py-2';
+  el.textContent = text;
+}
+</script>
         </div>
     </div>
 </div>
