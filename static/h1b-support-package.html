@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>H-1B Support Package — Vinod Reddy / Revvio</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap');
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Merriweather',serif; color:#111; background:#fff; font-size:12.5px; line-height:1.85; }
+
+  /* INDEX PAGE */
+  .index-cover { background:linear-gradient(135deg,#0f0c29,#302b63,#24243e); color:#fff; padding:70px 60px 55px; page-break-after:always; font-family:'Inter',sans-serif; }
+  .index-cover .badge { display:inline-block; background:#7c3aed; border-radius:5px; padding:4px 14px; font-size:0.75rem; font-weight:700; letter-spacing:0.08em; margin-bottom:18px; }
+  .index-cover h1 { font-size:2rem; font-weight:800; margin-bottom:6px; }
+  .index-cover h1 span { color:#a78bfa; }
+  .index-cover p { opacity:0.65; margin-bottom:28px; font-size:0.9rem; }
+  .index-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; max-width:640px; margin-bottom:28px; }
+  .index-card { background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); border-radius:8px; padding:13px 17px; }
+  .index-card .lbl { font-size:0.63rem; opacity:0.5; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px; }
+  .index-card .val { font-weight:600; font-size:0.88rem; }
+  .doc-list { margin-top:24px; }
+  .doc-list h3 { font-size:0.8rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; opacity:0.5; margin-bottom:12px; }
+  .doc-item { display:flex; align-items:flex-start; gap:14px; padding:12px 16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:8px; margin-bottom:8px; }
+  .doc-num { background:#7c3aed; color:#fff; border-radius:50%; width:24px; height:24px; display:flex; align-items:center; justify-content:center; font-size:0.75rem; font-weight:700; flex-shrink:0; margin-top:1px; }
+  .doc-info .title { font-weight:700; font-size:0.88rem; }
+  .doc-info .desc { font-size:0.77rem; opacity:0.6; margin-top:2px; }
+  .warning-box { background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.4); border-radius:8px; padding:14px 18px; margin-top:20px; font-size:0.8rem; }
+  .warning-box strong { color:#fbbf24; display:block; margin-bottom:4px; }
+
+  /* DOCUMENT PAGES */
+  .doc-page { padding:60px 70px; max-width:820px; margin:0 auto; page-break-after:always; }
+  .doc-page:last-child { page-break-after:auto; }
+
+  .letterhead { border-bottom:2px solid #1e1b4b; padding-bottom:16px; margin-bottom:24px; font-family:'Inter',sans-serif; }
+  .letterhead .company { font-size:1.15rem; font-weight:800; color:#1e1b4b; }
+  .letterhead .company span { color:#7c3aed; }
+  .letterhead .company-sub { font-size:0.78rem; color:#6b7280; margin-top:2px; }
+  .doc-number { font-family:'Inter',sans-serif; font-size:0.7rem; color:#9ca3af; text-align:right; margin-bottom:6px; }
+
+  .date-line { font-size:0.88rem; margin-bottom:20px; font-family:'Inter',sans-serif; color:#374151; }
+  .re-block { background:#f5f3ff; border-left:3px solid #7c3aed; padding:12px 16px; margin-bottom:22px; font-family:'Inter',sans-serif; font-size:0.85rem; }
+  .re-block strong { display:block; margin-bottom:3px; color:#1e1b4b; }
+
+  .body-text p { margin-bottom:16px; font-size:0.9rem; color:#1f2937; }
+  .sig-block { margin-top:44px; }
+  .sig-name { font-weight:700; font-size:0.95rem; margin-top:44px; border-top:1px solid #374151; display:inline-block; min-width:260px; padding-top:8px; }
+  .sig-title { font-size:0.8rem; color:#6b7280; font-family:'Inter',sans-serif; margin-top:3px; }
+  .fill { background:#fef9c3; border:1px dashed #d97706; border-radius:3px; padding:1px 6px; font-family:'Inter',sans-serif; font-size:0.8rem; color:#92400e; }
+
+  /* SECTION HEADINGS for technical docs */
+  .section-title { font-family:'Inter',sans-serif; font-size:1.3rem; font-weight:800; color:#1e1b4b; border-bottom:3px solid #7c3aed; padding-bottom:8px; margin:0 0 16px; }
+  .sub-title { font-family:'Inter',sans-serif; font-size:1rem; font-weight:700; color:#1e1b4b; margin:22px 0 8px; display:flex; align-items:center; gap:8px; }
+  .sub-title::before { content:''; display:inline-block; width:4px; height:16px; background:#7c3aed; border-radius:2px; }
+
+  table { width:100%; border-collapse:collapse; margin:12px 0 18px; font-size:0.83rem; font-family:'Inter',sans-serif; }
+  thead tr { background:linear-gradient(135deg,#1e1b4b,#4c1d95); color:#fff; }
+  thead th { padding:10px 14px; text-align:left; font-weight:600; }
+  tbody tr:nth-child(even) { background:#f9fafb; }
+  td { padding:9px 14px; border-bottom:1px solid #e5e7eb; vertical-align:top; }
+
+  ul, ol { padding-left:22px; margin-bottom:12px; }
+  li { margin-bottom:5px; font-size:0.88rem; color:#1f2937; font-family:'Merriweather',serif; }
+  li strong { color:#111; }
+
+  .callout { background:#f5f3ff; border-left:4px solid #7c3aed; padding:13px 17px; border-radius:0 8px 8px 0; margin:14px 0; font-family:'Inter',sans-serif; font-size:0.84rem; color:#374151; }
+  .callout strong { color:#1e1b4b; display:block; margin-bottom:4px; }
+
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:14px 0; font-family:'Inter',sans-serif; }
+  .mini-card { background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:14px 16px; }
+  .mini-card h4 { font-size:0.82rem; font-weight:700; color:#7c3aed; margin-bottom:8px; }
+  .mini-card ul { padding-left:16px; }
+  .mini-card li { font-size:0.8rem; font-family:'Inter',sans-serif; }
+
+  .footer { background:#1e1b4b; color:#a5b4fc; text-align:center; padding:22px; font-size:0.75rem; font-family:'Inter',sans-serif; }
+  code { font-family:'Courier New',monospace; background:#f3f4f6; border-radius:3px; padding:1px 5px; font-size:0.8rem; }
+  @media print { .doc-page { page-break-after:always; } table { page-break-inside:avoid; } }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     INDEX / COVER PAGE
+     ═══════════════════════════════════════════ -->
+<div class="index-cover">
+  <div class="badge">H-1B PETITION SUPPORT PACKAGE</div>
+  <h1>Revvio<span>.</span>ai — Immigration Support<br>Documentation</h1>
+  <p>Prepared in support of H-1B Specialty Occupation Petition for Vinod Reddy</p>
+
+  <div class="index-grid">
+    <div class="index-card"><div class="lbl">Beneficiary</div><div class="val">Vinod Reddy</div></div>
+    <div class="index-card"><div class="lbl">Petitioner / Employer</div><div class="val">InnovateCore LLC</div></div>
+    <div class="index-card"><div class="lbl">Position</div><div class="val">Software Engineer (Full-Stack / AI)</div></div>
+    <div class="index-card"><div class="lbl">Visa Type</div><div class="val">H-1B Specialty Occupation</div></div>
+    <div class="index-card"><div class="lbl">Prepared</div><div class="val">May 2026</div></div>
+    <div class="index-card"><div class="lbl">SOC Code</div><div class="val">15-1252 — Software Developers</div></div>
+  </div>
+
+  <div class="doc-list">
+    <h3>Documents Included in This Package</h3>
+    <div class="doc-item"><div class="doc-num">1</div><div class="doc-info"><div class="title">Employer Support Letter</div><div class="desc">Formal letter from InnovateCore LLC confirming employment, role, and specialty occupation necessity</div></div></div>
+    <div class="doc-item"><div class="doc-num">2</div><div class="doc-info"><div class="title">Detailed Position Description & Job Duties</div><div class="desc">Specific technical duties, daily responsibilities, tools, and technologies used</div></div></div>
+    <div class="doc-item"><div class="doc-num">3</div><div class="doc-info"><div class="title">Specialty Occupation Justification</div><div class="desc">Legal argument why this role qualifies as specialty occupation under 8 CFR 214.2(h)(4)(ii)</div></div></div>
+    <div class="doc-item"><div class="doc-num">4</div><div class="doc-info"><div class="title">Technical Architecture Evidence</div><div class="desc">System complexity, integrations, and scale demonstrating degree-level knowledge requirement</div></div></div>
+    <div class="doc-item"><div class="doc-num">5</div><div class="doc-info"><div class="title">Business Necessity Letter</div><div class="desc">Why this specific role is critical to the company's core operations</div></div></div>
+  </div>
+
+  <div class="warning-box">
+    <strong>⚠️ Attorney Instructions</strong>
+    Yellow highlighted fields marked <span style="background:rgba(245,158,11,0.3);padding:1px 5px;border-radius:3px;">[ like this ]</span> must be filled with actual company information before submission. All letters require original ink signatures on company letterhead.
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     DOCUMENT 1: EMPLOYER SUPPORT LETTER
+     ═══════════════════════════════════════════ -->
+<div class="doc-page">
+  <div class="doc-number">DOCUMENT 1 OF 5 — EMPLOYER SUPPORT LETTER</div>
+  <div class="letterhead">
+    <div class="company">Revvio<span>.</span>ai</div>
+    <div class="company-sub">InnovateCore LLC &nbsp;·&nbsp; <span class="fill">[Address]</span> &nbsp;·&nbsp; <span class="fill">[City, State ZIP]</span> &nbsp;·&nbsp; <span class="fill">[Phone]</span> &nbsp;·&nbsp; innovatecore.com / revvio.ai</div>
+  </div>
+
+  <div class="date-line"><span class="fill">[Date — e.g., May 12, 2026]</span></div>
+
+  <div style="margin-bottom:20px;font-family:'Inter',sans-serif;font-size:0.88rem;">
+    U.S. Citizenship and Immigration Services<br>
+    <span class="fill">[USCIS Service Center Address]</span>
+  </div>
+
+  <div class="re-block">
+    <strong>RE: H-1B Specialty Occupation Petition — Vinod Reddy</strong>
+    Position: Full-Stack Software Engineer / AI Platform Developer &nbsp;·&nbsp; SOC Code: 15-1252 &nbsp;·&nbsp; Wage Level: <span class="fill">[III or IV]</span>
+  </div>
+
+  <div class="body-text">
+    <p>Dear USCIS Officer,</p>
+
+    <p>This letter is submitted in support of the H-1B nonimmigrant visa petition filed on behalf of <strong>Vinod Reddy</strong>, who is employed as a <strong>Full-Stack Software Engineer and AI Platform Developer</strong> at InnovateCore LLC, doing business as <strong>Revvio</strong> (revvio.ai). We respectfully request that Mr. Reddy be granted H-1B status to continue his work in this specialty occupation.</p>
+
+    <p><strong>About the Company:</strong> InnovateCore LLC is a technology company that designs and operates AI-powered software products for the small business sector. Its flagship internal product, <strong>Revvio</strong> (revvio.ai), is an AI-powered multi-tenant Software-as-a-Service (SaaS) marketing platform designed to help local businesses — restaurants, salons, gyms, and retail stores — grow their customer base through artificial intelligence-driven automation. Revvio serves hundreds of businesses simultaneously and integrates with seven major third-party APIs including OpenAI (artificial intelligence), Twilio (telecommunications), Stripe (payment processing), Meta Graph API (social media), and Square (point-of-sale systems). The platform is hosted on Render.com cloud infrastructure and built on a PostgreSQL database with a Python/Flask backend comprising over 5,800 lines of production code and 134 REST API endpoints.</p>
+
+    <p><strong>Role Description:</strong> Mr. Reddy serves as the primary software engineer responsible for the design, development, deployment, and maintenance of the Revvio platform. His responsibilities require the direct application of theoretical and practical knowledge in computer science, software engineering, database architecture, cloud infrastructure, and artificial intelligence API integration — knowledge that is normally acquired through the completion of a bachelor's degree or higher in Computer Science, Software Engineering, or a closely related field.</p>
+
+    <p><strong>Compensation:</strong> Mr. Reddy is offered a salary of <span class="fill">[$XX,XXX per year]</span>, which meets or exceeds the prevailing wage for Software Developers (SOC 15-1252) in <span class="fill">[City, State]</span> at Wage Level <span class="fill">[III/IV]</span>, as determined by the Department of Labor.</p>
+
+    <p><strong>Educational Requirement:</strong> This position requires at minimum a bachelor's degree in Computer Science, Software Engineering, Information Systems, or a directly related technical field. Mr. Reddy holds a <span class="fill">[Bachelor's / Master's]</span> degree in <span class="fill">[Field]</span> from <span class="fill">[University Name]</span>, awarded in <span class="fill">[Year]</span>. His academic background directly corresponds to the specialized knowledge required to perform the duties of this role.</p>
+
+    <p>We strongly urge approval of this petition. Mr. Reddy's contributions are integral to the technical infrastructure of our business. The loss of his services would critically impair our ability to build, maintain, and scale the Revvio platform.</p>
+
+    <p>Should you require any additional information, please contact us at <span class="fill">[contact email]</span>.</p>
+
+    <p>Respectfully submitted,</p>
+  </div>
+
+  <div class="sig-block">
+    <div class="sig-name"><span class="fill">[Authorized Signatory Full Name]</span></div>
+    <div class="sig-title"><span class="fill">[Title — CEO / Founder / HR Director]</span></div>
+    <div class="sig-title">InnovateCore LLC · revvio.ai</div>
+    <div class="sig-title"><span class="fill">[Phone]</span> · <span class="fill">[Email]</span></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     DOCUMENT 2: POSITION DESCRIPTION
+     ═══════════════════════════════════════════ -->
+<div class="doc-page">
+  <div class="doc-number">DOCUMENT 2 OF 5 — DETAILED POSITION DESCRIPTION & JOB DUTIES</div>
+  <div class="letterhead">
+    <div class="company">Revvio<span>.</span>ai — Position Description</div>
+    <div class="company-sub">Full-Stack Software Engineer / AI Platform Developer</div>
+  </div>
+
+  <p style="font-family:'Inter',sans-serif;font-size:0.82rem;color:#6b7280;margin-bottom:16px;"><strong>Employer:</strong> InnovateCore LLC &nbsp;·&nbsp; <strong>Internal Product:</strong> Revvio (revvio.ai)</p>
+  <div class="section-title">Position: Full-Stack Software Engineer — AI Marketing Platform</div>
+
+  <table style="margin-bottom:20px;">
+    <thead><tr><th>Field</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td>Job Title</td><td>Full-Stack Software Engineer / AI Platform Developer</td></tr>
+      <tr><td>SOC Occupation Code</td><td>15-1252 — Software Developers</td></tr>
+      <tr><td>Work Location</td><td><span class="fill">[City, State]</span> (Remote / On-site)</td></tr>
+      <tr><td>Employment Type</td><td>Full-Time</td></tr>
+      <tr><td>Minimum Education Required</td><td>Bachelor's Degree in Computer Science, Software Engineering, or related field</td></tr>
+      <tr><td>Salary</td><td><span class="fill">[$XX,XXX/year]</span></td></tr>
+      <tr><td>Reports To</td><td><span class="fill">[Supervisor Title]</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="sub-title">Primary Job Duties & Responsibilities</div>
+  <p style="font-family:'Inter',sans-serif;font-size:0.82rem;color:#6b7280;margin-bottom:10px;">The following duties collectively occupy 100% of working time. Each requires specialized knowledge normally associated with a bachelor's or higher degree in a computer science or engineering specialty.</p>
+
+  <table>
+    <thead><tr><th>Duty Area</th><th>Specific Responsibilities</th><th>% Time</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>AI Systems Engineering</strong></td>
+        <td>Design and implement integrations with OpenAI GPT-4o-mini API; engineer prompt systems for multi-platform content generation (Instagram, Facebook, WhatsApp, email, SMS); build context-aware AI chatbot with business-specific knowledge; optimize token usage and response latency; implement error handling and fallback logic for AI service failures</td>
+        <td>25%</td>
+      </tr>
+      <tr>
+        <td><strong>Backend Architecture & API Development</strong></td>
+        <td>Design and implement 134 REST API endpoints in Python/Flask; architect multi-tenant data isolation patterns; implement bcrypt password hashing, CSRF protection, and HTTPS session security; build webhook receivers for Stripe, Twilio, and Square with cryptographic signature verification; design connection pooling strategies for PostgreSQL under concurrent load</td>
+        <td>30%</td>
+      </tr>
+      <tr>
+        <td><strong>Database Engineering</strong></td>
+        <td>Design and maintain 13 relational database models in PostgreSQL using SQLAlchemy ORM; write and execute live schema migrations using ALTER TABLE patterns safe for zero-downtime production deployment; optimize query performance using indexes and EXPLAIN ANALYZE; design foreign key relationships and enforce multi-tenant data integrity</td>
+        <td>15%</td>
+      </tr>
+      <tr>
+        <td><strong>Third-Party API Integration</strong></td>
+        <td>Implement OAuth2 authentication flows for Meta Graph API v18.0 (Facebook/Instagram), Square POS, and Google; integrate Twilio for programmable SMS delivery and inbound webhook processing; implement Stripe subscription billing with webhook lifecycle management; ensure TCPA compliance for SMS opt-in tracking</td>
+        <td>15%</td>
+      </tr>
+      <tr>
+        <td><strong>Automation Engine Development</strong></td>
+        <td>Build and maintain scheduled marketing automation engine (cron-based); implement customer journey builder with multi-step conditional logic; develop AI-personalized campaign triggers for birthday offers, win-back campaigns, and loyalty milestones; design open-tracking email pixel system and click-tracking URL redirects</td>
+        <td>10%</td>
+      </tr>
+      <tr>
+        <td><strong>Cloud Infrastructure & Deployment</strong></td>
+        <td>Configure and manage Render.com cloud deployment; optimize Gunicorn WSGI server settings for production; manage PostgreSQL connection pooling; implement auto-migration system that runs at startup; monitor application performance and resolve production incidents</td>
+        <td>5%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="sub-title">Technologies & Tools Required</div>
+  <div class="two-col">
+    <div class="mini-card">
+      <h4>Programming & Frameworks</h4>
+      <ul>
+        <li>Python 3.11 (advanced)</li>
+        <li>Flask 3.0 web framework</li>
+        <li>SQLAlchemy ORM</li>
+        <li>Jinja2 templating</li>
+        <li>HTML5 / CSS3 / JavaScript</li>
+        <li>RESTful API design</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>Databases & Infrastructure</h4>
+      <ul>
+        <li>PostgreSQL (advanced)</li>
+        <li>SQL query optimization</li>
+        <li>Gunicorn / WSGI</li>
+        <li>Render.com PaaS</li>
+        <li>Git / GitHub version control</li>
+        <li>Connection pooling</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>AI & Machine Learning APIs</h4>
+      <ul>
+        <li>OpenAI GPT-4o-mini API</li>
+        <li>Prompt engineering</li>
+        <li>Token optimization</li>
+        <li>AI response parsing</li>
+        <li>Fallback & retry logic</li>
+      </ul>
+    </div>
+    <div class="mini-card">
+      <h4>Third-Party Integrations</h4>
+      <ul>
+        <li>Twilio (SMS / WhatsApp)</li>
+        <li>Stripe (billing / webhooks)</li>
+        <li>Meta Graph API v18.0</li>
+        <li>Square POS OAuth2</li>
+        <li>Resend (email delivery)</li>
+        <li>Google OAuth2</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sub-title">Minimum Education Requirement</div>
+  <div class="callout">
+    <strong>This position requires at minimum a Bachelor's degree in Computer Science, Software Engineering, Information Technology, or a directly related field.</strong>
+    The specialized knowledge required to architect multi-tenant SaaS systems, integrate AI/ML APIs, design relational database schemas, and implement OAuth2 security flows is normally acquired through a four-year degree program in a technical discipline. This requirement is consistent with industry-wide standards for software engineering roles of this complexity, as documented in the Bureau of Labor Statistics Occupational Outlook Handbook for SOC 15-1252 (Software Developers).
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     DOCUMENT 3: SPECIALTY OCCUPATION JUSTIFICATION
+     ═══════════════════════════════════════════ -->
+<div class="doc-page">
+  <div class="doc-number">DOCUMENT 3 OF 5 — SPECIALTY OCCUPATION JUSTIFICATION</div>
+  <div class="letterhead">
+    <div class="company">Revvio<span>.</span>ai — Legal Justification</div>
+    <div class="company-sub">Specialty Occupation Analysis — 8 CFR 214.2(h)(4)(ii)</div>
+  </div>
+
+  <div class="section-title">Specialty Occupation Justification</div>
+  <p style="font-family:'Inter',sans-serif;font-size:0.85rem;color:#374151;margin-bottom:18px;">Under 8 CFR 214.2(h)(4)(ii), a "specialty occupation" means an occupation that requires the theoretical and practical application of a body of highly specialized knowledge, and attainment of a bachelor's or higher degree in the specific specialty (or its equivalent) as a minimum for entry into the occupation in the United States. The position of <strong>Full-Stack Software Engineer / AI Platform Developer</strong> at Revvio satisfies each of the four alternative criteria below.</p>
+
+  <div class="sub-title">Criterion 1: Bachelor's Degree is the Normal Minimum Requirement</div>
+  <div class="body-text">
+    <p>The Bureau of Labor Statistics (BLS) Occupational Outlook Handbook for SOC 15-1252 (Software Developers) states: <em>"Software developers typically need a bachelor's degree in computer science or a related field."</em> This is universally recognized across the software industry. Every comparable company hiring engineers to build AI-integrated SaaS platforms requires at minimum a bachelor's degree in Computer Science, Software Engineering, or a directly related discipline.</p>
+    <p>The Revvio platform's engineering work — including multi-tenant architecture design, AI API integration, OAuth2 security implementation, and PostgreSQL database engineering — cannot be performed by individuals without the theoretical foundation provided by a four-year degree in computer science or engineering.</p>
+  </div>
+
+  <div class="sub-title">Criterion 2: The Degree Requirement is Common in the Industry</div>
+  <div class="body-text">
+    <p>Software engineering roles involving AI/ML integration, cloud infrastructure, and SaaS architecture universally require bachelor's degrees or higher across the industry. A review of comparable job postings from companies building similar AI-powered SaaS platforms (Mailchimp, HubSpot, ActiveCampaign, Klaviyo) consistently lists a bachelor's degree in Computer Science or Software Engineering as the minimum requirement for equivalent roles. The skills required at Revvio are no less specialized than those at comparable organizations.</p>
+  </div>
+
+  <div class="sub-title">Criterion 3: Employer Normally Requires a Degree for this Position</div>
+  <div class="body-text">
+    <p>InnovateCore LLC requires a minimum bachelor's degree in Computer Science, Software Engineering, or a directly related field for the position of Full-Stack Software Engineer working on the Revvio platform. The technical complexity of the Revvio platform — 134 API endpoints, 13 database models, 7 third-party API integrations, multi-tenant architecture, AI content generation engine, and cryptographic security implementation — makes it impossible to perform these duties without the theoretical foundation acquired through a four-year degree program.</p>
+  </div>
+
+  <div class="sub-title">Criterion 4: The Nature of Duties is So Specialized and Complex That Knowledge Requires a Degree</div>
+
+  <table>
+    <thead><tr><th>Specialized Duty</th><th>Why It Requires Degree-Level Knowledge</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Multi-tenant SaaS architecture design</td>
+        <td>Requires CS coursework in distributed systems, database design, and software architecture. Multi-tenancy patterns, data isolation strategies, and session management are graduate-level concepts taught in Computer Science programs.</td>
+      </tr>
+      <tr>
+        <td>AI/ML API integration &amp; prompt engineering</td>
+        <td>Requires understanding of large language model (LLM) behavior, token economics, prompt optimization, and response parsing — concepts from AI/ML coursework in CS programs. Misuse leads to security vulnerabilities or product failures.</td>
+      </tr>
+      <tr>
+        <td>OAuth2 security implementation</td>
+        <td>Requires knowledge of cryptographic protocols, signature verification (HMAC), secure session management, and CSRF protection — advanced security concepts from CS security courses. Incorrect implementation exposes user data to breach.</td>
+      </tr>
+      <tr>
+        <td>PostgreSQL database engineering</td>
+        <td>Requires knowledge of relational algebra, normalization theory, query optimization, indexing strategies, and transaction management — core CS database theory. Requires ability to write and interpret EXPLAIN ANALYZE plans.</td>
+      </tr>
+      <tr>
+        <td>Payment systems (Stripe webhook security)</td>
+        <td>Requires understanding of cryptographic signature verification, idempotent payment processing, and financial transaction atomicity — concepts from CS coursework in security and distributed systems.</td>
+      </tr>
+      <tr>
+        <td>Cloud deployment &amp; infrastructure configuration</td>
+        <td>Requires knowledge of WSGI server architecture, HTTP/TCP networking, process management, and connection pooling — advanced CS networking and operating systems concepts.</td>
+      </tr>
+      <tr>
+        <td>Automation engine development</td>
+        <td>Requires knowledge of concurrent programming, scheduling algorithms, stateful workflow design, and event-driven architecture — CS concepts from algorithms, operating systems, and software engineering courses.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>Conclusion:</strong> The position of Full-Stack Software Engineer / AI Platform Developer at Revvio clearly qualifies as a specialty occupation under 8 CFR 214.2(h)(4)(ii). Every duty performed requires the theoretical and practical application of a body of highly specialized knowledge in computer science and software engineering — knowledge that is normally acquired through a bachelor's or higher degree in the specific specialty.
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     DOCUMENT 4: TECHNICAL ARCHITECTURE EVIDENCE
+     ═══════════════════════════════════════════ -->
+<div class="doc-page">
+  <div class="doc-number">DOCUMENT 4 OF 5 — TECHNICAL ARCHITECTURE EVIDENCE</div>
+  <div class="letterhead">
+    <div class="company">Revvio<span>.</span>ai — Technical Evidence</div>
+    <div class="company-sub">Platform Complexity Summary — Demonstrating Degree-Level Knowledge Requirement</div>
+  </div>
+
+  <div class="section-title">Technical Platform Complexity Evidence</div>
+  <p style="font-family:'Inter',sans-serif;font-size:0.85rem;color:#374151;margin-bottom:16px;">This document provides objective, quantifiable evidence of the technical complexity of the Revvio platform — demonstrating that the engineering work requires specialized knowledge normally associated with a degree in computer science or software engineering.</p>
+
+  <div class="sub-title">Platform Scale & Complexity Metrics</div>
+  <table>
+    <thead><tr><th>Metric</th><th>Value</th><th>Significance</th></tr></thead>
+    <tbody>
+      <tr><td>Total lines of Python code</td><td>5,800+</td><td>Enterprise-grade codebase complexity</td></tr>
+      <tr><td>REST API endpoints</td><td>134</td><td>Requires systematic API design knowledge</td></tr>
+      <tr><td>Database models (tables)</td><td>13</td><td>Complex relational schema with FK relationships</td></tr>
+      <tr><td>Third-party API integrations</td><td>7</td><td>Each requires deep OAuth/security knowledge</td></tr>
+      <tr><td>HTML/Jinja2 templates</td><td>65+</td><td>Full-stack front-end + backend integration</td></tr>
+      <tr><td>Concurrent business tenants</td><td>100s</td><td>Multi-tenant isolation is an advanced CS pattern</td></tr>
+      <tr><td>Automated test scenarios</td><td>10+ distinct types</td><td>Requires understanding of system failure modes</td></tr>
+    </tbody>
+  </table>
+
+  <div class="sub-title">Third-Party Integrations Requiring Specialized Knowledge</div>
+  <table>
+    <thead><tr><th>Integration</th><th>Purpose</th><th>Technical Complexity</th></tr></thead>
+    <tbody>
+      <tr><td>OpenAI GPT-4o-mini</td><td>AI content generation for marketing campaigns, social posts, chatbot</td><td>Prompt engineering, token management, response parsing, error handling, timeout design</td></tr>
+      <tr><td>Twilio</td><td>SMS delivery, WhatsApp messaging, inbound webhook processing</td><td>TCPA compliance implementation, webhook signature validation, phone number formatting</td></tr>
+      <tr><td>Stripe</td><td>Subscription billing, payment processing, plan management</td><td>OAuth checkout sessions, webhook HMAC verification, idempotent payment processing, subscription lifecycle</td></tr>
+      <tr><td>Meta Graph API v18.0</td><td>Facebook page posting, Instagram business publishing</td><td>OAuth2 long-lived token management, page/IG user ID resolution, multi-media post construction</td></tr>
+      <tr><td>Square POS</td><td>Point-of-sale payment sync, revenue auto-logging</td><td>OAuth2 authorization code flow, webhook signature verification, payment-to-customer matching</td></tr>
+      <tr><td>Resend / SendGrid</td><td>Email delivery with open/click tracking</td><td>Tracking pixel implementation, click redirect URLs, CAN-SPAM compliance, bounce handling</td></tr>
+      <tr><td>Google OAuth2</td><td>Social login / authentication</td><td>ID token validation, JWT parsing, user identity mapping</td></tr>
+    </tbody>
+  </table>
+
+  <div class="sub-title">Security Implementation Evidence</div>
+  <div class="callout">
+    The Revvio platform implements production-grade security across all layers:
+    <ul style="margin-top:8px;padding-left:18px;">
+      <li>Bcrypt password hashing (adaptive cost factor) — prevents brute-force attacks</li>
+      <li>Constant-time password comparison — prevents timing side-channel attacks</li>
+      <li>HTTPS-only session cookies with HttpOnly and SameSite=Lax flags — prevents XSS session theft and CSRF</li>
+      <li>Cryptographic webhook signature verification for Stripe, Square, and Twilio — prevents spoofed payment events</li>
+      <li>Multi-tenant data isolation — every database query scoped to business_id — prevents cross-tenant data leaks</li>
+      <li>TCPA-compliant SMS opt-in tracking with IP address and timestamp logging</li>
+    </ul>
+  </div>
+
+  <div class="sub-title">System Architecture Diagram</div>
+  <pre style="background:#0f0c29;color:#e0e7ff;border-radius:10px;padding:20px 24px;font-size:0.72rem;line-height:1.7;font-family:'Courier New',monospace;margin:12px 0;">
+┌─────────────────────────────────────────────────────────────────┐
+│                        Client Browser                           │
+│              HTML/CSS/JS (65+ Jinja2 templates)                 │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │ HTTPS / REST API
+┌──────────────────────────▼──────────────────────────────────────┐
+│                    Render.com Cloud (PaaS)                       │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  Gunicorn WSGI Server (1 worker, timeout 120s, preload)  │   │
+│  │  Flask 3.0 Application (main.py — 5,800+ lines)          │   │
+│  │  SQLAlchemy ORM ──── 13 Models ──── PostgreSQL           │   │
+│  │  134 REST Endpoints  ·  Authentication  ·  Session Mgmt  │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+
+External API Integrations (all require specialized engineering knowledge):
+  ├── OpenAI GPT-4o-mini ──── AI content generation + prompt engineering
+  ├── Twilio ─────────────── SMS / WhatsApp + TCPA compliance
+  ├── Stripe ──────────────── Subscription billing + webhook HMAC verification
+  ├── Meta Graph API v18.0 ── Facebook + Instagram OAuth2 posting
+  ├── Square API ─────────── POS payment sync + OAuth2 flow
+  ├── Resend ─────────────── Email delivery + open/click tracking pixels
+  └── Google OAuth2 ──────── Social authentication + JWT validation</pre>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     DOCUMENT 5: BUSINESS NECESSITY LETTER
+     ═══════════════════════════════════════════ -->
+<div class="doc-page">
+  <div class="doc-number">DOCUMENT 5 OF 5 — BUSINESS NECESSITY LETTER</div>
+  <div class="letterhead">
+    <div class="company">Revvio<span>.</span>ai</div>
+    <div class="company-sub">InnovateCore LLC &nbsp;·&nbsp; <span class="fill">[Address, City, State ZIP]</span></div>
+  </div>
+
+  <div class="date-line"><span class="fill">[Date]</span></div>
+
+  <div style="margin-bottom:18px;font-family:'Inter',sans-serif;font-size:0.88rem;">
+    U.S. Citizenship and Immigration Services<br>
+    <span class="fill">[USCIS Service Center]</span>
+  </div>
+
+  <div class="re-block">
+    <strong>RE: Business Necessity Letter — H-1B Petition for Vinod Reddy</strong>
+    Demonstrating critical business need for continued employment of Vinod Reddy as Full-Stack Software Engineer
+  </div>
+
+  <div class="body-text">
+    <p>Dear USCIS Officer,</p>
+
+    <p>This letter is submitted to demonstrate the critical business necessity of retaining <strong>Vinod Reddy</strong> as our Full-Stack Software Engineer and AI Platform Developer at <strong>InnovateCore LLC</strong>. Mr. Reddy is the primary engineer responsible for building and maintaining Revvio — InnovateCore LLC's flagship internal AI-powered SaaS platform — that directly serves the business operations of hundreds of clients.</p>
+
+    <p><strong>Mr. Reddy's role is irreplaceable for the following specific reasons:</strong></p>
+
+    <p><strong>1. He is the sole architect and builder of the Revvio platform.</strong> The entire Revvio technical infrastructure — InnovateCore LLC's core internal product — comprising 5,800+ lines of Python, 134 API endpoints, 13 database models, and 7 third-party integrations, was designed and built by Mr. Reddy. No other person within InnovateCore LLC holds the specialized knowledge required to maintain, extend, or debug this system. Replacing him would require a minimum of 6–12 months for a new engineer to understand the system architecture, and could result in critical service failures affecting our clients.</p>
+
+    <p><strong>2. The platform requires continuous specialized engineering work.</strong> The Revvio platform is not a static system. It requires ongoing engineering in the following areas: (a) maintaining and updating AI integrations as OpenAI's API evolves; (b) responding to Stripe, Twilio, Square, and Meta API changes and deprecations; (c) scaling the database as the customer base grows; (d) implementing security patches in response to new vulnerabilities; and (e) building new features to remain competitive in the marketing automation market. This continuous work requires the specialized knowledge Mr. Reddy possesses.</p>
+
+    <p><strong>3. The loss of Mr. Reddy would directly harm our clients.</strong> Revvio serves hundreds of local businesses who depend on the platform for their marketing automation, customer communication, and revenue tracking. A disruption to the platform caused by the departure of our only qualified engineer would directly harm these clients and expose the company to breach-of-contract liability.</p>
+
+    <p><strong>4. The U.S. labor market for engineers with this specific skill combination is highly competitive.</strong> Finding a replacement with the specific combination of Python/Flask expertise, multi-tenant SaaS architecture experience, OpenAI API integration knowledge, and familiarity with all seven of our third-party integrations would be extremely difficult and time-consuming. The specialized knowledge Mr. Reddy has developed about our system cannot be easily transferred.</p>
+
+    <p>We respectfully urge USCIS to approve this petition. Mr. Reddy's continued employment is essential to the operational integrity and growth of Revvio.</p>
+
+    <p>Sincerely,</p>
+  </div>
+
+  <div class="sig-block">
+    <div class="sig-name"><span class="fill">[Full Name of Authorized Signatory]</span></div>
+    <div class="sig-title"><span class="fill">[Title — CEO / Founder / COO]</span></div>
+    <div class="sig-title">InnovateCore LLC · revvio.ai</div>
+    <div class="sig-title"><span class="fill">[Phone]</span> · <span class="fill">[Email]</span></div>
+  </div>
+
+  <div style="margin-top:32px;font-family:'Inter',sans-serif;">
+    <div style="font-size:0.72rem;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:14px;">
+      <strong style="color:#374151;">Attorney Checklist — Additional Supporting Documents to Include:</strong>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;">
+        <div>☐ I-129 Petition Form</div>
+        <div>☐ Labor Condition Application (LCA)</div>
+        <div>☐ Beneficiary's degree certificate</div>
+        <div>☐ Official transcripts (translated if needed)</div>
+        <div>☐ Beneficiary's CV / resume</div>
+        <div>☐ Prevailing wage determination</div>
+        <div>☐ Client reference letters (if available)</div>
+        <div>☐ DOL wage survey evidence (BLS OOH)</div>
+        <div>☐ Passport copy + prior visa copies</div>
+        <div>☐ I-94 arrival/departure record</div>
+        <div>☐ Prior H-1B approval notices (if any)</div>
+        <div>☐ Company incorporation / business license</div>
+        <div>☐ Company tax returns / financial statements</div>
+        <div>☐ Expert opinion letter (if applicable)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  InnovateCore LLC — H-1B Petition Support Package · Prepared May 2026<br>
+  Employer: InnovateCore LLC &nbsp;·&nbsp; Internal Product: Revvio (revvio.ai)<br>
+  Beneficiary: Vinod Reddy · Position: Full-Stack Software Engineer / AI Platform Developer · SOC 15-1252<br>
+  All documents require review and approval by a licensed immigration attorney before submission to USCIS.
+</div>
+
+</body>
+</html>
